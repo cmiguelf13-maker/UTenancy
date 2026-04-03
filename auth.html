@@ -272,7 +272,7 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
           <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Email Address</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">mail</span>
-            <input id="login-email" type="email" class="auth-input" placeholder="you@university.edu" autocomplete="email"/>
+            <input id="login-email" type="email" class="auth-input" placeholder=" " autocomplete="email"/>
           </div>
           <p id="login-email-err" class="field-error hidden"><span class="material-symbols-outlined text-sm">error</span><span></span></p>
         </div>
@@ -281,7 +281,7 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
           <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Password</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
-            <input id="login-password" type="password" class="auth-input has-right" placeholder="Enter your password" autocomplete="current-password"/>
+            <input id="login-password" type="password" class="auth-input has-right" placeholder=" " autocomplete="current-password"/>
             <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors" onclick="toggleVisibility('login-password', this)">
               <span class="material-symbols-outlined text-lg" id="eye-login">visibility</span>
             </button>
@@ -344,14 +344,14 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
             <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">First Name</label>
             <div class="relative">
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">person</span>
-              <input id="su-first" type="text" class="auth-input" placeholder="Alex" autocomplete="given-name"/>
+              <input id="su-first" type="text" class="auth-input" placeholder=" " autocomplete="given-name"/>
             </div>
             <p id="su-first-err" class="field-error hidden"><span class="material-symbols-outlined text-sm">error</span><span></span></p>
           </div>
           <div>
             <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Last Name</label>
             <div class="relative">
-              <input id="su-last" type="text" class="auth-input no-icon" placeholder="Johnson" autocomplete="family-name"/>
+              <input id="su-last" type="text" class="auth-input no-icon" placeholder=" " autocomplete="family-name"/>
             </div>
             <p id="su-last-err" class="field-error hidden"><span class="material-symbols-outlined text-sm">error</span><span></span></p>
           </div>
@@ -362,7 +362,7 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
           <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">University</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">school</span>
-            <input id="su-university" type="text" list="uni-list" class="auth-input" placeholder="Loyola Marymount University" autocomplete="off"/>
+            <input id="su-university" type="text" list="uni-list" class="auth-input" placeholder=" " autocomplete="off"/>
             <datalist id="uni-list">
               <option value="Loyola Marymount University"/>
               <option value="UCLA — University of California, Los Angeles"/>
@@ -372,8 +372,8 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
               <option value="New York University"/>
               <option value="Boston University"/>
               <option value="University of Miami"/>
-              <option value="University of Texas at Austin"/>
-              <option value="Harvard University"/>
+              <option value="Florida International University"/>
+              <option value="University of Oregon"/>
               <option value="Columbia University"/>
               <option value="Yale University"/>
             </datalist>
@@ -386,7 +386,7 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
           <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">.edu Email Address</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">mail</span>
-            <input id="su-email" type="email" class="auth-input" placeholder="you@university.edu" autocomplete="email"/>
+            <input id="su-email" type="email" class="auth-input" placeholder=" " autocomplete="email"/>
             <span id="edu-check" class="material-symbols-outlined fill absolute right-3 top-1/2 -translate-y-1/2 text-lg hidden" style="color:#4caf7d;">check_circle</span>
           </div>
           <p id="su-email-err" class="field-error hidden"><span class="material-symbols-outlined text-sm">error</span><span></span></p>
@@ -398,7 +398,7 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
           <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Password</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
-            <input id="su-password" type="password" class="auth-input has-right" placeholder="Min. 8 characters" oninput="checkStrength()" autocomplete="new-password"/>
+            <input id="su-password" type="password" class="auth-input has-right" placeholder=" " oninput="checkStrength()" autocomplete="new-password"/>
             <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors" onclick="toggleVisibility('su-password', this)">
               <span class="material-symbols-outlined text-lg" id="eye-su">visibility</span>
             </button>
@@ -419,7 +419,7 @@ body { background: var(--cream); color: var(--stone); font-family: 'Be Vietnam P
           <label class="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Confirm Password</label>
           <div class="relative">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock_reset</span>
-            <input id="su-confirm" type="password" class="auth-input has-right" placeholder="Re-enter password" autocomplete="new-password"/>
+            <input id="su-confirm" type="password" class="auth-input has-right" placeholder=" " autocomplete="new-password"/>
             <button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors" onclick="toggleVisibility('su-confirm', this)">
               <span class="material-symbols-outlined text-lg" id="eye-su-c">visibility</span>
             </button>
