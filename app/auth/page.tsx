@@ -1,0 +1,410 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import type { Metadata } from 'next'
+
+/* ─── Types ──────────────────────────────────── */
+type Panel = 'login' | 'signup' | 'otp' | 'forgot' | 'success'
+type Tab   = 'login' | 'signup'
+type ToastVariant = 'info' | 'success' | 'error'
+
+/* ─── Toast helper ───────────────────────────── */
+function useToast() {
+  const [toast, setToast] = useState<{ msg: string; variant: ToastVariant } | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  const show = (msg: string, variant: ToastVariant = 'info') => {
+    clearTimeout(timerRef.current)
+    setToast({ msg, variant })
+    timerRef.current = setTimeout(() => setToast(null), 3000)
+  }
+  return { toast, show }
+}
+
+/* ─── Password strength ──────────────────────── */
+function passwordStrength(pw: string): { score: number; label: string; color: string } {
+  let score = 0
+  if (pw.length >= 8) score++
+  if (/[A-Z]/.test(pw)) score++
+  if (/[0-9]/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  const levels = [
+    { label: '',         color: 'bg-out-var'   },
+    { label: 'Weak',     color: 'bg-red-400'   },
+    { label: 'Fair',     color: 'bg-amber-400' },
+    { label: 'Good',     color: 'bg-blue-400'  },
+    { label: 'Strong',   color: 'bg-green-500' },
+  ]
+  return { score, ...levels[score] }
+}
+
+/* ─── Google SVG ─────────────────────────────── */
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+  </svg>
+)
+
+/* ─── OTP Inputs ──────────────────────────────── */
+function OtpInputs({ onComplete }: { onComplete: (val: string) => void }) {
+  const [vals, setVals] = useState(['', '', '', '', '', ''])
+  const r0 = useRef<HTMLInputElement>(null)
+  const r1 = useRef<HTMLInputElement>(null)
+  const r2 = useRef<HTMLInputElement>(null)
+  const r3 = useRef<HTMLInputElement>(null)
+  const r4 = useRef<HTMLInputElement>(null)
+  const r5 = useRef<HTMLInputElement>(null)
+  const refs = [r0, r1, r2, r3, r4, r5]
+
+  const handleChange = (i: number, v: string) => {
+    if (!/^\d?$/.test(v)) return
+    const next = [...vals]; next[i] = v; setVals(next)
+    if (v && i < 5) refs[i + 1].current?.focus()
+    if (next.every(Boolean)) onComplete(next.join(''))
+  }
+  const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !vals[i] && i > 0) refs[i - 1].current?.focus()
+  }
+
+  return (
+    <div className="flex justify-center gap-3 mb-6">
+      {vals.map((v, i) => (
+        <input key={i} ref={refs[i]} type="text" inputMode="numeric" maxLength={1}
+          value={v} onChange={(e) => handleChange(i, e.target.value)} onKeyDown={(e) => handleKeyDown(i, e)}
+          className={`otp-input ${v ? 'filled' : ''}`} />
+      ))}
+    </div>
+  )
+}
+
+/* ─── Main auth page ─────────────────────────── */
+export default function AuthPage() {
+  const [panel, setPanel]       = useState<Panel>('login')
+  const [tab, setTab]           = useState<Tab>('login')
+  const [showPw, setShowPw]     = useState(false)
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [password, setPassword] = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [pendingEmail, setPendingEmail] = useState('')
+  const [pendingName, setPendingName]   = useState('')
+  const [otpCode]               = useState(() => String(Math.floor(100000 + Math.random() * 900000)))
+  const [otpTimer, setOtpTimer] = useState(30)
+  const timerRef                = useRef<ReturnType<typeof setInterval>>()
+  const { toast, show: showToast } = useToast()
+
+  const strength = passwordStrength(password)
+
+  function switchTab(t: Tab) {
+    setTab(t); setPanel(t)
+  }
+
+  function showPanel(p: Panel) { setPanel(p) }
+
+  function withLoading(ms: number, cb: () => void) {
+    setLoading(true)
+    setTimeout(() => { setLoading(false); cb() }, ms)
+  }
+
+  function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    withLoading(1200, () => showToast('Signed in successfully!', 'success'))
+  }
+
+  function handleSignUp(e: React.FormEvent) {
+    e.preventDefault()
+    const form = e.target as HTMLFormElement
+    const first = (form.elements.namedItem('first') as HTMLInputElement)?.value || ''
+    setPendingName(first)
+    const email = (form.elements.namedItem('email') as HTMLInputElement)?.value || ''
+    setPendingEmail(email)
+    withLoading(1400, () => {
+      startOtpTimer()
+      showPanel('otp')
+    })
+  }
+
+  function startOtpTimer() {
+    clearInterval(timerRef.current)
+    setOtpTimer(30)
+    timerRef.current = setInterval(() => {
+      setOtpTimer((t) => { if (t <= 1) { clearInterval(timerRef.current); return 0 } return t - 1 })
+    }, 1000)
+  }
+
+  function handleOtpComplete(entered: string) {
+    if (entered === otpCode) {
+      clearInterval(timerRef.current)
+      showToast('Email verified!', 'success')
+      setTimeout(() => showPanel('success'), 500)
+    } else {
+      showToast('Incorrect code — try again', 'error')
+    }
+  }
+
+  function handleForgot(e: React.FormEvent) {
+    e.preventDefault()
+    withLoading(1400, () => {
+      showToast('Reset link sent! Check your inbox.', 'success')
+      setTimeout(() => showPanel('login'), 1800)
+    })
+  }
+
+  // Panel animation class
+  const anim = 'anim-fade-up'
+
+  const DEMO_BANNER = (
+    <div className="demo-banner mb-6" style={{ background: 'linear-gradient(135deg,#fff1e9,#ede0d8)', border: '1px dashed #c4a090', borderRadius: 12, padding: '12px 16px', fontFamily: 'var(--font-plus-jakarta)', fontSize: 12.5, color: 'var(--clay-dark)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span className="material-symbols-outlined text-base text-terra">info</span>
+      <span>Demo mode — use code <strong>{otpCode}</strong> to verify</span>
+    </div>
+  )
+
+  return (
+    <main className="flex-1 flex items-center justify-center px-4 py-12 md:py-20 relative overflow-hidden min-h-[calc(100vh-73px)]">
+      {/* Ambient blobs */}
+      <div className="absolute -top-40 right-0 w-[600px] h-[600px] rounded-full opacity-20 blur-[120px] pointer-events-none" style={{ background: 'radial-gradient(circle,#fec8b6,#9c7060)' }} />
+      <div className="absolute bottom-0 -left-20 w-[400px] h-[400px] rounded-full opacity-15 blur-[100px] pointer-events-none" style={{ background: '#6b4c3b' }} />
+
+      <div className="w-full max-w-md relative z-10">
+
+        {/* ── PANEL: LOGIN ── */}
+        {panel === 'login' && (
+          <div className={`auth-card p-8 md:p-10 ${anim}`}>
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 bg-surf-lo border border-out-var rounded-full px-4 py-1.5 mb-5">
+                <span className="w-2 h-2 rounded-full bg-clay animate-pulse-dot" />
+                <span className="text-xs font-head font-bold text-clay-dark tracking-widest uppercase">Student Portal</span>
+              </div>
+              <h1 className="font-display text-4xl font-light text-clay-dark leading-tight mb-2">Welcome <em>back</em></h1>
+              <p className="text-sm font-body text-muted">Sign in to your UTenancy account</p>
+            </div>
+
+            <div className="bg-surf-hi rounded-xl p-1 flex gap-1 mb-8">
+              <button className={`tab-btn flex-1 ${tab === 'login' ? 'active' : ''}`} onClick={() => switchTab('login')}>Sign In</button>
+              <button className={`tab-btn flex-1 ${tab === 'signup' ? 'active' : ''}`} onClick={() => switchTab('signup')}>Create Account</button>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <button className="social-btn" onClick={() => showToast('Redirecting to Google…', 'info')}><GoogleIcon /> Continue with Google</button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex-1 h-px bg-out-var/60" />
+              <span className="text-xs font-head font-semibold text-outline uppercase tracking-widest">or</span>
+              <div className="flex-1 h-px bg-out-var/60" />
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4" noValidate>
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Email Address</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">mail</span>
+                  <input type="email" className="auth-input" placeholder="your@university.edu" autoComplete="email" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Password</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
+                  <input type={showPw ? 'text' : 'password'} className="auth-input has-right" placeholder=" " autoComplete="current-password" required />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors" onClick={() => setShowPw((v) => !v)}>
+                    <span className="material-symbols-outlined text-lg">{showPw ? 'visibility_off' : 'visibility'}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button type="button" onClick={() => showPanel('forgot')} className="text-xs font-head font-semibold text-clay hover:text-clay-dark transition-colors">Forgot password?</button>
+              </div>
+              <button type="submit" className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
+                {loading ? <span className="spinner" /> : 'Sign In'}
+              </button>
+            </form>
+            <p className="text-center text-xs font-body text-muted mt-6">
+              Don't have an account?{' '}
+              <button onClick={() => switchTab('signup')} className="font-head font-bold text-clay hover:text-clay-dark transition-colors">Create one free →</button>
+            </p>
+          </div>
+        )}
+
+        {/* ── PANEL: SIGN UP ── */}
+        {panel === 'signup' && (
+          <div className={`auth-card p-8 md:p-10 ${anim}`}>
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 bg-surf-lo border border-out-var rounded-full px-4 py-1.5 mb-5">
+                <span className="w-2 h-2 rounded-full bg-clay animate-pulse-dot" />
+                <span className="text-xs font-head font-bold text-clay-dark tracking-widest uppercase">Free for Students</span>
+              </div>
+              <h1 className="font-display text-4xl font-light text-clay-dark leading-tight mb-2">Join <em>UTenancy</em></h1>
+              <p className="text-sm font-body text-muted">Create your verified student account</p>
+            </div>
+
+            <div className="bg-surf-hi rounded-xl p-1 flex gap-1 mb-8">
+              <button className={`tab-btn flex-1 ${tab === 'login' ? 'active' : ''}`} onClick={() => switchTab('login')}>Sign In</button>
+              <button className={`tab-btn flex-1 ${tab === 'signup' ? 'active' : ''}`} onClick={() => switchTab('signup')}>Create Account</button>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <button className="social-btn" onClick={() => showToast('Redirecting to Google…', 'info')}><GoogleIcon /> Sign up with Google</button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex-1 h-px bg-out-var/60" />
+              <span className="text-xs font-head font-semibold text-outline uppercase tracking-widest">or</span>
+              <div className="flex-1 h-px bg-out-var/60" />
+            </div>
+
+            <form onSubmit={handleSignUp} className="space-y-4" noValidate>
+              <div className="grid grid-cols-2 gap-3">
+                {[{ name: 'first', label: 'First Name', icon: 'person', ac: 'given-name' }, { name: 'last', label: 'Last Name', icon: 'person', ac: 'family-name' }].map(({ name, label, icon, ac }) => (
+                  <div key={name}>
+                    <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{label}</label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">{icon}</span>
+                      <input name={name} type="text" className="auth-input" placeholder=" " autoComplete={ac} required />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">University Email (.edu)</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">school</span>
+                  <input name="email" type="email" className="auth-input" placeholder="you@university.edu" autoComplete="email" required />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Password</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
+                  <input type={showNewPw ? 'text' : 'password'} className="auth-input has-right" placeholder=" " value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors" onClick={() => setShowNewPw((v) => !v)}>
+                    <span className="material-symbols-outlined text-lg">{showNewPw ? 'visibility_off' : 'visibility'}</span>
+                  </button>
+                </div>
+                {password && (
+                  <div className="mt-2">
+                    <div className="flex gap-1 mb-1">
+                      {[1,2,3,4].map((n) => (
+                        <div key={n} className={`strength-bar ${n <= strength.score ? strength.color : 'bg-out-var'}`} />
+                      ))}
+                    </div>
+                    <p className="text-xs font-head font-semibold" style={{ color: strength.score >= 3 ? '#4caf7d' : strength.score === 2 ? '#f59e0b' : '#d44' }}>{strength.label}</p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">University</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_city</span>
+                  <select className="auth-input no-icon cursor-pointer appearance-none" style={{ paddingLeft: 44 }}>
+                    <option value="">Select your university…</option>
+                    {['Loyola Marymount University (LMU)', 'UCLA', 'USC', 'Cal State LA', 'Pepperdine University', 'Other'].map((u) => <option key={u}>{u}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <p className="text-xs font-body text-muted text-center">
+                By creating an account you agree to our{' '}
+                <a href="#" className="text-clay font-semibold hover:underline">Terms</a> and{' '}
+                <a href="#" className="text-clay font-semibold hover:underline">Privacy Policy</a>.
+              </p>
+              <button type="submit" className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
+                {loading ? <span className="spinner" /> : 'Create Account'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ── PANEL: OTP ── */}
+        {panel === 'otp' && (
+          <div className={`auth-card p-8 md:p-10 ${anim}`}>
+            <button onClick={() => showPanel('signup')} className="flex items-center gap-1 text-xs font-head font-semibold text-muted hover:text-clay mb-6 transition-colors">
+              <span className="material-symbols-outlined text-sm">arrow_back</span> Back
+            </button>
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-surf-lo border border-out-var rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <span className="material-symbols-outlined text-clay text-3xl">mark_email_unread</span>
+              </div>
+              <h1 className="font-display text-3xl font-light text-clay-dark mb-2">Check your <em>inbox</em></h1>
+              <p className="text-sm font-body text-muted">We sent a 6-digit code to <strong className="text-clay-dark">{pendingEmail || 'your .edu email'}</strong></p>
+            </div>
+
+            {DEMO_BANNER}
+            <OtpInputs onComplete={handleOtpComplete} />
+
+            <div className="text-center mb-6">
+              {otpTimer > 0
+                ? <p className="text-xs font-body text-muted">Resend code in <span className="font-head font-bold text-clay-dark">{otpTimer}s</span></p>
+                : <button onClick={() => { startOtpTimer(); showToast('New code sent!', 'info') }} className="text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors">Resend code →</button>
+              }
+            </div>
+
+            <button onClick={() => handleOtpComplete(otpCode)} className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
+              {loading ? <span className="spinner" /> : 'Verify Email'}
+            </button>
+          </div>
+        )}
+
+        {/* ── PANEL: FORGOT ── */}
+        {panel === 'forgot' && (
+          <div className={`auth-card p-8 md:p-10 ${anim}`}>
+            <button onClick={() => showPanel('login')} className="flex items-center gap-1 text-xs font-head font-semibold text-muted hover:text-clay mb-6 transition-colors">
+              <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Sign In
+            </button>
+            <div className="text-center mb-8">
+              <h1 className="font-display text-3xl font-light text-clay-dark mb-2">Reset <em>password</em></h1>
+              <p className="text-sm font-body text-muted">Enter your .edu email and we'll send a reset link.</p>
+            </div>
+            <form onSubmit={handleForgot} className="space-y-4" noValidate>
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">University Email</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">mail</span>
+                  <input type="email" className="auth-input" placeholder="you@university.edu" required />
+                </div>
+              </div>
+              <button type="submit" className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+                {loading ? <span className="spinner" /> : 'Send Reset Link'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ── PANEL: SUCCESS ── */}
+        {panel === 'success' && (
+          <div className={`auth-card p-8 md:p-10 text-center ${anim}`}>
+            <div className="check-circle mx-auto mb-6 anim-check">
+              <span className="material-symbols-outlined text-white text-3xl fill">check</span>
+            </div>
+            <h1 className="font-display text-3xl font-light text-clay-dark mb-2">
+              Welcome to UTenancy, <em>{pendingName || 'student'}</em>!
+            </h1>
+            <p className="text-sm font-body text-muted mb-8">Your .edu is verified. You're officially in.</p>
+            <div className="space-y-3">
+              <button onClick={() => showToast('Loading dashboard…', 'success')} className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25">
+                Go to Dashboard
+              </button>
+              <a href="/" className="block w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3 rounded-xl hover:bg-clay hover:text-white transition-all text-center">Browse Listings →</a>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className={`toast show ${toast.variant}`}>
+          <span className="material-symbols-outlined text-base fill">
+            {toast.variant === 'success' ? 'check_circle' : toast.variant === 'error' ? 'error' : 'info'}
+          </span>
+          {toast.msg}
+        </div>
+      )}
+    </main>
+  )
+}
