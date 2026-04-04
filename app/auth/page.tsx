@@ -50,19 +50,21 @@ const GoogleIcon = () => (
 
 /* ─── OTP Inputs ──────────────────────────────── */
 function OtpInputs({ onComplete }: { onComplete: (val: string) => void }) {
-  const [vals, setVals] = useState(['', '', '', '', '', ''])
+  const [vals, setVals] = useState(['', '', '', '', '', '', '', ''])
   const r0 = useRef<HTMLInputElement>(null)
   const r1 = useRef<HTMLInputElement>(null)
   const r2 = useRef<HTMLInputElement>(null)
   const r3 = useRef<HTMLInputElement>(null)
   const r4 = useRef<HTMLInputElement>(null)
   const r5 = useRef<HTMLInputElement>(null)
-  const refs = [r0, r1, r2, r3, r4, r5]
+  const r6 = useRef<HTMLInputElement>(null)
+  const r7 = useRef<HTMLInputElement>(null)
+  const refs = [r0, r1, r2, r3, r4, r5, r6, r7]
 
   const handleChange = (i: number, v: string) => {
     if (!/^\d?$/.test(v)) return
     const next = [...vals]; next[i] = v; setVals(next)
-    if (v && i < 5) refs[i + 1].current?.focus()
+    if (v && i < 7) refs[i + 1].current?.focus()
     if (next.every(Boolean)) onComplete(next.join(''))
   }
   const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
