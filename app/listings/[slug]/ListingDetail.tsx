@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { Listing } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
+import { getDistanceToNearestSchool } from '@/lib/distance'
 
 /* ── Message Landlord button — creates or opens a conversation ── */
 function MessageLandlordButton({ listingId, userId }: { listingId: string; userId: string }) {
@@ -105,14 +106,14 @@ function Lightbox({ index, onClose, photos }: { index: number; onClose: () => vo
       </div>
       <div className="flex-1 flex items-center justify-center p-6" onClick={(e) => e.stopPropagation()}>
         <div className="relative w-full max-w-3xl" style={{ height: 400 }}>
-          <Image src={photos[current].src} alt={photos[current].alt} fill className="object-cover rounded-2xl" />
+          <img src={photos[current].src} alt={photos[current].alt} className="absolute inset-0 w-full h-full object-cover rounded-2xl" />
         </div>
       </div>
       <div className="flex gap-3 justify-center px-6 pb-6 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
         {photos.map((p: PhotoItem, i: number) => (
           <button key={i} onClick={() => setCurrent(i)}
             className={`flex-shrink-0 w-20 h-16 rounded-xl overflow-hidden border-2 transition-all relative ${i === current ? 'border-clay' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-            <Image src={p.src} alt={p.alt} fill className="object-cover" />
+            <img src={p.src} alt={p.alt} className="absolute inset-0 w-full h-full object-cover" />
           </button>
         ))}
       </div>
@@ -228,14 +229,32 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
   const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null }>>([])
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
 
-  const perPerson = Math.round(listing.price / listing.beds)
+  const perPerson = listing.beds > 0 ? Math.round(listing.price / listing.beds) : listing.price
 
   // Use DB images if available, otherwise fall back to hardcoded sample photos
   const dbImages = (listing as any).images as string[] | undefined
-  const PHOTOS =
-    dbImages && dbImages.length > 0
-      ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
-      : FALLBACK_PHOTOS
+  const hasDbImages = dbImages && dbImages.length > 0 && dbImages[0] !== ''
+  const PHOTOS = hasDbImages
+    ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
+    : FALLBACK_PHOTOS
+
+  // Distance from nearest school — computed on mount for DB listings
+  const [distanceInfo, setDistanceInfo] = useState<{ distanceMi: number; university: string } | null>(
+    listing.distanceMi && listing.university
+      ? { distanceMi: listing.distanceMi, university: listing.university }
+      : null
+  )
+
+  // Compute distance for DB listings that don't have it
+  useEffect(() => {
+    if (!distanceInfo && listing.title && listing.location) {
+      // listing.title = address, listing.location = "City, State"
+      const [city] = listing.location.split(',').map(s => s.trim())
+      getDistanceToNearestSchool(listing.title, city).then((info) => {
+        if (info) setDistanceInfo(info)
+      })
+    }
+  }, [listing.title, listing.location])
 
   // Lock body scroll when an overlay is open
   useEffect(() => {
@@ -342,11 +361,19 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
         <div className="photo-gallery">
           <div className="hero-slot img-zoom cursor-pointer overflow-hidden relative" onClick={() => setLightboxIndex(0)}>
-            <Image src={PHOTOS[0].src} alt={PHOTOS[0].alt} fill className="object-cover" />
+            {hasDbImages ? (
+              <img src={PHOTOS[0].src} alt={PHOTOS[0].alt} className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <Image src={PHOTOS[0].src} alt={PHOTOS[0].alt} fill className="object-cover" />
+            )}
           </div>
           {PHOTOS.slice(1, 3).map((p, i) => (
             <div key={i} className="mini-slot img-zoom cursor-pointer overflow-hidden relative" onClick={() => setLightboxIndex(i + 1)}>
-              <Image src={p.src} alt={p.alt} fill className="object-cover" />
+              {hasDbImages ? (
+                <img src={p.src} alt={p.alt} className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <Image src={p.src} alt={p.alt} fill className="object-cover" />
+              )}
             </div>
           ))}
         </div>
@@ -356,7 +383,11 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
           {PHOTOS.slice(1).map((p, i) => (
             <div key={i} onClick={() => setLightboxIndex(i + 1)}
               className="flex-shrink-0 relative cursor-pointer rounded-xl overflow-hidden" style={{ width: 128, height: 80 }}>
-              <Image src={p.src} alt={p.alt} fill className="object-cover" />
+              {hasDbImages ? (
+                <img src={p.src} alt={p.alt} className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <Image src={p.src} alt={p.alt} fill className="object-cover" />
+              )}
               {i === PHOTOS.length - 2 && (
                 <div className="absolute inset-0 bg-espresso/70 flex items-center justify-center">
                   <span className="text-white font-head font-bold text-xs">+{PHOTOS.length - 3} more</span>
@@ -382,15 +413,18 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
               <h1 className="font-display text-4xl md:text-5xl font-light text-clay-dark leading-tight mb-3">{listing.title}</h1>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted font-body mb-6">
                 <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">location_on</span>{listing.location}</span>
-                <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">school</span>{listing.distanceMi} mi from {listing.university}</span>
-                <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm fill text-amber-400">star</span>4.9 · New listing</span>
+                {distanceInfo && (
+                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">school</span>{distanceInfo.distanceMi} mi from {distanceInfo.university}</span>
+                )}
+                <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm fill text-amber-400">star</span>New listing</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 {[
-                  { icon: 'bed',          label: `${listing.beds} Bedrooms` },
-                  { icon: 'bathtub',      label: `${listing.baths ?? 1} Bathroom` },
-                  { icon: 'straighten',   label: '1,050 sq ft' },
-                  { icon: 'directions_walk', label: `${listing.distanceMi} mi to ${listing.university}` },
+                  { icon: 'bed',          label: `${listing.beds} Bedroom${listing.beds !== 1 ? 's' : ''}` },
+                  { icon: 'bathtub',      label: `${listing.baths ?? 1} Bathroom${(listing.baths ?? 1) !== 1 ? 's' : ''}` },
+                  ...(distanceInfo
+                    ? [{ icon: 'directions_walk', label: `${distanceInfo.distanceMi} mi to ${distanceInfo.university}` }]
+                    : []),
                 ].map(({ icon, label }) => (
                   <div key={icon} className="stat-card">
                     <span className="material-symbols-outlined text-clay text-xl">{icon}</span>
@@ -405,7 +439,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
             {/* Description */}
             <div className="mb-8 reveal">
               <h2 className="font-head text-xl font-bold text-clay-dark mb-4">About this home</h2>
-              <p className="font-body text-muted leading-relaxed">{listing.description}</p>
+              <p className="font-body text-muted leading-relaxed">{listing.description || `A ${listing.beds}-bedroom, ${listing.baths ?? 1}-bath property in ${listing.location}. Contact the landlord for more details.`}</p>
             </div>
 
             <div className="divider mb-8" />
@@ -457,7 +491,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                 <div className="w-8 h-8 clay-grad rounded-full flex items-center justify-center">
                   <span className="text-cream font-head font-black text-xs">U</span>
                 </div>
-                <span>Verified {listing.university} Listing</span>
+                <span>{distanceInfo ? `Verified ${distanceInfo.university} Listing` : 'UTenancy Verified Listing'}</span>
               </div>
               <span className="feature-pill">Student-Verified</span>
               <span className="feature-pill">Landlord Screened</span>

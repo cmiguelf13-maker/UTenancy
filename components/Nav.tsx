@@ -28,6 +28,10 @@ export default function Nav() {
   const path    = usePathname()
   const router  = useRouter()
   const isAuth  = path === '/auth'
+  const isLandlordPortal = path === '/landlord'
+
+  // Don't render Nav on landlord portal — it has its own header
+  if (isLandlordPortal) return null
 
   const [user, setUser]       = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -205,11 +209,8 @@ export default function Nav() {
           ) : (
             /* ── LOGGED-OUT STATE ── */
             <>
-              <Link href="/auth" className="hidden md:block text-sm font-head font-semibold text-clay-dark px-2 hover:text-clay transition-colors">
+              <Link href="/auth" className="clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all active:scale-95">
                 Sign In
-              </Link>
-              <Link href="/#waitlist" className="clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all active:scale-95">
-                Get Early Access
               </Link>
             </>
           )}
