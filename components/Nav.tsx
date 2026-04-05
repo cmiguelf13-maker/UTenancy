@@ -181,10 +181,10 @@ export default function Nav() {
                         My Portal
                       </Link>
                     ) : (
-                      <Link href="/#listings" onClick={() => setMenuOpen(false)}
+                      <Link href="/interested" onClick={() => setMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
-                        <span className="material-symbols-outlined text-clay text-lg">home_work</span>
-                        My Listings
+                        <span className="material-symbols-outlined text-clay text-lg">favorite</span>
+                        Interested Properties
                       </Link>
                     )}
                     <Link href="/settings" onClick={() => setMenuOpen(false)}
