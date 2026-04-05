@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { createClient } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 const links = [
   { href: '/#how-it-works', label: 'How It Works' },
@@ -10,9 +13,59 @@ const links = [
   { href: '/#pricing',       label: 'Pricing' },
 ]
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
+function getFirstName(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? ''
+}
+
 export default function Nav() {
-  const path = usePathname()
-  const isAuth = path === '/auth'
+  const path    = usePathname()
+  const router  = useRouter()
+  const isAuth  = path === '/auth'
+
+  const [user, setUser]       = useState<User | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const supabase = createClient()
+
+  // Detect session on mount + listen for changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    setMenuOpen(false)
+    router.refresh()
+  }
+
+  const fullName = user?.user_metadata?.first_name
+    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name ?? ''}`.trim()
+    : (user?.email?.split('@')[0] ?? '')
+
+  const initials  = fullName ? getInitials(fullName) : '?'
+  const firstName = fullName ? getFirstName(fullName) : ''
 
   return (
     <nav className="sticky top-0 z-50 glass border-b border-out-var/20">
@@ -37,8 +90,8 @@ export default function Nav() {
           </div>
         )}
 
-        {/* CTA */}
-        <div className="flex items-center gap-3">
+        {/* Right side */}
+        <div className="flex items-center gap-2">
           {isAuth ? (
             <>
               <span className="text-sm font-head font-medium text-muted">Need help?</span>
@@ -46,7 +99,90 @@ export default function Nav() {
                 Contact Us
               </a>
             </>
+          ) : user ? (
+            /* ── LOGGED-IN STATE ── */
+            <>
+              {/* Landlord: portal shortcut */}
+              {user.user_metadata?.role === 'landlord' && (
+                <Link href="/landlord"
+                  className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-clay-dark border border-out-var bg-surf-hi px-4 py-2 rounded-full hover:border-clay/50 hover:bg-linen transition-all">
+                  <span className="material-symbols-outlined text-base text-clay">domain</span>
+                  My Portal
+                </Link>
+              )}
+
+              {/* Student: messaging icon */}
+              {user.user_metadata?.role !== 'landlord' && (
+                <Link href="/messages" title="Messages"
+                  className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </Link>
+              )}
+
+              {/* Profile avatar + dropdown */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 bg-surf-hi border border-out-var rounded-full pl-1 pr-3 py-1 hover:border-clay/50 hover:bg-linen transition-all"
+                >
+                  <div className="w-8 h-8 clay-grad rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span className="text-white font-head font-black text-xs">{initials}</span>
+                  </div>
+                  <span className="text-sm font-head font-semibold text-clay-dark hidden md:block">{firstName}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" strokeWidth="2.5"
+                    className={`text-outline transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`}>
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+
+                {/* Dropdown */}
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl border border-out-var/60 py-2 z-50"
+                    style={{ boxShadow: '0 16px 48px rgba(81,53,38,.14)' }}>
+                    {/* User info header */}
+                    <div className="px-4 py-2 mb-1 border-b border-out-var/40">
+                      <p className="text-xs font-head font-black text-clay-dark">{fullName}</p>
+                      <p className="text-[11px] font-body text-muted truncate">{user.email}</p>
+                    </div>
+                    <Link href="/profile" onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                      <span className="material-symbols-outlined text-clay text-lg">manage_accounts</span>
+                      My Profile
+                    </Link>
+                    {user.user_metadata?.role === 'landlord' ? (
+                      <Link href="/landlord" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                        <span className="material-symbols-outlined text-clay text-lg">domain</span>
+                        My Portal
+                      </Link>
+                    ) : (
+                      <Link href="/#listings" onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                        <span className="material-symbols-outlined text-clay text-lg">home_work</span>
+                        My Listings
+                      </Link>
+                    )}
+                    <Link href="/settings" onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                      <span className="material-symbols-outlined text-clay text-lg">settings</span>
+                      Settings
+                    </Link>
+                    <div className="border-t border-out-var/40 my-1.5" />
+                    <button onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-red-600 hover:bg-red-50 transition-colors">
+                      <span className="material-symbols-outlined text-red-500 text-lg">logout</span>
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
+            /* ── LOGGED-OUT STATE ── */
             <>
               <Link href="/auth" className="hidden md:block text-sm font-head font-semibold text-clay-dark px-2 hover:text-clay transition-colors">
                 Sign In

@@ -149,9 +149,9 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
 
 /* ── OTP INPUTS ────────────────────────────────── */
 .otp-input {
-  width: 52px; height: 60px; text-align: center;
-  background: #fff; border: 1.5px solid var(--out-var); border-radius: 14px;
-  font-family: var(--font-plus-jakarta), sans-serif; font-size: 24px; font-weight: 700;
+  width: 42px; height: 52px; text-align: center;
+  background: #fff; border: 1.5px solid var(--out-var); border-radius: 12px;
+  font-family: var(--font-plus-jakarta), sans-serif; font-size: 20px; font-weight: 700;
   color: var(--clay-dark); outline: none; caret-color: var(--clay);
   transition: border-color .2s, box-shadow .2s, transform .15s;
 }
