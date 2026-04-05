@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
@@ -105,9 +105,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [profile, setProfile] = useState<ProfileData>({
     firstName:   '',
@@ -156,10 +153,7 @@ export default function ProfilePage() {
               pets:        profileData.pets ?? false,
               studying:    profileData.studying ?? '',
             }))
-            if (profileData.avatar_url) {
-              setAvatarUrl(profileData.avatar_url)
-            }
-          } else {
+            } else {
             // Fallback to user_metadata if profiles table fetch fails
             const m = u.user_metadata ?? {}
             setProfile((p) => ({
@@ -178,21 +172,11 @@ export default function ProfilePage() {
               pets:        m.pets ?? false,
               studying:    m.studying ?? '',
             }))
-            if (m.avatar_url) setAvatarUrl(m.avatar_url)
           }
           setLoading(false)
         })
     })
   }, [])
-
-  /* ── Avatar selection ── */
-  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string)
-    reader.readAsDataURL(file)
-  }
 
   /* ── Save ── */
   async function handleSave(e: React.FormEvent) {
@@ -205,26 +189,7 @@ export default function ProfilePage() {
     }
 
     try {
-      // 1. Upload avatar if changed
-      let finalAvatarUrl = avatarUrl
-      const file = fileInputRef.current?.files?.[0]
-      if (file) {
-        const ext  = file.name.split('.').pop()
-        const path = `${user.id}/avatar.${ext}`
-        const { error: uploadErr } = await supabase.storage
-          .from('avatars')
-          .upload(path, file, { upsert: true })
-        if (!uploadErr) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-          finalAvatarUrl = data.publicUrl
-        } else {
-          // Storage bucket unavailable — fall back to base64 data URL stored in profiles table
-          finalAvatarUrl = avatarPreview ?? avatarUrl
-        }
-        setAvatarUrl(finalAvatarUrl)
-      }
-
-      // 2. Upsert to profiles table
+      // Upsert profile data (no avatar — removed to prevent cookie bloat)
       const { error: upsertErr } = await supabase.from('profiles').upsert({
         id: user.id,
         role: user.user_metadata?.role ?? 'student',
@@ -234,7 +199,7 @@ export default function ProfilePage() {
         major: profile.major,
         grad_year: profile.gradYear,
         bio: profile.bio,
-        avatar_url: finalAvatarUrl,
+        avatar_url: null,
         sleep_time: profile.sleepTime,
         cleanliness: profile.cleanliness,
         noise: profile.noise,
@@ -245,20 +210,12 @@ export default function ProfilePage() {
         updated_at: new Date().toISOString(),
       })
 
-      // 3. Sync user_metadata to trigger onAuthStateChange in Nav (refreshes name/avatar).
-      //    IMPORTANT: never put base64 data URLs into user_metadata — they get baked into
-      //    the Supabase JWT cookie and will exceed Vercel's 16 KB header limit.
-      //    The Nav reads avatar_url directly from the profiles table, so we only store
-      //    real public URLs here (or null to clear any legacy base64 that may be present).
-      const metaAvatarUrl =
-        finalAvatarUrl && !finalAvatarUrl.startsWith('data:')
-          ? finalAvatarUrl  // real https:// URL from Storage — safe to store
-          : null            // base64 or nothing — clear from metadata
+      // Sync name to user_metadata so Nav refreshes — no avatar_url to avoid cookie bloat
       await supabase.auth.updateUser({
         data: {
           first_name: profile.firstName,
           last_name:  profile.lastName,
-          avatar_url: metaAvatarUrl,
+          avatar_url: null,
           role: user.user_metadata?.role ?? 'student',
         },
       })
@@ -267,7 +224,6 @@ export default function ProfilePage() {
       if (!upsertErr) {
         setSaved(true)
         setTimeout(() => setSaved(false), 3000)
-        setAvatarPreview(null)
       }
     } catch (err) {
       setSaving(false)
@@ -278,7 +234,6 @@ export default function ProfilePage() {
     setProfile((p) => ({ ...p, [key]: val }))
   }
 
-  const displayAvatar = avatarPreview ?? avatarUrl
   const initials = profile.firstName && profile.lastName
     ? (profile.firstName[0] + profile.lastName[0]).toUpperCase()
     : user?.email?.[0].toUpperCase() ?? '?'
@@ -303,37 +258,6 @@ export default function ProfilePage() {
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
-
-          {/* ── AVATAR ── */}
-          <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
-            <SectionHeading icon="add_a_photo" title="Profile Photo" subtitle="A clear photo helps build trust with potential roommates." />
-            <div className="flex items-center gap-5">
-              {/* Avatar circle */}
-              <div className="relative flex-shrink-0">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-out-var shadow-md">
-                  {displayAvatar ? (
-                    <img src={displayAvatar} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full clay-grad flex items-center justify-center">
-                      <span className="text-white font-head font-black text-3xl">{initials}</span>
-                    </div>
-                  )}
-                </div>
-                <button type="button" onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 clay-grad rounded-full flex items-center justify-center shadow-md border-2 border-white hover:opacity-90 transition-opacity">
-                  <span className="material-symbols-outlined text-white text-sm">edit</span>
-                </button>
-              </div>
-              <div>
-                <button type="button" onClick={() => fileInputRef.current?.click()}
-                  className="text-sm font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
-                  Upload a photo
-                </button>
-                <p className="text-xs font-body text-muted mt-1">JPG, PNG or WebP · Max 5 MB</p>
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-            </div>
-          </div>
 
           {/* ── BASIC INFO ── */}
           <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">

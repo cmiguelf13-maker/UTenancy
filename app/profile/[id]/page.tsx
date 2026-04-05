@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 
 interface Profile {
@@ -203,25 +202,13 @@ export default function ProfilePage() {
           {/* Gradient banner */}
           <div className="clay-grad rounded-t-3xl h-32 relative" />
 
-          {/* Avatar overlapping */}
+          {/* Avatar overlapping — initials only */}
           <div className="flex justify-center -mt-16 mb-6 relative z-10">
-            {profile.avatar_url ? (
-              <div className="w-32 h-32 rounded-full border-4 border-cream overflow-hidden shadow-lg">
-                <Image
-                  src={profile.avatar_url}
-                  alt={profile.name}
-                  width={128}
-                  height={128}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-32 h-32 rounded-full border-4 border-cream bg-linen flex items-center justify-center shadow-lg">
-                <span className="font-display text-5xl text-clay-dark font-light">
-                  {getInitials(profile.name)}
-                </span>
-              </div>
-            )}
+            <div className="w-32 h-32 rounded-full border-4 border-cream clay-grad flex items-center justify-center shadow-lg">
+              <span className="font-display text-5xl text-white font-light">
+                {getInitials(profile.name)}
+              </span>
+            </div>
           </div>
 
           {/* Info card below avatar */}

@@ -127,7 +127,7 @@ export default function LandlordPortal() {
   const [listings, setListings] = useState<Listing[]>([])
   const [listingType, setListingType] = useState<'open-room' | 'group-formation'>('open-room')
   const [reviewListing, setReviewListing] = useState<Listing | null>(null)
-  const [applicants, setApplicants] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null; avatar_url: string | null; bio: string | null }>>([])
+  const [applicants, setApplicants] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null; bio: string | null }>>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
 
   useEffect(() => {
@@ -199,7 +199,7 @@ export default function LandlordPortal() {
     setLoadingApplicants(true)
     const { data } = await supabase
       .from('listing_interests')
-      .select('profile:profiles(id, first_name, last_name, university, avatar_url, bio)')
+      .select('profile:profiles(id, first_name, last_name, university, bio)')
       .eq('listing_id', listing.id)
     if (data) {
       setApplicants(data.map((r: any) => r.profile).filter(Boolean))
@@ -379,13 +379,8 @@ export default function LandlordPortal() {
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {applicants.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 p-4 bg-surf-lo rounded-2xl border border-out-var/30">
-                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border border-out-var">
-                      {a.avatar_url
-                        ? <img src={a.avatar_url} alt={a.first_name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full clay-grad flex items-center justify-center">
-                            <span className="text-white font-head font-black text-xs">{(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}</span>
-                          </div>
-                      }
+                    <div className="w-11 h-11 rounded-full flex-shrink-0 border border-out-var clay-grad flex items-center justify-center">
+                      <span className="text-white font-head font-black text-xs">{(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-head font-bold text-clay-dark">{a.first_name} {a.last_name}</p>

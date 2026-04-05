@@ -224,7 +224,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
   const [interested, setInterested] = useState(false)
   const [interestCount, setInterestCount] = useState(listing.interested ?? 0)
   const [submitting, setSubmitting] = useState(false)
-  const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null; avatar_url: string | null }>>([])
+  const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null }>>([])
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
 
   const perPerson = Math.round(listing.price / listing.beds)
@@ -256,7 +256,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
       // Fetch real interest count and interested students
       const { data: interests } = await supabase
         .from('listing_interests')
-        .select('student_id, profile:profiles(id, first_name, last_name, university, avatar_url)')
+        .select('student_id, profile:profiles(id, first_name, last_name, university)')
         .eq('listing_id', String(listing.id))
 
       if (interests) {
@@ -299,7 +299,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
         // Fetch own profile to add to the list
         const { data: myProfile } = await supabase
           .from('profiles')
-          .select('id, first_name, last_name, university, avatar_url')
+          .select('id, first_name, last_name, university')
           .eq('id', user.id)
           .single()
         if (myProfile) setInterestedStudents(prev => [...prev, myProfile])
@@ -537,13 +537,8 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex -space-x-2">
                       {interestedStudents.slice(0, 4).map((s) => (
-                        <div key={s.id} className="w-7 h-7 rounded-full border-2 border-white overflow-hidden flex-shrink-0">
-                          {s.avatar_url
-                            ? <img src={s.avatar_url} alt={s.first_name} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full clay-grad flex items-center justify-center">
-                                <span className="text-white font-head font-black text-[9px]">{(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}</span>
-                              </div>
-                          }
+                        <div key={s.id} className="w-7 h-7 rounded-full border-2 border-white clay-grad flex items-center justify-center flex-shrink-0">
+                          <span className="text-white font-head font-black text-[9px]">{(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}</span>
                         </div>
                       ))}
                     </div>
@@ -615,13 +610,8 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
               <div className="space-y-3 max-h-72 overflow-y-auto">
                 {interestedStudents.map((s) => (
                   <div key={s.id} className="flex items-center gap-3 p-3 bg-surf-lo rounded-2xl border border-out-var/30">
-                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                      {s.avatar_url
-                        ? <img src={s.avatar_url} alt={s.first_name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full clay-grad flex items-center justify-center">
-                            <span className="text-white font-head font-black text-xs">{(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}</span>
-                          </div>
-                      }
+                    <div className="w-10 h-10 rounded-full flex-shrink-0 clay-grad flex items-center justify-center">
+                      <span className="text-white font-head font-black text-xs">{(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-head font-bold text-clay-dark truncate">{s.first_name} {s.last_name}</p>

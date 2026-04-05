@@ -36,29 +36,12 @@ export default function Nav() {
 
   const supabase = createClient()
 
-  // One-time fix: if a base64 avatar_url is embedded in user_metadata it bloats the
-  // Supabase JWT cookie beyond Vercel's 16 KB per-header limit (REQUEST_HEADER_TOO_LARGE).
-  // Calling updateUser with avatar_url: null issues a fresh, smaller JWT and updates
-  // the cookie — the request goes directly to Supabase, not through Vercel, so it works
-  // even when the current cookie is already over the limit.
-  async function repairOversizedCookieIfNeeded(u: import('@supabase/supabase-js').User) {
-    if (u.user_metadata?.avatar_url?.startsWith('data:')) {
-      await supabase.auth.updateUser({
-        data: {
-          ...u.user_metadata,
-          avatar_url: null, // strip the base64 blob — Nav reads avatar from profiles table
-        },
-      })
-    }
-  }
-
   // Detect session on mount + listen for changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       setUser(u)
       if (u) {
-        repairOversizedCookieIfNeeded(u)
         fetchProfile(u.id)
       }
     })
@@ -165,12 +148,9 @@ export default function Nav() {
                   className="flex items-center gap-2 bg-surf-hi border border-out-var rounded-full pl-1 pr-3 py-1 hover:border-clay/50 hover:bg-linen transition-all"
                 >
                   <div className="w-8 h-8 rounded-full flex-shrink-0 shadow-sm overflow-hidden">
-                    {profile?.avatar_url
-                      ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                      : <div className="w-full h-full clay-grad flex items-center justify-center">
-                          <span className="text-white font-head font-black text-xs">{initials}</span>
-                        </div>
-                    }
+                    <div className="w-full h-full clay-grad flex items-center justify-center">
+                      <span className="text-white font-head font-black text-xs">{initials}</span>
+                    </div>
                   </div>
                   <span className="text-sm font-head font-semibold text-clay-dark hidden md:block">{firstName}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
