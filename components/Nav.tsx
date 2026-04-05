@@ -36,12 +36,29 @@ export default function Nav() {
 
   const supabase = createClient()
 
+  // One-time fix: if a base64 avatar_url is embedded in user_metadata it bloats the
+  // Supabase JWT cookie beyond Vercel's 16 KB per-header limit (REQUEST_HEADER_TOO_LARGE).
+  // Calling updateUser with avatar_url: null issues a fresh, smaller JWT and updates
+  // the cookie — the request goes directly to Supabase, not through Vercel, so it works
+  // even when the current cookie is already over the limit.
+  async function repairOversizedCookieIfNeeded(u: import('@supabase/supabase-js').User) {
+    if (u.user_metadata?.avatar_url?.startsWith('data:')) {
+      await supabase.auth.updateUser({
+        data: {
+          ...u.user_metadata,
+          avatar_url: null, // strip the base64 blob — Nav reads avatar from profiles table
+        },
+      })
+    }
+  }
+
   // Detect session on mount + listen for changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       setUser(u)
       if (u) {
+        repairOversizedCookieIfNeeded(u)
         fetchProfile(u.id)
       }
     })
