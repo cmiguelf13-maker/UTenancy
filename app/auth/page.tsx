@@ -41,22 +41,24 @@ function passwordStrength(pw: string) {
 /* ─── OTP Inputs (8-digit) ────────────────────── */
 function OtpInputs({ onComplete }: { onComplete: (val: string) => void }) {
   const [vals, setVals] = useState(['', '', '', '', '', '', '', ''])
-  const refs = Array.from({ length: 8 }, () => useRef<HTMLInputElement>(null))
+  const refsArray = useRef<Array<HTMLInputElement | null>>(new Array(8).fill(null))
 
   const handleChange = (i: number, v: string) => {
     if (!/^\d?$/.test(v)) return
     const next = [...vals]; next[i] = v; setVals(next)
-    if (v && i < 7) refs[i + 1].current?.focus()
+    if (v && i < 7) refsArray.current[i + 1]?.focus()
     if (next.every(Boolean)) onComplete(next.join(''))
   }
   const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !vals[i] && i > 0) refs[i - 1].current?.focus()
+    if (e.key === 'Backspace' && !vals[i] && i > 0) refsArray.current[i - 1]?.focus()
   }
 
   return (
     <div className="flex justify-center gap-1.5 mb-6">
       {vals.map((v, i) => (
-        <input key={i} ref={refs[i]} type="text" inputMode="numeric" maxLength={1}
+        <input key={i}
+          ref={(el) => { refsArray.current[i] = el }}
+          type="text" inputMode="numeric" maxLength={1}
           value={v} onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           className={`otp-input ${v ? 'filled' : ''}`} />
@@ -302,10 +304,8 @@ export default function AuthPage() {
                 </span>
               </div>
               <h1 className="font-display text-4xl font-light text-clay-dark leading-tight mb-2">
-                {isLandlord ? 'Manage your <em>properties</em>' : 'Welcome <em>back</em>'}
+                {isLandlord ? <>Manage your <em>properties</em></> : <>Welcome <em>back</em></>}
               </h1>
-              {/* role is set inside JSX so use template approach */}
-              <h1 className="font-display text-4xl font-light text-clay-dark leading-tight mb-2 -mt-8 hidden">placeholder</h1>
               <p className="text-sm font-body text-muted">
                 {isLandlord ? 'Sign in to your landlord account' : 'Sign in to your UTenancy account'}
               </p>
@@ -370,7 +370,7 @@ export default function AuthPage() {
                 </span>
               </div>
               <h1 className="font-display text-4xl font-light text-clay-dark leading-tight mb-2">
-                {isLandlord ? 'Join as a <em>landlord</em>' : 'Join <em>UTenancy</em>'}
+                {isLandlord ? <>Join as a <em>landlord</em></> : <>Join <em>UTenancy</em></>}
               </h1>
               <p className="text-sm font-body text-muted">
                 {isLandlord ? 'Create your landlord account to list properties' : 'Create your verified student account'}
