@@ -135,6 +135,8 @@ export default function LandlordPortal() {
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [savingListing, setSavingListing] = useState(false)
   const [photoStatus, setPhotoStatus] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [filePreviews, setFilePreviews] = useState<string[]>([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -156,6 +158,22 @@ export default function LandlordPortal() {
     })
   }, [])
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    setSelectedFiles(files)
+    // Generate previews
+    const previews = files.map((f) => URL.createObjectURL(f))
+    setFilePreviews(previews)
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+    setFilePreviews((prev) => {
+      URL.revokeObjectURL(prev[index])
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
   async function handleAddListing(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -173,6 +191,10 @@ export default function LandlordPortal() {
     setSavingListing(true)
     setPhotoStatus('Saving listing…')
 
+    // Build the Google Street View embed URL as default image
+    const svQuery = encodeURIComponent(`${address}, ${city}, CA`)
+    const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${svQuery}&source=outdoor`
+
     const { data, error } = await supabase
       .from('listings')
       .insert({
@@ -185,26 +207,42 @@ export default function LandlordPortal() {
         rent,
         type: listingType,
         status: 'active',
+        images: [streetViewUrl], // default to street view
       })
       .select()
       .single()
 
     if (!error && data) {
-      // Add listing immediately so the user sees it
       setListings((prev) => [data, ...prev])
 
-      // Fetch Zillow photos in the background
-      setPhotoStatus('Fetching property photos from Zillow…')
-      try {
-        const params = new URLSearchParams({ address, city, state: 'CA' })
-        const res = await fetch(`/api/zillow-photos?${params}`)
-        const json = await res.json()
+      // Upload landlord photos if any were selected
+      if (selectedFiles.length > 0) {
+        setPhotoStatus(`Uploading ${selectedFiles.length} photo${selectedFiles.length > 1 ? 's' : ''}…`)
+        const uploadedUrls: string[] = []
 
-        if (json.photos && json.photos.length > 0) {
-          // Update the listing in DB with photos
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i]
+          const ext = file.name.split('.').pop() ?? 'jpg'
+          const path = `${data.id}/${Date.now()}_${i}.${ext}`
+
+          const { error: uploadErr } = await supabase.storage
+            .from('listing-images')
+            .upload(path, file, { cacheControl: '3600', upsert: false })
+
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage
+              .from('listing-images')
+              .getPublicUrl(path)
+            uploadedUrls.push(urlData.publicUrl)
+          }
+        }
+
+        if (uploadedUrls.length > 0) {
+          // Uploaded photos first, then street view as fallback
+          const allImages = [...uploadedUrls, streetViewUrl]
           const { data: updated } = await supabase
             .from('listings')
-            .update({ images: json.photos })
+            .update({ images: allImages })
             .eq('id', data.id)
             .select()
             .single()
@@ -214,19 +252,19 @@ export default function LandlordPortal() {
               prev.map((l) => (l.id === data.id ? updated : l)),
             )
           }
-          setPhotoStatus(`Found ${json.photos.length} photos!`)
-        } else {
-          setPhotoStatus('No Zillow photos found for this address.')
+          setPhotoStatus(`Uploaded ${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''}!`)
         }
-      } catch {
-        setPhotoStatus('Could not fetch photos — listing saved without images.')
+      } else {
+        setPhotoStatus('Listing saved with Street View image.')
       }
 
-      // Close modal after a brief delay so the user sees the status
+      // Close modal after a brief delay
       setTimeout(() => {
         setShowAddModal(false)
         setSavingListing(false)
         setPhotoStatus(null)
+        setSelectedFiles([])
+        setFilePreviews([])
         form.reset()
         setListingType('open-room')
       }, 1500)
@@ -524,6 +562,39 @@ export default function LandlordPortal() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ── Photo Upload (optional) ── */}
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
+                  Property Photos <span className="font-normal normal-case text-muted">(optional — Street View used by default)</span>
+                </label>
+                <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-out-var rounded-xl cursor-pointer hover:border-clay/50 hover:bg-surf-lo/50 transition-all">
+                  <span className="material-symbols-outlined text-outline text-xl">add_a_photo</span>
+                  <span className="text-sm font-body text-muted">Click to upload images</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                </label>
+                {filePreviews.length > 0 && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    {filePreviews.map((src, i) => (
+                      <div key={i} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-out-var group">
+                        <img src={src} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="material-symbols-outlined text-white" style={{ fontSize: 14 }}>close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {photoStatus && (
