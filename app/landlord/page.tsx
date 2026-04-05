@@ -188,12 +188,13 @@ export default function LandlordPortal() {
 
     if (!address || !city || !rent) return
 
+    if (selectedFiles.length === 0) {
+      setPhotoStatus('Please upload at least one photo of the property.')
+      return
+    }
+
     setSavingListing(true)
     setPhotoStatus('Saving listing…')
-
-    // Build the Google Street View embed URL as default image
-    const svQuery = encodeURIComponent(`${address}, ${city}, CA`)
-    const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${svQuery}&source=outdoor`
 
     const { data, error } = await supabase
       .from('listings')
@@ -207,7 +208,7 @@ export default function LandlordPortal() {
         rent,
         type: listingType,
         status: 'active',
-        images: [streetViewUrl], // default to street view
+        images: [],
       })
       .select()
       .single()
@@ -215,47 +216,41 @@ export default function LandlordPortal() {
     if (!error && data) {
       setListings((prev) => [data, ...prev])
 
-      // Upload landlord photos if any were selected
-      if (selectedFiles.length > 0) {
-        setPhotoStatus(`Uploading ${selectedFiles.length} photo${selectedFiles.length > 1 ? 's' : ''}…`)
-        const uploadedUrls: string[] = []
+      // Upload landlord photos
+      setPhotoStatus(`Uploading ${selectedFiles.length} photo${selectedFiles.length > 1 ? 's' : ''}…`)
+      const uploadedUrls: string[] = []
 
-        for (let i = 0; i < selectedFiles.length; i++) {
-          const file = selectedFiles[i]
-          const ext = file.name.split('.').pop() ?? 'jpg'
-          const path = `${data.id}/${Date.now()}_${i}.${ext}`
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i]
+        const ext = file.name.split('.').pop() ?? 'jpg'
+        const path = `${data.id}/${Date.now()}_${i}.${ext}`
 
-          const { error: uploadErr } = await supabase.storage
+        const { error: uploadErr } = await supabase.storage
+          .from('listing-images')
+          .upload(path, file, { cacheControl: '3600', upsert: false })
+
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage
             .from('listing-images')
-            .upload(path, file, { cacheControl: '3600', upsert: false })
-
-          if (!uploadErr) {
-            const { data: urlData } = supabase.storage
-              .from('listing-images')
-              .getPublicUrl(path)
-            uploadedUrls.push(urlData.publicUrl)
-          }
+            .getPublicUrl(path)
+          uploadedUrls.push(urlData.publicUrl)
         }
+      }
 
-        if (uploadedUrls.length > 0) {
-          // Uploaded photos first, then street view as fallback
-          const allImages = [...uploadedUrls, streetViewUrl]
-          const { data: updated } = await supabase
-            .from('listings')
-            .update({ images: allImages })
-            .eq('id', data.id)
-            .select()
-            .single()
+      if (uploadedUrls.length > 0) {
+        const { data: updated } = await supabase
+          .from('listings')
+          .update({ images: uploadedUrls })
+          .eq('id', data.id)
+          .select()
+          .single()
 
-          if (updated) {
-            setListings((prev) =>
-              prev.map((l) => (l.id === data.id ? updated : l)),
-            )
-          }
-          setPhotoStatus(`Uploaded ${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''}!`)
+        if (updated) {
+          setListings((prev) =>
+            prev.map((l) => (l.id === data.id ? updated : l)),
+          )
         }
-      } else {
-        setPhotoStatus('Listing saved with Street View image.')
+        setPhotoStatus(`Uploaded ${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''}!`)
       }
 
       // Close modal after a brief delay
@@ -564,10 +559,10 @@ export default function LandlordPortal() {
                 </div>
               </div>
 
-              {/* ── Photo Upload (optional) ── */}
+              {/* ── Photo Upload (required) ── */}
               <div>
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
-                  Property Photos <span className="font-normal normal-case text-muted">(optional — Street View used by default)</span>
+                  Property Photos <span className="text-red-500">*</span>
                 </label>
                 <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-out-var rounded-xl cursor-pointer hover:border-clay/50 hover:bg-surf-lo/50 transition-all">
                   <span className="material-symbols-outlined text-outline text-xl">add_a_photo</span>
