@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { Profile } from '@/lib/types'
 
 const links = [
   { href: '/#how-it-works', label: 'How It Works' },
@@ -29,6 +30,7 @@ export default function Nav() {
   const isAuth  = path === '/auth'
 
   const [user, setUser]       = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -36,12 +38,29 @@ export default function Nav() {
 
   // Detect session on mount + listen for changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data.session?.user ?? null
+      setUser(u)
+      if (u) {
+        fetchProfile(u.id)
+      }
+    })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) {
+        fetchProfile(u.id)
+      } else {
+        setProfile(null)
+      }
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  async function fetchProfile(userId: string) {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+    if (data) setProfile(data)
+  }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -128,8 +147,13 @@ export default function Nav() {
                   onClick={() => setMenuOpen((v) => !v)}
                   className="flex items-center gap-2 bg-surf-hi border border-out-var rounded-full pl-1 pr-3 py-1 hover:border-clay/50 hover:bg-linen transition-all"
                 >
-                  <div className="w-8 h-8 clay-grad rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <span className="text-white font-head font-black text-xs">{initials}</span>
+                  <div className="w-8 h-8 rounded-full flex-shrink-0 shadow-sm overflow-hidden">
+                    {profile?.avatar_url
+                      ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full clay-grad flex items-center justify-center">
+                          <span className="text-white font-head font-black text-xs">{initials}</span>
+                        </div>
+                    }
                   </div>
                   <span className="text-sm font-head font-semibold text-clay-dark hidden md:block">{firstName}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"

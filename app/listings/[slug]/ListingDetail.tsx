@@ -4,6 +4,72 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Listing } from '@/lib/listings'
+import { createClient } from '@/lib/supabase'
+
+/* ── Message Landlord button — creates or opens a conversation ── */
+function MessageLandlordButton({ listingId, userId }: { listingId: string; userId: string }) {
+  const [sending, setSending] = useState(false)
+
+  async function handleClick() {
+    setSending(true)
+    const supabase = createClient()
+    try {
+      // Find the landlord for this listing
+      const { data: listing } = await supabase
+        .from('listings')
+        .select('landlord_id')
+        .eq('id', listingId)
+        .single()
+      if (!listing) { setSending(false); return }
+      const landlordId = listing.landlord_id
+
+      // Look for existing conversation between these two users
+      const { data: myConvs } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', userId)
+      const myIds = myConvs?.map((r: any) => r.conversation_id) ?? []
+
+      if (myIds.length > 0) {
+        const { data: shared } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', landlordId)
+          .in('conversation_id', myIds)
+        if (shared && shared.length > 0) {
+          window.location.href = `/messages/${shared[0].conversation_id}`
+          return
+        }
+      }
+
+      // Create new conversation
+      const { data: conv } = await supabase
+        .from('conversations')
+        .insert({ listing_id: listingId })
+        .select()
+        .single()
+      if (conv) {
+        await supabase.from('conversation_participants').insert([
+          { conversation_id: conv.id, user_id: userId },
+          { conversation_id: conv.id, user_id: landlordId },
+        ])
+        window.location.href = `/messages/${conv.id}`
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <button onClick={handleClick} disabled={sending}
+      className="w-full bg-surf text-clay-dark font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+      <span className="material-symbols-outlined text-sm">chat_bubble</span>
+      {sending ? 'Opening chat…' : 'Message Landlord'}
+    </button>
+  )
+}
 
 /* ── Photo data (in production: from DB / storage) ── */
 const PHOTOS = [
@@ -154,6 +220,12 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [showApply, setShowApply]         = useState(false)
   const [showGroup, setShowGroup]         = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [interested, setInterested] = useState(false)
+  const [interestCount, setInterestCount] = useState(listing.interested ?? 0)
+  const [submitting, setSubmitting] = useState(false)
+  const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null; avatar_url: string | null }>>([])
+  const [showInterestedPanel, setShowInterestedPanel] = useState(false)
 
   const perPerson = Math.round(listing.price / listing.beds)
 
@@ -172,6 +244,70 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
     document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [])
+
+  // Load session + real interest data on mount
+  useEffect(() => {
+    async function loadSession() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const u = session?.user ?? null
+      setUser(u)
+
+      // Fetch real interest count and interested students
+      const { data: interests } = await supabase
+        .from('listing_interests')
+        .select('student_id, profile:profiles(id, first_name, last_name, university, avatar_url)')
+        .eq('listing_id', String(listing.id))
+
+      if (interests) {
+        setInterestCount(interests.length)
+        const students = interests
+          .map((i: any) => i.profile)
+          .filter(Boolean)
+        setInterestedStudents(students)
+
+        // Check if current user already expressed interest
+        if (u) {
+          const alreadyInterested = interests.some((i: any) => i.student_id === u.id)
+          setInterested(alreadyInterested)
+        }
+      }
+    }
+    loadSession()
+  }, [])
+
+  async function handleInterest() {
+    if (!user) return
+    setSubmitting(true)
+    const supabase = createClient()
+    try {
+      if (interested) {
+        await supabase
+          .from('listing_interests')
+          .delete()
+          .eq('listing_id', String(listing.id))
+          .eq('student_id', user.id)
+        setInterested(false)
+        setInterestCount(c => c - 1)
+        setInterestedStudents(prev => prev.filter(s => s.id !== user.id))
+      } else {
+        await supabase
+          .from('listing_interests')
+          .insert({ listing_id: String(listing.id), student_id: user.id })
+        setInterested(true)
+        setInterestCount(c => c + 1)
+        // Fetch own profile to add to the list
+        const { data: myProfile } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, university, avatar_url')
+          .eq('id', user.id)
+          .single()
+        if (myProfile) setInterestedStudents(prev => [...prev, myProfile])
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <>
@@ -349,9 +485,13 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                 <button onClick={() => setShowGroup(true)} className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
                 </button>
-                <button className="w-full bg-surf text-muted font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">chat_bubble</span> Message Landlord
-                </button>
+                {user && user.user_metadata?.role !== 'landlord' ? (
+                  <MessageLandlordButton listingId={String(listing.id)} userId={user.id} />
+                ) : !user ? (
+                  <a href="/auth" className="w-full bg-surf text-muted font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen transition-all flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-sm">chat_bubble</span> Sign in to message
+                  </a>
+                ) : null}
               </div>
 
               {/* Quick stats */}
@@ -377,6 +517,62 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                   <span>Landlord identity &amp; property verified by UTenancy</span>
                 </div>
               </div>
+
+              {/* Interest section */}
+              <div className="mt-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-clay">group</span>
+                    {interestCount} student{interestCount !== 1 ? 's' : ''} interested
+                  </p>
+                  {interestCount > 0 && (
+                    <button onClick={() => setShowInterestedPanel(true)}
+                      className="text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                      See who
+                    </button>
+                  )}
+                </div>
+                {/* Stacked avatars preview */}
+                {interestedStudents.length > 0 && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex -space-x-2">
+                      {interestedStudents.slice(0, 4).map((s) => (
+                        <div key={s.id} className="w-7 h-7 rounded-full border-2 border-white overflow-hidden flex-shrink-0">
+                          {s.avatar_url
+                            ? <img src={s.avatar_url} alt={s.first_name} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full clay-grad flex items-center justify-center">
+                                <span className="text-white font-head font-black text-[9px]">{(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}</span>
+                              </div>
+                          }
+                        </div>
+                      ))}
+                    </div>
+                    {interestedStudents.length > 4 && (
+                      <span className="text-xs font-body text-muted">+{interestedStudents.length - 4} more</span>
+                    )}
+                  </div>
+                )}
+                {user && user.user_metadata?.role !== 'landlord' && (
+                  <button
+                    onClick={handleInterest}
+                    disabled={submitting}
+                    className={`w-full py-2.5 rounded-xl font-head font-bold text-sm border transition-all flex items-center justify-center gap-2
+                      ${interested
+                        ? 'bg-surf-hi border-clay/30 text-clay-dark'
+                        : 'clay-grad text-white border-transparent shadow-sm hover:opacity-90'}`}
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {interested ? 'favorite' : 'favorite_border'}
+                    </span>
+                    {submitting ? 'Saving…' : interested ? "You're interested" : "I'm Interested"}
+                  </button>
+                )}
+                {!user && (
+                  <a href="/auth" className="block w-full text-center py-2.5 rounded-xl font-head font-bold text-sm border border-out-var text-muted hover:border-clay/40 hover:text-clay transition-all">
+                    Sign in to express interest
+                  </a>
+                )}
+              </div>
             </div>
 
             <p className="text-xs text-muted font-body text-center mt-4 leading-relaxed px-2">
@@ -391,6 +587,74 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
       {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} />}
       {showApply && <ApplyModal listing={listing} onClose={() => setShowApply(false)} />}
       {showGroup && <GroupModal listing={listing} onClose={() => setShowGroup(false)} />}
+
+      {/* Who's Interested modal */}
+      {showInterestedPanel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(30,20,16,.55)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowInterestedPanel(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl border border-out-var w-full max-w-sm p-7 relative"
+            style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)' }}
+            onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowInterestedPanel(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md">
+                <span className="material-symbols-outlined fill text-white">group</span>
+              </div>
+              <div>
+                <h3 className="font-head font-bold text-clay-dark">Interested Students</h3>
+                <p className="text-xs font-body text-muted">{interestCount} student{interestCount !== 1 ? 's' : ''} want this listing</p>
+              </div>
+            </div>
+            {interestedStudents.length === 0 ? (
+              <p className="text-sm font-body text-muted text-center py-6">No students yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-72 overflow-y-auto">
+                {interestedStudents.map((s) => (
+                  <div key={s.id} className="flex items-center gap-3 p-3 bg-surf-lo rounded-2xl border border-out-var/30">
+                    <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                      {s.avatar_url
+                        ? <img src={s.avatar_url} alt={s.first_name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full clay-grad flex items-center justify-center">
+                            <span className="text-white font-head font-black text-xs">{(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}</span>
+                          </div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-head font-bold text-clay-dark truncate">{s.first_name} {s.last_name}</p>
+                      {s.university && <p className="text-xs font-body text-muted truncate">{s.university}</p>}
+                    </div>
+                    {/* Students can view other students' profiles and message them */}
+                    {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && (
+                      <a href={`/profile/${s.id}`}
+                        className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                        View
+                      </a>
+                    )}
+                    {/* Landlords can only see names, not initiate */}
+                    {user && user.user_metadata?.role === 'landlord' && (
+                      <span className="flex-shrink-0 text-[10px] font-body text-muted">Interested</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {user && user.user_metadata?.role !== 'landlord' && (
+              <p className="text-[11px] font-body text-muted text-center mt-4">
+                Click "View" to see a student's profile and message them.
+              </p>
+            )}
+            {user && user.user_metadata?.role === 'landlord' && (
+              <p className="text-[11px] font-body text-muted text-center mt-4">
+                Students can message you directly — you'll see it in your inbox.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }

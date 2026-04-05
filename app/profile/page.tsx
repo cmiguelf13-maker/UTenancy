@@ -125,32 +125,63 @@ export default function ProfilePage() {
     studying:    '',
   })
 
-  /* ── Load user session ── */
+  /* ── Load user session and profile data ── */
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
       if (!u) { router.push('/auth'); return }
       setUser(u)
-      // Pre-fill from user_metadata
-      const m = u.user_metadata ?? {}
-      setProfile((p) => ({
-        ...p,
-        firstName:  m.first_name  ?? '',
-        lastName:   m.last_name   ?? '',
-        university: m.university  ?? '',
-        major:      m.major       ?? '',
-        gradYear:   m.grad_year   ?? '',
-        bio:        m.bio         ?? '',
-        sleepTime:  m.sleep_time  ?? '',
-        cleanliness:m.cleanliness ?? '',
-        noise:      m.noise       ?? '',
-        guests:     m.guests      ?? '',
-        smoking:    m.smoking     ?? false,
-        pets:       m.pets        ?? false,
-        studying:   m.studying    ?? '',
-      }))
-      if (m.avatar_url) setAvatarUrl(m.avatar_url)
-      setLoading(false)
+
+      // Fetch from profiles table
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', u.id)
+        .single()
+        .then(({ data: profileData, error }) => {
+          if (!error && profileData) {
+            setProfile((p) => ({
+              ...p,
+              firstName:   profileData.first_name ?? '',
+              lastName:    profileData.last_name ?? '',
+              university:  profileData.university ?? '',
+              major:       profileData.major ?? '',
+              gradYear:    profileData.grad_year ?? '',
+              bio:         profileData.bio ?? '',
+              sleepTime:   profileData.sleep_time ?? '',
+              cleanliness: profileData.cleanliness ?? '',
+              noise:       profileData.noise ?? '',
+              guests:      profileData.guests ?? '',
+              smoking:     profileData.smoking ?? false,
+              pets:        profileData.pets ?? false,
+              studying:    profileData.studying ?? '',
+            }))
+            if (profileData.avatar_url) {
+              setAvatarUrl(profileData.avatar_url)
+            }
+          } else {
+            // Fallback to user_metadata if profiles table fetch fails
+            const m = u.user_metadata ?? {}
+            setProfile((p) => ({
+              ...p,
+              firstName:   m.first_name ?? '',
+              lastName:    m.last_name ?? '',
+              university:  m.university ?? '',
+              major:       m.major ?? '',
+              gradYear:    m.grad_year ?? '',
+              bio:         m.bio ?? '',
+              sleepTime:   m.sleep_time ?? '',
+              cleanliness: m.cleanliness ?? '',
+              noise:       m.noise ?? '',
+              guests:      m.guests ?? '',
+              smoking:     m.smoking ?? false,
+              pets:        m.pets ?? false,
+              studying:    m.studying ?? '',
+            }))
+            if (m.avatar_url) setAvatarUrl(m.avatar_url)
+          }
+          setLoading(false)
+        })
     })
   }, [])
 
@@ -168,47 +199,71 @@ export default function ProfilePage() {
     e.preventDefault()
     setSaving(true)
 
-    // Upload avatar if a new one was selected
-    let finalAvatarUrl = avatarUrl
-    const file = fileInputRef.current?.files?.[0]
-    if (file && user) {
-      const ext  = file.name.split('.').pop()
-      const path = `${user.id}/avatar.${ext}`
-      const { error: uploadErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, file, { upsert: true })
-      if (!uploadErr) {
-        const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-        finalAvatarUrl = data.publicUrl
-        setAvatarUrl(finalAvatarUrl)
-      }
+    if (!user) {
+      setSaving(false)
+      return
     }
 
-    // Update user metadata
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        first_name:  profile.firstName,
-        last_name:   profile.lastName,
-        university:  profile.university,
-        major:       profile.major,
-        grad_year:   profile.gradYear,
-        bio:         profile.bio,
-        sleep_time:  profile.sleepTime,
-        cleanliness: profile.cleanliness,
-        noise:       profile.noise,
-        guests:      profile.guests,
-        smoking:     profile.smoking,
-        pets:        profile.pets,
-        studying:    profile.studying,
-        avatar_url:  finalAvatarUrl,
-      },
-    })
+    try {
+      // 1. Upload avatar if changed
+      let finalAvatarUrl = avatarUrl
+      const file = fileInputRef.current?.files?.[0]
+      if (file) {
+        const ext  = file.name.split('.').pop()
+        const path = `${user.id}/avatar.${ext}`
+        const { error: uploadErr } = await supabase.storage
+          .from('avatars')
+          .upload(path, file, { upsert: true })
+        if (!uploadErr) {
+          const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+          finalAvatarUrl = data.publicUrl
+        } else {
+          // Storage bucket unavailable — fall back to base64 data URL stored in profiles table
+          finalAvatarUrl = avatarPreview ?? avatarUrl
+        }
+        setAvatarUrl(finalAvatarUrl)
+      }
 
-    setSaving(false)
-    if (!error) {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-      setAvatarPreview(null)
+      // 2. Upsert to profiles table
+      const { error: upsertErr } = await supabase.from('profiles').upsert({
+        id: user.id,
+        role: user.user_metadata?.role ?? 'student',
+        first_name: profile.firstName,
+        last_name: profile.lastName,
+        university: profile.university,
+        major: profile.major,
+        grad_year: profile.gradYear,
+        bio: profile.bio,
+        avatar_url: finalAvatarUrl,
+        sleep_time: profile.sleepTime,
+        cleanliness: profile.cleanliness,
+        noise: profile.noise,
+        guests: profile.guests,
+        smoking: profile.smoking,
+        pets: profile.pets,
+        studying: profile.studying,
+        updated_at: new Date().toISOString(),
+      })
+
+      // 3. Always sync user_metadata — this triggers onAuthStateChange in the Nav
+      //    so the avatar and name update instantly without a page reload.
+      await supabase.auth.updateUser({
+        data: {
+          first_name: profile.firstName,
+          last_name:  profile.lastName,
+          avatar_url: finalAvatarUrl ?? undefined,
+          role: user.user_metadata?.role ?? 'student',
+        },
+      })
+
+      setSaving(false)
+      if (!upsertErr) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+        setAvatarPreview(null)
+      }
+    } catch (err) {
+      setSaving(false)
     }
   }
 

@@ -1,0 +1,318 @@
+'use client'
+
+import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase'
+
+interface Profile {
+  id: string
+  name: string
+  avatar_url: string | null
+  bio: string | null
+  university: string
+  major: string
+  grad_year: number
+  role: string
+  sleep_schedule: string | null
+  cleanliness: string | null
+  noise_level: string | null
+  guests_frequency: string | null
+  studying_habits: string | null
+  smoking: string | null
+  pets: string | null
+}
+
+const LIFESTYLE_CATEGORIES = [
+  { key: 'sleep_schedule', label: 'Sleep Schedule' },
+  { key: 'cleanliness', label: 'Cleanliness' },
+  { key: 'noise_level', label: 'Noise Level' },
+  { key: 'guests_frequency', label: 'Guests' },
+  { key: 'studying_habits', label: 'Studying' },
+  { key: 'smoking', label: 'Smoking' },
+  { key: 'pets', label: 'Pets' },
+]
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+export default function ProfilePage() {
+  const params = useParams()
+  const router = useRouter()
+  const id = params?.id as string
+
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient()
+
+      try {
+        // Get current session
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        setCurrentUser(session?.user ?? null)
+
+        // Fetch target profile
+        const { data: targetProfile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (error || !targetProfile) {
+          setNotFound(true)
+          setLoading(false)
+          return
+        }
+
+        // Check if it's a student profile
+        if (targetProfile.role === 'landlord') {
+          setNotFound(true)
+          setLoading(false)
+          return
+        }
+
+        setProfile(targetProfile)
+      } catch (err) {
+        setNotFound(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [id])
+
+  async function handleSendMessage() {
+    if (!currentUser) {
+      router.push('/auth')
+      return
+    }
+
+    setSubmitting(true)
+
+    try {
+      const supabase = createClient()
+
+      // Find existing conversation
+      const { data: existing } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', currentUser.id)
+
+      const myConvIds = existing?.map((r: any) => r.conversation_id) ?? []
+
+      // Find if target is also in any of those
+      if (myConvIds.length > 0) {
+        const { data: shared } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', id)
+          .in('conversation_id', myConvIds)
+
+        if (shared && shared.length > 0) {
+          router.push(`/messages/${shared[0].conversation_id}`)
+          return
+        }
+      }
+
+      // Create new conversation
+      const { data: conv } = await supabase
+        .from('conversations')
+        .insert({})
+        .select()
+        .single()
+
+      // Add both participants
+      await supabase.from('conversation_participants').insert([
+        { conversation_id: conv.id, user_id: currentUser.id },
+        { conversation_id: conv.id, user_id: id },
+      ])
+
+      router.push(`/messages/${conv.id}`)
+    } catch (err) {
+      console.error('Error creating conversation:', err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted font-body">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (notFound || !profile) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center px-6">
+        <div className="text-center max-w-md">
+          <h1 className="font-display text-3xl text-clay-dark mb-2">Profile not found</h1>
+          <p className="text-muted font-body mb-6">This student profile doesn't exist or isn't available.</p>
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-clay hover:text-clay-dark font-head font-bold transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            Go back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const isOwnProfile = currentUser?.id === id
+  const canMessage =
+    currentUser && currentUser.user_metadata?.role !== 'landlord' && !isOwnProfile
+
+  return (
+    <div className="min-h-screen bg-cream">
+      {/* Back button */}
+      <div className="bg-white border-b border-out-var/20">
+        <div className="max-w-xl mx-auto px-6 py-4">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-clay hover:text-clay-dark font-head font-bold text-sm transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">arrow_back</span>
+            Back
+          </button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="max-w-xl mx-auto px-6 py-10">
+        {/* Hero section with gradient banner and avatar */}
+        <div className="relative mb-8">
+          {/* Gradient banner */}
+          <div className="clay-grad rounded-t-3xl h-32 relative" />
+
+          {/* Avatar overlapping */}
+          <div className="flex justify-center -mt-16 mb-6 relative z-10">
+            {profile.avatar_url ? (
+              <div className="w-32 h-32 rounded-full border-4 border-cream overflow-hidden shadow-lg">
+                <Image
+                  src={profile.avatar_url}
+                  alt={profile.name}
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-32 h-32 rounded-full border-4 border-cream bg-linen flex items-center justify-center shadow-lg">
+                <span className="font-display text-5xl text-clay-dark font-light">
+                  {getInitials(profile.name)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Info card below avatar */}
+          <div className="bg-white rounded-b-3xl px-6 pt-2 pb-6 border border-out-var/20 border-t-0">
+            <h1 className="font-display text-2xl text-clay-dark font-light text-center mb-1">
+              {profile.name}
+            </h1>
+            <p className="text-sm text-muted text-center font-body mb-4">
+              {profile.major} • {profile.university}
+            </p>
+
+            {/* Grad year badge */}
+            {profile.grad_year && (
+              <div className="flex justify-center mb-4">
+                <span className="badge-open text-xs font-head font-bold px-3 py-1.5 rounded-full">
+                  Class of {profile.grad_year}
+                </span>
+              </div>
+            )}
+
+            {/* Bio */}
+            {profile.bio && (
+              <p className="text-sm font-body text-clay-dark text-center leading-relaxed mb-2">
+                {profile.bio}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Lifestyle preferences card */}
+        {/* Check if any lifestyle preferences are filled in */}
+        {LIFESTYLE_CATEGORIES.some((cat) => {
+          const key = cat.key as keyof Profile
+          return profile[key]
+        }) && (
+          <div className="bg-white rounded-3xl border border-out-var/20 p-6 mb-8">
+            <h2 className="font-head text-lg font-bold text-clay-dark mb-4">Lifestyle Preferences</h2>
+            <div className="flex flex-wrap gap-2">
+              {LIFESTYLE_CATEGORIES.map((cat) => {
+                const key = cat.key as keyof Profile
+                const value = profile[key]
+
+                if (!value) return null
+
+                return (
+                  <div
+                    key={cat.key}
+                    className="px-3.5 py-2 bg-surf-lo rounded-full border border-out-var/30 flex items-center gap-2"
+                  >
+                    <span className="text-xs font-head font-bold text-clay-dark">{cat.label}:</span>
+                    <span className="text-xs font-body text-muted">{value}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {canMessage && (
+          <button
+            onClick={handleSendMessage}
+            disabled={submitting}
+            className="w-full clay-grad text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-clay/25 disabled:opacity-70"
+          >
+            <span className="material-symbols-outlined text-base">mail</span>
+            {submitting ? 'Opening conversation...' : 'Send Message'}
+          </button>
+        )}
+
+        {!currentUser && (
+          <a
+            href="/auth"
+            className="block w-full text-center py-3.5 rounded-xl font-head font-bold text-sm border border-out-var text-clay-dark hover:bg-surf transition-all"
+          >
+            Sign in to message
+          </a>
+        )}
+
+        {isOwnProfile && (
+          <div className="bg-surf-lo rounded-3xl border border-out-var/20 p-6 text-center">
+            <p className="text-sm font-body text-muted">This is your profile</p>
+          </div>
+        )}
+
+        {currentUser && currentUser.user_metadata?.role === 'landlord' && !isOwnProfile && (
+          <div className="bg-surf-lo rounded-3xl border border-out-var/20 p-6 text-center">
+            <p className="text-sm font-body text-muted">Landlords can't message students directly</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

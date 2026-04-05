@@ -4,63 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { Listing } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 
 /* ─── Types ─────────────────────────────────────── */
 type ListingStatus = 'active' | 'pending' | 'filled' | 'draft'
-type ListingType   = 'open-room' | 'group-formation'
-
-interface Listing {
-  id: string
-  address: string
-  unit?: string
-  city: string
-  bedrooms: number
-  bathrooms: number
-  rent: number
-  type: ListingType
-  status: ListingStatus
-  applicants: number
-  image: string
-}
-
-/* ─── Mock data ──────────────────────────────────── */
-const MOCK_LISTINGS: Listing[] = [
-  {
-    id: '1',
-    address: '6570 W 84th Place',
-    unit: 'Unit 3B',
-    city: 'Los Angeles, CA 90045',
-    bedrooms: 3, bathrooms: 2, rent: 850,
-    type: 'open-room', status: 'active', applicants: 4,
-    image: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600&q=80',
-  },
-  {
-    id: '2',
-    address: '1240 Ocean Park Blvd',
-    city: 'Santa Monica, CA 90405',
-    bedrooms: 4, bathrooms: 2, rent: 1100,
-    type: 'group-formation', status: 'active', applicants: 7,
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&q=80',
-  },
-  {
-    id: '3',
-    address: '3381 Sawtelle Blvd',
-    unit: 'Apt 12',
-    city: 'Los Angeles, CA 90066',
-    bedrooms: 2, bathrooms: 1, rent: 1200,
-    type: 'open-room', status: 'pending', applicants: 2,
-    image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600&q=80',
-  },
-  {
-    id: '4',
-    address: '816 Lincoln Blvd',
-    city: 'Venice, CA 90291',
-    bedrooms: 3, bathrooms: 2, rent: 975,
-    type: 'group-formation', status: 'draft', applicants: 0,
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&q=80',
-  },
-]
 
 /* ─── Status badge ───────────────────────────────── */
 const STATUS_CONFIG: Record<ListingStatus, { label: string; bg: string; dot: string }> = {
@@ -97,23 +45,24 @@ function StatCard({ icon, value, label, sub }: { icon: string; value: string | n
 }
 
 /* ─── Listing card ───────────────────────────────── */
-function ListingCard({ listing }: { listing: Listing }) {
+function ListingCard({ listing, onDelete, onReview }: { listing: Listing; onDelete: (id: string) => void; onReview: (l: Listing) => void }) {
   const typeLabel = listing.type === 'open-room' ? 'Open Room' : 'Group Formation'
   const typeBg    = listing.type === 'open-room' ? 'bg-terra/90' : 'bg-clay/90'
+  const interestCount = Array.isArray(listing.interest_count) ? (listing.interest_count[0]?.count ?? 0) : (listing.interest_count ?? 0)
 
   return (
     <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       {/* Image */}
       <div className="relative h-44 overflow-hidden">
-        <img src={listing.image} alt={listing.address} className="w-full h-full object-cover" />
+        <div className="w-full h-full bg-gradient-to-br from-linen to-surf-lo flex items-center justify-center">
+          <span className="material-symbols-outlined text-out-var text-6xl">home</span>
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <span className={`absolute top-3 left-3 ${typeBg} text-white text-[10px] font-head font-bold px-2.5 py-1 rounded-full`}>
           {typeLabel}
         </span>
-        <StatusBadge status={listing.status} />
-        {/* status badge positioned bottom-left */}
         <div className="absolute bottom-3 left-3">
-          <StatusBadge status={listing.status} />
+          <StatusBadge status={listing.status as ListingStatus} />
         </div>
       </div>
 
@@ -140,10 +89,10 @@ function ListingCard({ listing }: { listing: Listing }) {
         <div className="flex items-center gap-1.5 mb-4 bg-surf-lo rounded-xl px-3 py-2">
           <span className="material-symbols-outlined text-clay text-base">group</span>
           <span className="text-xs font-head font-semibold text-clay-dark">
-            {listing.applicants === 0 ? 'No applicants yet' : `${listing.applicants} applicant${listing.applicants !== 1 ? 's' : ''}`}
+            {interestCount === 0 ? 'No applicants yet' : `${interestCount} applicant${interestCount !== 1 ? 's' : ''}`}
           </span>
-          {listing.applicants > 0 && (
-            <button className="ml-auto text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors">
+          {interestCount > 0 && (
+            <button onClick={() => onReview(listing)} className="ml-auto text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors">
               Review →
             </button>
           )}
@@ -157,7 +106,7 @@ function ListingCard({ listing }: { listing: Listing }) {
           <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-head font-semibold text-clay-dark border border-out-var rounded-lg py-2 hover:border-clay/40 hover:bg-surf-lo transition-all">
             <span className="material-symbols-outlined text-sm">visibility</span> Preview
           </button>
-          <button className="flex items-center justify-center text-xs font-head font-semibold text-red-500 border border-red-100 rounded-lg px-3 py-2 hover:bg-red-50 transition-all">
+          <button onClick={() => onDelete(listing.id)} className="flex items-center justify-center text-xs font-head font-semibold text-red-500 border border-red-100 rounded-lg px-3 py-2 hover:bg-red-50 transition-all">
             <span className="material-symbols-outlined text-sm">delete</span>
           </button>
         </div>
@@ -175,6 +124,11 @@ export default function LandlordPortal() {
   const [loading, setLoading] = useState(true)
   const [filter,  setFilter]  = useState<'all' | ListingStatus>('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [listings, setListings] = useState<Listing[]>([])
+  const [listingType, setListingType] = useState<'open-room' | 'group-formation'>('open-room')
+  const [reviewListing, setReviewListing] = useState<Listing | null>(null)
+  const [applicants, setApplicants] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null; avatar_url: string | null; bio: string | null }>>([])
+  const [loadingApplicants, setLoadingApplicants] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -182,9 +136,76 @@ export default function LandlordPortal() {
       if (!u) { router.push('/auth'); return }
       if (u.user_metadata?.role !== 'landlord') { router.push('/'); return }
       setUser(u)
-      setLoading(false)
+
+      // Fetch listings for this landlord
+      supabase
+        .from('listings')
+        .select('*, interest_count:listing_interests(count)')
+        .eq('landlord_id', u.id)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) setListings(data)
+          setLoading(false)
+        })
     })
   }, [])
+
+  async function handleAddListing(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user) return
+
+    const form = e.target as HTMLFormElement
+    const address = (form.elements.namedItem('address') as HTMLInputElement).value.trim()
+    const city = (form.elements.namedItem('city') as HTMLInputElement).value.trim()
+    const unit = (form.elements.namedItem('unit') as HTMLInputElement).value.trim()
+    const bedrooms = parseInt((form.elements.namedItem('bedrooms') as HTMLInputElement).value)
+    const bathrooms = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
+    const rent = parseInt((form.elements.namedItem('rent') as HTMLInputElement).value)
+
+    if (!address || !city || !rent) return
+
+    const { data, error } = await supabase
+      .from('listings')
+      .insert({
+        landlord_id: user.id,
+        address,
+        city,
+        unit: unit || null,
+        bedrooms,
+        bathrooms,
+        rent,
+        type: listingType,
+        status: 'active',
+      })
+      .select()
+      .single()
+
+    if (!error && data) {
+      setListings((prev) => [data, ...prev])
+      setShowAddModal(false)
+      form.reset()
+      setListingType('open-room')
+    }
+  }
+
+  async function handleDelete(id: string) {
+    await supabase.from('listings').delete().eq('id', id)
+    setListings((prev) => prev.filter((l) => l.id !== id))
+  }
+
+  async function handleReview(listing: Listing) {
+    setReviewListing(listing)
+    setApplicants([])
+    setLoadingApplicants(true)
+    const { data } = await supabase
+      .from('listing_interests')
+      .select('profile:profiles(id, first_name, last_name, university, avatar_url, bio)')
+      .eq('listing_id', listing.id)
+    if (data) {
+      setApplicants(data.map((r: any) => r.profile).filter(Boolean))
+    }
+    setLoadingApplicants(false)
+  }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-cream">
@@ -195,10 +216,10 @@ export default function LandlordPortal() {
   const firstName = user?.user_metadata?.first_name ?? 'Landlord'
   const company   = user?.user_metadata?.company
 
-  const listings = filter === 'all' ? MOCK_LISTINGS : MOCK_LISTINGS.filter((l) => l.status === filter)
-  const totalApplicants = MOCK_LISTINGS.reduce((s, l) => s + l.applicants, 0)
-  const activeCount = MOCK_LISTINGS.filter((l) => l.status === 'active').length
-  const vacancies = MOCK_LISTINGS.filter((l) => l.status !== 'filled').length
+  const filteredListings = filter === 'all' ? listings : listings.filter((l) => l.status === filter)
+  const totalApplicants = listings.reduce((s, l) => s + (Array.isArray(l.interest_count) ? (l.interest_count[0]?.count ?? 0) : (l.interest_count ?? 0)), 0)
+  const activeCount = listings.filter((l) => l.status === 'active').length
+  const vacancies = listings.filter((l) => l.status !== 'filled').length
 
   return (
     <div className="min-h-screen bg-cream">
@@ -277,7 +298,7 @@ export default function LandlordPortal() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <StatCard icon="home_work"   value={MOCK_LISTINGS.length} label="Total Properties"  sub="Across all statuses" />
+          <StatCard icon="home_work"   value={listings.length} label="Total Properties"  sub="Across all statuses" />
           <StatCard icon="check_circle" value={activeCount}          label="Active Listings"   sub="Visible to students" />
           <StatCard icon="group"        value={totalApplicants}      label="Total Applicants"  sub="Awaiting your review" />
           <StatCard icon="door_open"    value={vacancies}            label="Open Vacancies"    sub="Not yet filled" />
@@ -287,7 +308,7 @@ export default function LandlordPortal() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-head font-bold text-clay-dark text-lg">
             {filter === 'all' ? 'All Properties' : `${filter.charAt(0).toUpperCase() + filter.slice(1)} Listings`}
-            <span className="ml-2 text-sm font-normal text-muted">({listings.length})</span>
+            <span className="ml-2 text-sm font-normal text-muted">({filteredListings.length})</span>
           </h2>
           {/* Mobile filter */}
           <div className="flex md:hidden gap-1 overflow-x-auto">
@@ -302,7 +323,7 @@ export default function LandlordPortal() {
         </div>
 
         {/* Listing grid */}
-        {listings.length === 0 ? (
+        {filteredListings.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-linen rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-clay text-3xl">home_work</span>
@@ -316,13 +337,80 @@ export default function LandlordPortal() {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {listings.map((l) => <ListingCard key={l.id} listing={l} />)}
+            {filteredListings.map((l) => <ListingCard key={l.id} listing={l} onDelete={handleDelete} onReview={handleReview} />)}
           </div>
         )}
 
       </main>
 
-      {/* ── ADD LISTING MODAL (placeholder) ── */}
+      {/* ── APPLICANTS REVIEW MODAL ── */}
+      {reviewListing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(30,20,16,.55)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setReviewListing(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl border border-out-var w-full max-w-md p-8 relative"
+            style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)' }}
+            onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setReviewListing(null)}
+              className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 clay-grad rounded-xl flex items-center justify-center shadow-md">
+                <span className="material-symbols-outlined fill text-white text-xl">group</span>
+              </div>
+              <div>
+                <h2 className="font-head font-bold text-clay-dark">Interested Students</h2>
+                <p className="text-xs font-body text-muted truncate max-w-[220px]">{reviewListing.address}</p>
+              </div>
+            </div>
+
+            {loadingApplicants ? (
+              <div className="flex justify-center py-10">
+                <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.2)', borderTopColor: '#6b4c3b', width: 28, height: 28 }} />
+              </div>
+            ) : applicants.length === 0 ? (
+              <div className="text-center py-10">
+                <span className="material-symbols-outlined text-out-var text-4xl">group_off</span>
+                <p className="text-sm font-body text-muted mt-2">No students have expressed interest yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {applicants.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 p-4 bg-surf-lo rounded-2xl border border-out-var/30">
+                    <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border border-out-var">
+                      {a.avatar_url
+                        ? <img src={a.avatar_url} alt={a.first_name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full clay-grad flex items-center justify-center">
+                            <span className="text-white font-head font-black text-xs">{(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}</span>
+                          </div>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-head font-bold text-clay-dark">{a.first_name} {a.last_name}</p>
+                      {a.university && <p className="text-xs font-body text-muted">{a.university}</p>}
+                      {a.bio && <p className="text-xs font-body text-muted mt-0.5 truncate">{a.bio}</p>}
+                    </div>
+                    <a href={`/profile/${a.id}`}
+                      className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                      Profile
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 p-3 bg-linen rounded-xl border border-out-var/40">
+              <p className="text-xs font-body text-muted text-center">
+                <span className="font-head font-semibold text-clay-dark">Note:</span> Students can message you directly. Check your inbox to respond.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD LISTING MODAL ── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ background: 'rgba(30,20,16,.55)', backdropFilter: 'blur(6px)' }}>
@@ -341,38 +429,38 @@ export default function LandlordPortal() {
               <p className="text-sm font-body text-muted">Fill in the details for your property.</p>
             </div>
 
-            <form className="space-y-4">
+            <form onSubmit={handleAddListing} className="space-y-4">
               <div>
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Street Address</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_on</span>
-                  <input type="text" className="auth-input" placeholder="6570 W 84th Place" />
+                  <input type="text" name="address" className="auth-input" placeholder="6570 W 84th Place" required />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">City</label>
-                  <input type="text" className="auth-input no-icon" placeholder="Los Angeles" />
+                  <input type="text" name="city" className="auth-input no-icon" placeholder="Los Angeles" required />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit (optional)</label>
-                  <input type="text" className="auth-input no-icon" placeholder="Unit 3B" />
+                  <input type="text" name="unit" className="auth-input no-icon" placeholder="Unit 3B" />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds</label>
-                  <input type="number" min={1} className="auth-input no-icon" placeholder="3" />
+                  <input type="number" name="bedrooms" min={1} className="auth-input no-icon" placeholder="3" required />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths</label>
-                  <input type="number" min={1} step={0.5} className="auth-input no-icon" placeholder="2" />
+                  <input type="number" name="bathrooms" min={1} step={0.5} className="auth-input no-icon" placeholder="2" required />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo</label>
-                  <input type="number" min={0} className="auth-input no-icon" placeholder="950" />
+                  <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950" required />
                 </div>
               </div>
 
@@ -380,15 +468,23 @@ export default function LandlordPortal() {
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Listing Type</label>
                 <div className="flex gap-2">
                   {(['open-room', 'group-formation'] as const).map((t) => (
-                    <button key={t} type="button"
-                      className="flex-1 py-2.5 rounded-xl text-xs font-head font-bold border border-out-var text-muted hover:border-clay/50 hover:text-clay-dark transition-all">
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setListingType(t)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-head font-bold border transition-all ${
+                        listingType === t
+                          ? 'clay-grad text-white border-transparent shadow-sm'
+                          : 'border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'
+                      }`}>
                       {t === 'open-room' ? 'Open Room' : 'Group Formation'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <button type="button" onClick={() => setShowAddModal(false)}
+              <button
+                type="submit"
                 className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25 mt-2">
                 <span className="material-symbols-outlined text-base">save</span>
                 Save Listing
