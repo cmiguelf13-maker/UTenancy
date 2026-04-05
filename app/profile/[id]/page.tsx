@@ -6,39 +6,41 @@ import { createClient } from '@/lib/supabase'
 
 interface Profile {
   id: string
-  name: string
+  first_name: string | null
+  last_name: string | null
   avatar_url: string | null
   bio: string | null
-  university: string
-  major: string
-  grad_year: number
+  university: string | null
+  major: string | null
+  grad_year: string | null
   role: string
-  sleep_schedule: string | null
+  sleep_time: string | null
   cleanliness: string | null
-  noise_level: string | null
-  guests_frequency: string | null
-  studying_habits: string | null
-  smoking: string | null
-  pets: string | null
+  noise: string | null
+  guests: string | null
+  studying: string | null
+  smoking: boolean
+  pets: boolean
 }
 
 const LIFESTYLE_CATEGORIES = [
-  { key: 'sleep_schedule', label: 'Sleep Schedule' },
+  { key: 'sleep_time', label: 'Sleep Schedule' },
   { key: 'cleanliness', label: 'Cleanliness' },
-  { key: 'noise_level', label: 'Noise Level' },
-  { key: 'guests_frequency', label: 'Guests' },
-  { key: 'studying_habits', label: 'Studying' },
+  { key: 'noise', label: 'Noise Level' },
+  { key: 'guests', label: 'Guests' },
+  { key: 'studying', label: 'Studying' },
   { key: 'smoking', label: 'Smoking' },
   { key: 'pets', label: 'Pets' },
 ]
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+function getFullName(profile: Profile): string {
+  return `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || 'Student'
+}
+
+function getInitials(profile: Profile): string {
+  const first = profile.first_name?.[0] ?? ''
+  const last = profile.last_name?.[0] ?? ''
+  return (first + last).toUpperCase() || '?'
 }
 
 export default function ProfilePage() {
@@ -206,7 +208,7 @@ export default function ProfilePage() {
           <div className="flex justify-center -mt-16 mb-6 relative z-10">
             <div className="w-32 h-32 rounded-full border-4 border-cream clay-grad flex items-center justify-center shadow-lg">
               <span className="font-display text-5xl text-white font-light">
-                {getInitials(profile.name)}
+                {getInitials(profile)}
               </span>
             </div>
           </div>
@@ -214,7 +216,7 @@ export default function ProfilePage() {
           {/* Info card below avatar */}
           <div className="bg-white rounded-b-3xl px-6 pt-2 pb-6 border border-out-var/20 border-t-0">
             <h1 className="font-display text-2xl text-clay-dark font-light text-center mb-1">
-              {profile.name}
+              {getFullName(profile)}
             </h1>
             <p className="text-sm text-muted text-center font-body mb-4">
               {profile.major} • {profile.university}
@@ -242,14 +244,23 @@ export default function ProfilePage() {
         {/* Check if any lifestyle preferences are filled in */}
         {LIFESTYLE_CATEGORIES.some((cat) => {
           const key = cat.key as keyof Profile
-          return profile[key]
+          const v = profile[key]
+          return typeof v === 'boolean' ? true : !!v
         }) && (
           <div className="bg-white rounded-3xl border border-out-var/20 p-6 mb-8">
             <h2 className="font-head text-lg font-bold text-clay-dark mb-4">Lifestyle Preferences</h2>
             <div className="flex flex-wrap gap-2">
               {LIFESTYLE_CATEGORIES.map((cat) => {
                 const key = cat.key as keyof Profile
-                const value = profile[key]
+                const raw = profile[key]
+
+                // Boolean fields: show Yes/No; string fields: show value
+                let value: string | null = null
+                if (typeof raw === 'boolean') {
+                  value = raw ? 'Yes' : 'No'
+                } else if (raw) {
+                  value = String(raw)
+                }
 
                 if (!value) return null
 

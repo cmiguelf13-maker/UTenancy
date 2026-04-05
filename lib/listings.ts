@@ -37,7 +37,7 @@ export const LISTINGS: Listing[] = [
     baths: 1,
     type: 'open',
     interested: 17,
-    img: 'https://photos.zillowstatic.com/fp/377cdfcf956174a58fb17b62d0b842b1-cc_ft_960.jpg',
+    img: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=960&q=75',
     featured: true,
     distanceMi: 0.5,
     university: 'LMU',

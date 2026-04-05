@@ -32,7 +32,7 @@ export interface Listing {
   bathrooms: number
   rent: number
   type: 'open-room' | 'group-formation'
-  status: 'active' | 'pending' | 'filled' | 'draft'
+  status: 'active' | 'draft'
   description: string | null
   amenities: string[]
   images: string[]

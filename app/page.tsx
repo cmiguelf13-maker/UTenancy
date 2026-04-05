@@ -5,7 +5,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
-import { getDistanceToNearestSchool } from '@/lib/distance'
 
 /* ─── Scroll-reveal hook ─────────────────────── */
 function useReveal() {
@@ -32,11 +31,7 @@ function ListingCard({ listing }: { listing: MockListing }) {
       <Link href={`/listings/${listing.slug}`} className="block">
         <div className="relative h-52 overflow-hidden">
           {listing.img ? (
-            listing.img.includes('supabase.co') ? (
-              <img src={listing.img} alt={listing.title} className="absolute inset-0 w-full h-full object-cover" />
-            ) : (
-              <Image src={listing.img} alt={listing.title} fill className="object-cover" sizes="(max-width:640px) 100vw, (max-width:1280px) 50vw, 33vw" />
-            )
+            <Image src={listing.img} alt={listing.title} fill className="object-cover" sizes="(max-width:640px) 100vw, (max-width:1280px) 50vw, 33vw" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-linen to-surf-lo flex items-center justify-center">
               <span className="material-symbols-outlined text-out-var text-6xl">home</span>
@@ -70,12 +65,10 @@ function ListingCard({ listing }: { listing: MockListing }) {
               </p>
             </div>
           </div>
-          {(listing.featured || listing.distanceMi) && (
+          {listing.featured && (
             <div className="mt-4 pt-4 border-t border-out-var/30 flex items-center justify-between">
               <span className="font-head font-bold text-clay text-xs flex items-center gap-1">View Listing <span className="material-symbols-outlined text-sm">arrow_forward</span></span>
-              {listing.distanceMi && listing.university && (
-                <span className="feature-pill text-[10px] px-2.5 py-1">~{listing.distanceMi} mi to {listing.university}</span>
-              )}
+              <span className="feature-pill text-[10px] px-2.5 py-1">~{listing.distanceMi} mi to {listing.university}</span>
             </div>
           )}
         </div>
@@ -106,9 +99,9 @@ export default function HomePage() {
         if (!data) return
         const mapped: MockListing[] = data.map((d: any) => ({
           id: d.id,
-          slug: d.id,
+          slug: d.id, // UUID — the detail page handles this
           title: d.address,
-          location: `${d.city}, ${d.state ?? 'CA'}`,
+          location: `${d.city}, ${d.state}`,
           price: d.rent,
           beds: d.bedrooms,
           baths: d.bathrooms,
@@ -120,17 +113,6 @@ export default function HomePage() {
           amenities: d.amenities,
         }))
         setDbListings(mapped)
-
-        // Compute distance to nearest school for each DB listing
-        mapped.forEach(async (listing, idx) => {
-          const [city] = listing.location.split(',').map(s => s.trim())
-          const info = await getDistanceToNearestSchool(listing.title, city)
-          if (info) {
-            setDbListings(prev => prev.map((l, i) =>
-              i === idx ? { ...l, distanceMi: info.distanceMi, university: info.university } : l
-            ))
-          }
-        })
       })
   }, [])
 
@@ -251,13 +233,13 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8 relative">
             <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-out-var via-clay/30 to-out-var" />
             {[
-              { icon: 'verified_user', label: '01', title: 'Verify your .edu', body: 'Sign up with your university email. We verify it instantly — no manual review, no waiting. Students only, always.', bg: 'clay-grad shadow-clay/20', iconColor: 'text-white' },
-              { icon: 'search',        label: '02', title: 'Browse & filter',  body: 'Real listings with real availability. Filter by price per person, distance from campus, move-in date, and listing type.', bg: 'bg-linen', iconColor: 'text-clay' },
-              { icon: 'handshake',     label: '03', title: 'Move in & split',  body: "Once you're in, UTenancy handles rent splitting and shared expenses — keeping your whole house on the same page.", bg: 'bg-sec-con', iconColor: 'text-clay' },
+              { icon: 'verified_user', label: '01', title: 'Verify your .edu', body: 'Sign up with your university email. We verify it instantly — no manual review, no waiting. Students only, always.', bg: 'clay-grad shadow-clay/20' },
+              { icon: 'search',        label: '02', title: 'Browse & filter',  body: 'Real listings with real availability. Filter by price per person, distance from campus, move-in date, and listing type.', bg: 'bg-linen' },
+              { icon: 'handshake',     label: '03', title: 'Move in & split',  body: "Once you're in, UTenancy handles rent splitting and shared expenses — keeping your whole house on the same page.", bg: 'bg-sec-con' },
             ].map((step, i) => (
               <div key={step.label} className="reveal text-center px-4" style={{ transitionDelay: `${i * 0.1}s` }}>
                 <div className={`w-14 h-14 ${step.bg} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl`}>
-                  <span className={`material-symbols-outlined ${step.iconColor} text-2xl`}>{step.icon}</span>
+                  <span className="material-symbols-outlined text-clay text-2xl">{step.icon}</span>
                 </div>
                 <span className="text-xs font-head font-black text-terra uppercase tracking-widest">Step {step.label}</span>
                 <h3 className="font-head text-2xl font-bold text-clay-dark mt-2 mb-3">{step.title}</h3>

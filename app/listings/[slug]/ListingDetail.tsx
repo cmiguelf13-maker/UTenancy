@@ -72,13 +72,9 @@ function MessageLandlordButton({ listingId, userId }: { listingId: string; userI
   )
 }
 
-/* ── Fallback photo data for the sample listing ── */
+/* ── Fallback photo when no images are available ── */
 const FALLBACK_PHOTOS = [
-  { src: 'https://photos.zillowstatic.com/fp/377cdfcf956174a58fb17b62d0b842b1-cc_ft_960.jpg',  alt: 'Front exterior — bright single-family bungalow' },
-  { src: 'https://photos.zillowstatic.com/fp/c5118678e63bbef59ed087aeea8a1c9d-cc_ft_576.jpg', alt: 'Bright living room with hardwood floors' },
-  { src: 'https://photos.zillowstatic.com/fp/331c3ebd85fcd4c3ba83a1aa13db4a96-cc_ft_576.jpg', alt: 'Updated kitchen with natural light' },
-  { src: 'https://photos.zillowstatic.com/fp/24a0e26dbe16b521f6792e6a616bdeb1-cc_ft_576.jpg', alt: 'Primary bedroom' },
-  { src: 'https://photos.zillowstatic.com/fp/0b410b02916c6d804d047dc2f00ae5f3-cc_ft_576.jpg', alt: 'Private backyard' },
+  { src: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=960&q=75', alt: 'Property exterior' },
 ]
 
 /* ── Lightbox ── */
