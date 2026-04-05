@@ -245,13 +245,20 @@ export default function ProfilePage() {
         updated_at: new Date().toISOString(),
       })
 
-      // 3. Always sync user_metadata — this triggers onAuthStateChange in the Nav
-      //    so the avatar and name update instantly without a page reload.
+      // 3. Sync user_metadata to trigger onAuthStateChange in Nav (refreshes name/avatar).
+      //    IMPORTANT: never put base64 data URLs into user_metadata — they get baked into
+      //    the Supabase JWT cookie and will exceed Vercel's 16 KB header limit.
+      //    The Nav reads avatar_url directly from the profiles table, so we only store
+      //    real public URLs here (or null to clear any legacy base64 that may be present).
+      const metaAvatarUrl =
+        finalAvatarUrl && !finalAvatarUrl.startsWith('data:')
+          ? finalAvatarUrl  // real https:// URL from Storage — safe to store
+          : null            // base64 or nothing — clear from metadata
       await supabase.auth.updateUser({
         data: {
           first_name: profile.firstName,
           last_name:  profile.lastName,
-          avatar_url: finalAvatarUrl ?? undefined,
+          avatar_url: metaAvatarUrl,
           role: user.user_metadata?.role ?? 'student',
         },
       })
