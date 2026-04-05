@@ -30,9 +30,6 @@ export default function Nav() {
   const isAuth  = path === '/auth'
   const isLandlordPortal = path === '/landlord'
 
-  // Don't render Nav on landlord portal — it has its own header
-  if (isLandlordPortal) return null
-
   const [user, setUser]       = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -82,6 +79,9 @@ export default function Nav() {
     setMenuOpen(false)
     router.refresh()
   }
+
+  // Don't render Nav on landlord portal — it has its own header
+  if (isLandlordPortal) return null
 
   const fullName = user?.user_metadata?.first_name
     ? `${user.user_metadata.first_name} ${user.user_metadata.last_name ?? ''}`.trim()
