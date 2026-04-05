@@ -1,23 +1,74 @@
 // Server component — handles static params + data fetching
 import { notFound } from 'next/navigation'
 import { getListingBySlug, LISTINGS } from '@/lib/listings'
+import { createServerClient } from '@/lib/supabase-server'
 import ListingDetail from './ListingDetail'
 
 export function generateStaticParams() {
   return LISTINGS.map((l) => ({ slug: l.slug }))
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  // Try mock listing first
   const listing = getListingBySlug(params.slug)
-  if (!listing) return {}
-  return {
-    title: `${listing.title} — UTenancy Student Housing`,
-    description: listing.description,
+  if (listing) {
+    return {
+      title: `${listing.title} — UTenancy Student Housing`,
+      description: listing.description,
+    }
   }
+
+  // Try DB listing (slug might be a UUID)
+  const supabase = createServerClient()
+  const { data } = await supabase
+    .from('listings')
+    .select('address, city, description')
+    .eq('id', params.slug)
+    .single()
+
+  if (data) {
+    return {
+      title: `${data.address}, ${data.city} — UTenancy Student Housing`,
+      description: data.description,
+    }
+  }
+
+  return {}
 }
 
-export default function ListingPage({ params }: { params: { slug: string } }) {
-  const listing = getListingBySlug(params.slug)
-  if (!listing) notFound()
+export default async function ListingPage({ params }: { params: { slug: string } }) {
+  // Try mock listing first
+  const mockListing = getListingBySlug(params.slug)
+  if (mockListing) return <ListingDetail listing={mockListing} />
+
+  // Try DB listing (slug is a UUID)
+  const supabase = createServerClient()
+  const { data: dbListing } = await supabase
+    .from('listings')
+    .select('*, landlord:profiles!landlord_id(first_name, last_name, company)')
+    .eq('id', params.slug)
+    .single()
+
+  if (!dbListing) notFound()
+
+  // Map DB listing to the shape ListingDetail expects
+  const listing = {
+    id: dbListing.id,
+    slug: dbListing.id,
+    title: dbListing.address,
+    location: `${dbListing.city}, ${dbListing.state}`,
+    price: dbListing.rent,
+    beds: dbListing.bedrooms,
+    baths: dbListing.bathrooms,
+    type: dbListing.type === 'open-room' ? 'open' : 'group',
+    interested: 0,
+    img: dbListing.images?.[0] ?? '',
+    images: dbListing.images ?? [],
+    description: dbListing.description ?? '',
+    amenities: dbListing.amenities ?? [],
+    distanceMi: undefined,
+    university: undefined,
+  } as any
+
   return <ListingDetail listing={listing} />
 }

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { LISTINGS, type ListingType } from '@/lib/listings'
+import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
+import { createClient } from '@/lib/supabase'
 
 /* ─── Scroll-reveal hook ─────────────────────── */
 function useReveal() {
@@ -18,7 +19,7 @@ function useReveal() {
 }
 
 /* ─── Listing Card ───────────────────────────── */
-function ListingCard({ listing }: { listing: typeof LISTINGS[0] }) {
+function ListingCard({ listing }: { listing: MockListing }) {
   const [saved, setSaved] = useState(false)
   return (
     <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var/40'}`}>
@@ -29,7 +30,13 @@ function ListingCard({ listing }: { listing: typeof LISTINGS[0] }) {
       )}
       <Link href={`/listings/${listing.slug}`} className="block">
         <div className="relative h-52 overflow-hidden">
-          <Image src={listing.img} alt={listing.title} fill className="object-cover" sizes="(max-width:640px) 100vw, (max-width:1280px) 50vw, 33vw" />
+          {listing.img ? (
+            <Image src={listing.img} alt={listing.title} fill className="object-cover" sizes="(max-width:640px) 100vw, (max-width:1280px) 50vw, 33vw" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-linen to-surf-lo flex items-center justify-center">
+              <span className="material-symbols-outlined text-out-var text-6xl">home</span>
+            </div>
+          )}
           <span className={`${listing.type === 'open' ? 'badge-open' : 'badge-group'} absolute top-4 left-4 text-[10px] font-head font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg`}>
             {listing.type === 'open' ? 'Open Room' : 'Group Formation'}
           </span>
@@ -78,8 +85,39 @@ export default function HomePage() {
   const [pricePeriod, setPricePeriod] = useState<'monthly' | 'annual'>('monthly')
   const [waitlistType, setWaitlistType] = useState<'student' | 'landlord'>('student')
   const [priceMax, setPriceMax] = useState(3000)
+  const [dbListings, setDbListings] = useState<MockListing[]>([])
 
-  const filtered = listingFilter === 'all' ? LISTINGS : LISTINGS.filter((l) => l.type === listingFilter)
+  // Fetch active DB listings on mount
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('listings')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!data) return
+        const mapped: MockListing[] = data.map((d: any) => ({
+          id: d.id,
+          slug: d.id, // UUID — the detail page handles this
+          title: d.address,
+          location: `${d.city}, ${d.state}`,
+          price: d.rent,
+          beds: d.bedrooms,
+          baths: d.bathrooms,
+          type: d.type === 'open-room' ? ('open' as const) : ('group' as const),
+          interested: 0,
+          img: d.images?.[0] ?? '',
+          images: d.images ?? [],
+          description: d.description,
+          amenities: d.amenities,
+        }))
+        setDbListings(mapped)
+      })
+  }, [])
+
+  const allListings = [...dbListings, ...LISTINGS]
+  const filtered = listingFilter === 'all' ? allListings : allListings.filter((l) => l.type === listingFilter)
 
   const PRICES: Record<string, { monthly: number; annual: number }> = {
     starter: { monthly: 29,  annual: 23  },

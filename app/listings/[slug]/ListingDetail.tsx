@@ -71,8 +71,8 @@ function MessageLandlordButton({ listingId, userId }: { listingId: string; userI
   )
 }
 
-/* ── Photo data (in production: from DB / storage) ── */
-const PHOTOS = [
+/* ── Fallback photo data for the sample listing ── */
+const FALLBACK_PHOTOS = [
   { src: 'https://photos.zillowstatic.com/fp/377cdfcf956174a58fb17b62d0b842b1-cc_ft_960.jpg',  alt: 'Front exterior — bright single-family bungalow' },
   { src: 'https://photos.zillowstatic.com/fp/c5118678e63bbef59ed087aeea8a1c9d-cc_ft_576.jpg', alt: 'Bright living room with hardwood floors' },
   { src: 'https://photos.zillowstatic.com/fp/331c3ebd85fcd4c3ba83a1aa13db4a96-cc_ft_576.jpg', alt: 'Updated kitchen with natural light' },
@@ -81,34 +81,35 @@ const PHOTOS = [
 ]
 
 /* ── Lightbox ── */
-function Lightbox({ index, onClose }: { index: number; onClose: () => void }) {
+type PhotoItem = { src: string; alt: string }
+function Lightbox({ index, onClose, photos }: { index: number; onClose: () => void; photos: PhotoItem[] }) {
   const [current, setCurrent] = useState(index)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight') setCurrent((c) => Math.min(c + 1, PHOTOS.length - 1))
+      if (e.key === 'ArrowRight') setCurrent((c) => Math.min(c + 1, photos.length - 1))
       if (e.key === 'ArrowLeft')  setCurrent((c) => Math.max(c - 1, 0))
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [onClose, photos.length])
 
   return (
     <div className="lightbox open" onClick={onClose}>
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10" onClick={(e) => e.stopPropagation()}>
-        <span className="text-white/60 text-sm font-head">{current + 1} / {PHOTOS.length}</span>
+        <span className="text-white/60 text-sm font-head">{current + 1} / {photos.length}</span>
         <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
           <span className="material-symbols-outlined text-2xl">close</span>
         </button>
       </div>
       <div className="flex-1 flex items-center justify-center p-6" onClick={(e) => e.stopPropagation()}>
         <div className="relative w-full max-w-3xl" style={{ height: 400 }}>
-          <Image src={PHOTOS[current].src} alt={PHOTOS[current].alt} fill className="object-cover rounded-2xl" />
+          <Image src={photos[current].src} alt={photos[current].alt} fill className="object-cover rounded-2xl" />
         </div>
       </div>
       <div className="flex gap-3 justify-center px-6 pb-6 overflow-x-auto" onClick={(e) => e.stopPropagation()}>
-        {PHOTOS.map((p, i) => (
+        {photos.map((p: PhotoItem, i: number) => (
           <button key={i} onClick={() => setCurrent(i)}
             className={`flex-shrink-0 w-20 h-16 rounded-xl overflow-hidden border-2 transition-all relative ${i === current ? 'border-clay' : 'border-transparent opacity-60 hover:opacity-100'}`}>
             <Image src={p.src} alt={p.alt} fill className="object-cover" />
@@ -228,6 +229,13 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
 
   const perPerson = Math.round(listing.price / listing.beds)
+
+  // Use DB images if available, otherwise fall back to hardcoded sample photos
+  const dbImages = (listing as any).images as string[] | undefined
+  const PHOTOS =
+    dbImages && dbImages.length > 0
+      ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
+      : FALLBACK_PHOTOS
 
   // Lock body scroll when an overlay is open
   useEffect(() => {
@@ -579,7 +587,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
       </section>
 
       {/* Overlays */}
-      {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} />}
+      {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} photos={PHOTOS} />}
       {showApply && <ApplyModal listing={listing} onClose={() => setShowApply(false)} />}
       {showGroup && <GroupModal listing={listing} onClose={() => setShowGroup(false)} />}
 

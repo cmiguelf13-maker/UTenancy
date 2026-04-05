@@ -54,9 +54,13 @@ function ListingCard({ listing, onDelete, onReview }: { listing: Listing; onDele
     <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       {/* Image */}
       <div className="relative h-44 overflow-hidden">
-        <div className="w-full h-full bg-gradient-to-br from-linen to-surf-lo flex items-center justify-center">
-          <span className="material-symbols-outlined text-out-var text-6xl">home</span>
-        </div>
+        {listing.images && listing.images.length > 0 ? (
+          <img src={listing.images[0]} alt={listing.address} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-linen to-surf-lo flex items-center justify-center">
+            <span className="material-symbols-outlined text-out-var text-6xl">home</span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <span className={`absolute top-3 left-3 ${typeBg} text-white text-[10px] font-head font-bold px-2.5 py-1 rounded-full`}>
           {typeLabel}
@@ -103,9 +107,9 @@ function ListingCard({ listing, onDelete, onReview }: { listing: Listing; onDele
           <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-head font-semibold text-clay-dark border border-out-var rounded-lg py-2 hover:border-clay/40 hover:bg-surf-lo transition-all">
             <span className="material-symbols-outlined text-sm">edit</span> Edit
           </button>
-          <button className="flex-1 flex items-center justify-center gap-1.5 text-xs font-head font-semibold text-clay-dark border border-out-var rounded-lg py-2 hover:border-clay/40 hover:bg-surf-lo transition-all">
+          <a href={`/listings/${listing.id}`} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-head font-semibold text-clay-dark border border-out-var rounded-lg py-2 hover:border-clay/40 hover:bg-surf-lo transition-all">
             <span className="material-symbols-outlined text-sm">visibility</span> Preview
-          </button>
+          </a>
           <button onClick={() => onDelete(listing.id)} className="flex items-center justify-center text-xs font-head font-semibold text-red-500 border border-red-100 rounded-lg px-3 py-2 hover:bg-red-50 transition-all">
             <span className="material-symbols-outlined text-sm">delete</span>
           </button>
@@ -129,6 +133,8 @@ export default function LandlordPortal() {
   const [reviewListing, setReviewListing] = useState<Listing | null>(null)
   const [applicants, setApplicants] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null; bio: string | null }>>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
+  const [savingListing, setSavingListing] = useState(false)
+  const [photoStatus, setPhotoStatus] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -164,6 +170,9 @@ export default function LandlordPortal() {
 
     if (!address || !city || !rent) return
 
+    setSavingListing(true)
+    setPhotoStatus('Saving listing…')
+
     const { data, error } = await supabase
       .from('listings')
       .insert({
@@ -181,10 +190,49 @@ export default function LandlordPortal() {
       .single()
 
     if (!error && data) {
+      // Add listing immediately so the user sees it
       setListings((prev) => [data, ...prev])
-      setShowAddModal(false)
-      form.reset()
-      setListingType('open-room')
+
+      // Fetch Zillow photos in the background
+      setPhotoStatus('Fetching property photos from Zillow…')
+      try {
+        const params = new URLSearchParams({ address, city, state: 'CA' })
+        const res = await fetch(`/api/zillow-photos?${params}`)
+        const json = await res.json()
+
+        if (json.photos && json.photos.length > 0) {
+          // Update the listing in DB with photos
+          const { data: updated } = await supabase
+            .from('listings')
+            .update({ images: json.photos })
+            .eq('id', data.id)
+            .select()
+            .single()
+
+          if (updated) {
+            setListings((prev) =>
+              prev.map((l) => (l.id === data.id ? updated : l)),
+            )
+          }
+          setPhotoStatus(`Found ${json.photos.length} photos!`)
+        } else {
+          setPhotoStatus('No Zillow photos found for this address.')
+        }
+      } catch {
+        setPhotoStatus('Could not fetch photos — listing saved without images.')
+      }
+
+      // Close modal after a brief delay so the user sees the status
+      setTimeout(() => {
+        setShowAddModal(false)
+        setSavingListing(false)
+        setPhotoStatus(null)
+        form.reset()
+        setListingType('open-room')
+      }, 1500)
+    } else {
+      setSavingListing(false)
+      setPhotoStatus(null)
     }
   }
 
@@ -478,11 +526,19 @@ export default function LandlordPortal() {
                 </div>
               </div>
 
+              {photoStatus && (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-surf-lo rounded-xl border border-out-var/40">
+                  <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.15)', borderTopColor: '#6b4c3b', width: 16, height: 16, flexShrink: 0 }} />
+                  <span className="text-xs font-body text-clay-dark">{photoStatus}</span>
+                </div>
+              )}
+
               <button
                 type="submit"
-                className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25 mt-2">
-                <span className="material-symbols-outlined text-base">save</span>
-                Save Listing
+                disabled={savingListing}
+                className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25 mt-2 disabled:opacity-60">
+                <span className="material-symbols-outlined text-base">{savingListing ? 'hourglass_top' : 'save'}</span>
+                {savingListing ? 'Saving…' : 'Save Listing'}
               </button>
             </form>
           </div>
