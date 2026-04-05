@@ -8,9 +8,10 @@ export function generateStaticParams() {
   return LISTINGS.map((l) => ({ slug: l.slug }))
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   // Try mock listing first
-  const listing = getListingBySlug(params.slug)
+  const listing = getListingBySlug(slug)
   if (listing) {
     return {
       title: `${listing.title} — UTenancy Student Housing`,
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const { data } = await supabase
     .from('listings')
     .select('address, city, description')
-    .eq('id', params.slug)
+    .eq('id', slug)
     .single()
 
   if (data) {
@@ -36,9 +37,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {}
 }
 
-export default async function ListingPage({ params }: { params: { slug: string } }) {
+export default async function ListingPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   // Try mock listing first
-  const mockListing = getListingBySlug(params.slug)
+  const mockListing = getListingBySlug(slug)
   if (mockListing) return <ListingDetail listing={mockListing} />
 
   // Try DB listing (slug is a UUID)
@@ -46,7 +48,7 @@ export default async function ListingPage({ params }: { params: { slug: string }
   const { data: dbListing } = await supabase
     .from('listings')
     .select('*, landlord:profiles!landlord_id(first_name, last_name, company)')
-    .eq('id', params.slug)
+    .eq('id', slug)
     .single()
 
   if (!dbListing) notFound()
