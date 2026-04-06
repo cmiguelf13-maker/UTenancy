@@ -582,6 +582,16 @@ export default function LandlordPortal() {
         : 'Photos failed to upload — saved as draft.')
     } else {
       setAddStatus('Saved as draft — add photos and complete all fields to publish.')
+      setTimeout(() => {
+        setShowAddModal(false)
+        setSavingAdd(false)
+        setAddStatus(null)
+        setAddFiles([])
+        setAddPreviews([])
+        setAddAmenities([])
+        setAddListingType('open-room')
+        form.reset()
+      }, 2000)
     }
 
     setTimeout(() => {
@@ -627,7 +637,7 @@ export default function LandlordPortal() {
     setEditStatus('Saving…')
 
     /* Delete any images the user removed from the existing set */
-    const removedImages = editListing.images.filter((url) => !editExistingImgs.includes(url))
+    const removedImages = (editListing.images ?? []).filter((url) => !editExistingImgs.includes(url))
     if (removedImages.length > 0) {
       const paths = removedImages.map(storagePathFromUrl).filter(Boolean)
       if (paths.length > 0) await supabase.storage.from('listing-images').remove(paths)
@@ -785,6 +795,10 @@ export default function LandlordPortal() {
             <Link href="/messages"
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
               <span className="material-symbols-outlined text-base">chat</span> Messages
+            </Link>
+            <Link href="/profile"
+              className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
+              <span className="material-symbols-outlined text-base">manage_accounts</span> Profile
             </Link>
             <Link href="/"
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
@@ -947,7 +961,7 @@ export default function LandlordPortal() {
             style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)', maxHeight: '90vh' }}>
             {/* Header */}
             <div className="flex-shrink-0 px-8 pt-8 pb-2">
-              <button onClick={() => { setShowAddModal(false); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('open-room') }}
+              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('open-room') }}
                 className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
