@@ -8,13 +8,11 @@ import { Listing } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 
 /* ─── Types ─────────────────────────────────────── */
-type ListingStatus = 'active' | 'pending' | 'filled' | 'draft'
+type ListingStatus = 'active' | 'draft'
 
 /* ─── Status badge ───────────────────────────────── */
 const STATUS_CONFIG: Record<ListingStatus, { label: string; bg: string; dot: string }> = {
   active:  { label: 'Active',  bg: 'bg-green-50 text-green-700 border border-green-200',  dot: 'bg-green-500' },
-  pending: { label: 'Pending', bg: 'bg-amber-50 text-amber-700 border border-amber-200',  dot: 'bg-amber-500' },
-  filled:  { label: 'Filled',  bg: 'bg-blue-50 text-blue-700 border border-blue-200',     dot: 'bg-blue-500' },
   draft:   { label: 'Draft',   bg: 'bg-stone-100 text-stone-500 border border-stone-200', dot: 'bg-stone-400' },
 }
 
@@ -135,6 +133,8 @@ export default function LandlordPortal() {
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [savingListing, setSavingListing] = useState(false)
   const [photoStatus, setPhotoStatus] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [filePreviews, setFilePreviews] = useState<string[]>([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -156,6 +156,22 @@ export default function LandlordPortal() {
     })
   }, [])
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    setSelectedFiles(files)
+    // Generate previews
+    const previews = files.map((f) => URL.createObjectURL(f))
+    setFilePreviews(previews)
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
+    setFilePreviews((prev) => {
+      URL.revokeObjectURL(prev[index])
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
   async function handleAddListing(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -168,43 +184,62 @@ export default function LandlordPortal() {
     const bathrooms = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
     const rent = parseInt((form.elements.namedItem('rent') as HTMLInputElement).value)
 
-    if (!address || !city || !rent) return
+    // Determine if listing is complete or should be a draft
+    const hasPhotos = selectedFiles.length > 0
+    const hasRequiredFields = !!(address && city && rent && !isNaN(bedrooms) && !isNaN(bathrooms))
+    const isDraft = !hasPhotos || !hasRequiredFields
+
+    if (!address && !city) return // need at least something to save
 
     setSavingListing(true)
-    setPhotoStatus('Saving listing…')
+    setPhotoStatus(isDraft ? 'Saving as draft…' : 'Saving listing…')
 
     const { data, error } = await supabase
       .from('listings')
       .insert({
         landlord_id: user.id,
-        address,
-        city,
+        address: address || 'Untitled',
+        city: city || '',
         unit: unit || null,
-        bedrooms,
-        bathrooms,
-        rent,
+        bedrooms: isNaN(bedrooms) ? 0 : bedrooms,
+        bathrooms: isNaN(bathrooms) ? 0 : bathrooms,
+        rent: isNaN(rent) ? 0 : rent,
         type: listingType,
-        status: 'active',
+        status: isDraft ? 'draft' : 'active',
+        images: [],
       })
       .select()
       .single()
 
     if (!error && data) {
-      // Add listing immediately so the user sees it
       setListings((prev) => [data, ...prev])
 
-      // Fetch Zillow photos in the background
-      setPhotoStatus('Fetching property photos from Zillow…')
-      try {
-        const params = new URLSearchParams({ address, city, state: 'CA' })
-        const res = await fetch(`/api/zillow-photos?${params}`)
-        const json = await res.json()
+      // Upload landlord photos if any
+      if (selectedFiles.length > 0) {
+        setPhotoStatus(`Uploading ${selectedFiles.length} photo${selectedFiles.length > 1 ? 's' : ''}…`)
+        const uploadedUrls: string[] = []
 
-        if (json.photos && json.photos.length > 0) {
-          // Update the listing in DB with photos
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i]
+          const ext = file.name.split('.').pop() ?? 'jpg'
+          const path = `${data.id}/${Date.now()}_${i}.${ext}`
+
+          const { error: uploadErr } = await supabase.storage
+            .from('listing-images')
+            .upload(path, file, { cacheControl: '3600', upsert: false })
+
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage
+              .from('listing-images')
+              .getPublicUrl(path)
+            uploadedUrls.push(urlData.publicUrl)
+          }
+        }
+
+        if (uploadedUrls.length > 0) {
           const { data: updated } = await supabase
             .from('listings')
-            .update({ images: json.photos })
+            .update({ images: uploadedUrls })
             .eq('id', data.id)
             .select()
             .single()
@@ -214,22 +249,24 @@ export default function LandlordPortal() {
               prev.map((l) => (l.id === data.id ? updated : l)),
             )
           }
-          setPhotoStatus(`Found ${json.photos.length} photos!`)
-        } else {
-          setPhotoStatus('No Zillow photos found for this address.')
+          setPhotoStatus(`Uploaded ${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''}!`)
         }
-      } catch {
-        setPhotoStatus('Could not fetch photos — listing saved without images.')
       }
 
-      // Close modal after a brief delay so the user sees the status
+      setPhotoStatus(isDraft
+        ? 'Saved as draft — add photos and complete all fields to publish.'
+        : 'Listing published!')
+
+      // Close modal after a brief delay
       setTimeout(() => {
         setShowAddModal(false)
         setSavingListing(false)
         setPhotoStatus(null)
+        setSelectedFiles([])
+        setFilePreviews([])
         form.reset()
         setListingType('open-room')
-      }, 1500)
+      }, 2000)
     } else {
       setSavingListing(false)
       setPhotoStatus(null)
@@ -267,7 +304,7 @@ export default function LandlordPortal() {
   const filteredListings = filter === 'all' ? listings : listings.filter((l) => l.status === filter)
   const totalApplicants = listings.reduce((s, l) => s + (Array.isArray(l.interest_count) ? (l.interest_count[0]?.count ?? 0) : (l.interest_count ?? 0)), 0)
   const activeCount = listings.filter((l) => l.status === 'active').length
-  const vacancies = listings.filter((l) => l.status !== 'filled').length
+  const draftCount = listings.filter((l) => l.status === 'draft').length
 
   return (
     <div className="min-h-screen bg-cream">
@@ -289,7 +326,7 @@ export default function LandlordPortal() {
 
           {/* Centre actions */}
           <div className="hidden md:flex items-center gap-1 bg-surf-hi border border-out-var rounded-full px-1 py-1">
-            {(['all', 'active', 'pending', 'draft', 'filled'] as const).map((f) => (
+            {(['all', 'active', 'draft'] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-4 py-1.5 rounded-full text-xs font-head font-bold capitalize transition-all
                   ${filter === f ? 'clay-grad text-white shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
@@ -300,6 +337,12 @@ export default function LandlordPortal() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
+            {/* Messages */}
+            <Link href="/messages"
+              className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
+              <span className="material-symbols-outlined text-base">chat</span>
+              Messages
+            </Link>
             {/* View public site */}
             <Link href="/"
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
@@ -349,7 +392,7 @@ export default function LandlordPortal() {
           <StatCard icon="home_work"   value={listings.length} label="Total Properties"  sub="Across all statuses" />
           <StatCard icon="check_circle" value={activeCount}          label="Active Listings"   sub="Visible to students" />
           <StatCard icon="group"        value={totalApplicants}      label="Total Applicants"  sub="Awaiting your review" />
-          <StatCard icon="door_open"    value={vacancies}            label="Open Vacancies"    sub="Not yet filled" />
+          <StatCard icon="edit_note"     value={draftCount}           label="Drafts"            sub="Incomplete listings" />
         </div>
 
         {/* Section heading */}
@@ -360,7 +403,7 @@ export default function LandlordPortal() {
           </h2>
           {/* Mobile filter */}
           <div className="flex md:hidden gap-1 overflow-x-auto">
-            {(['all', 'active', 'pending', 'draft'] as const).map((f) => (
+            {(['all', 'active', 'draft'] as const).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize whitespace-nowrap transition-all
                   ${filter === f ? 'clay-grad text-white' : 'bg-white border border-out-var text-muted'}`}>
@@ -477,14 +520,14 @@ export default function LandlordPortal() {
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Street Address</label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_on</span>
-                  <input type="text" name="address" className="auth-input" placeholder="6570 W 84th Place" required />
+                  <input type="text" name="address" className="auth-input" placeholder="6570 W 84th Place" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">City</label>
-                  <input type="text" name="city" className="auth-input no-icon" placeholder="Los Angeles" required />
+                  <input type="text" name="city" className="auth-input no-icon" placeholder="Los Angeles" />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit (optional)</label>
@@ -495,15 +538,15 @@ export default function LandlordPortal() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds</label>
-                  <input type="number" name="bedrooms" min={1} className="auth-input no-icon" placeholder="3" required />
+                  <input type="number" name="bedrooms" min={1} className="auth-input no-icon" placeholder="3" />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths</label>
-                  <input type="number" name="bathrooms" min={1} step={0.5} className="auth-input no-icon" placeholder="2" required />
+                  <input type="number" name="bathrooms" min={1} step={0.5} className="auth-input no-icon" placeholder="2" />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo</label>
-                  <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950" required />
+                  <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950" />
                 </div>
               </div>
 
@@ -524,6 +567,39 @@ export default function LandlordPortal() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* ── Photo Upload ── */}
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
+                  Property Photos <span className="font-normal normal-case text-muted">(required to publish — without photos, listing saves as draft)</span>
+                </label>
+                <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-out-var rounded-xl cursor-pointer hover:border-clay/50 hover:bg-surf-lo/50 transition-all">
+                  <span className="material-symbols-outlined text-outline text-xl">add_a_photo</span>
+                  <span className="text-sm font-body text-muted">Click to upload images</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                </label>
+                {filePreviews.length > 0 && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                    {filePreviews.map((src, i) => (
+                      <div key={i} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-out-var group">
+                        <img src={src} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="material-symbols-outlined text-white" style={{ fontSize: 14 }}>close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {photoStatus && (
