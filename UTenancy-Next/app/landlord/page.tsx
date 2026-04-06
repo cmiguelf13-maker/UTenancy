@@ -234,6 +234,181 @@ function ListingCard({
   )
 }
 
+/* ─── ListingFormFields ─────────────────────────────── */
+function ListingFormFields({
+  defaults,
+  listingType,
+  setListingType,
+  amenities,
+  setAmenities,
+  existingImagePreviews,
+  onRemoveExisting,
+  newPreviews,
+  onRemoveNew,
+  onNewFileSelect,
+  saving,
+  statusMsg,
+}: {
+  defaults?: Listing | null
+  listingType: 'open-room' | 'group-formation'
+  setListingType: (t: 'open-room' | 'group-formation') => void
+  amenities: string[]
+  setAmenities: (a: string[]) => void
+  existingImagePreviews?: string[]
+  onRemoveExisting?: (url: string) => void
+  newPreviews: string[]
+  onRemoveNew: (i: number) => void
+  onNewFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
+  saving: boolean
+  statusMsg: string | null
+}) {
+  return (
+    <>
+      {/* Address */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Street Address *</label>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_on</span>
+          <input type="text" name="address" className="auth-input" placeholder="6570 W 84th Place"
+            defaultValue={defaults?.address ?? ''} required />
+        </div>
+      </div>
+
+      {/* City / Unit */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">City *</label>
+          <input type="text" name="city" className="auth-input no-icon" placeholder="Los Angeles"
+            defaultValue={defaults?.city ?? ''} required />
+        </div>
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit (optional)</label>
+          <input type="text" name="unit" className="auth-input no-icon" placeholder="Unit 3B"
+            defaultValue={defaults?.unit ?? ''} />
+        </div>
+      </div>
+
+      {/* State / Zip */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">State</label>
+          <input type="text" name="state" maxLength={2} className="auth-input no-icon" placeholder="CA"
+            defaultValue={defaults?.state ?? 'CA'} />
+        </div>
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Zip Code</label>
+          <input type="text" name="zip" maxLength={10} className="auth-input no-icon" placeholder="90045"
+            defaultValue={defaults?.zip ?? ''} />
+        </div>
+      </div>
+
+      {/* Beds / Baths / Rent */}
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds *</label>
+          <input type="number" name="bedrooms" min={1} className="auth-input no-icon" placeholder="3"
+            defaultValue={defaults?.bedrooms ?? ''} required />
+        </div>
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths *</label>
+          <input type="number" name="bathrooms" min={0.5} step={0.5} className="auth-input no-icon" placeholder="2"
+            defaultValue={defaults?.bathrooms ?? ''} required />
+        </div>
+        <div>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo *</label>
+          <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950"
+            defaultValue={defaults?.rent ?? ''} required />
+        </div>
+      </div>
+
+      {/* Type toggle */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Listing Type</label>
+        <div className="flex gap-2">
+          {(['open-room', 'group-formation'] as const).map((t) => (
+            <button key={t} type="button" onClick={() => setListingType(t)}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-head font-bold border transition-all
+                ${listingType === t
+                  ? 'clay-grad text-white border-transparent shadow-sm'
+                  : 'border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
+              {t === 'open-room' ? 'Open Room' : 'Group Formation'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Description</label>
+        <textarea name="description" rows={3} defaultValue={defaults?.description ?? ''}
+          placeholder="Describe the property, neighbourhood, lease terms…"
+          className="w-full bg-white border-[1.5px] border-out-var rounded-xl px-4 py-3 font-body text-sm text-stone outline-none resize-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990]" />
+      </div>
+
+      {/* Amenities */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-1">Amenities</label>
+        <AmenityPills selected={amenities} onChange={setAmenities} />
+      </div>
+
+      {/* Photos */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
+          Property Photos
+          <span className="font-normal normal-case text-muted ml-1">(1+ photo required to publish)</span>
+        </label>
+
+        {/* Existing images (edit mode) */}
+        {existingImagePreviews && existingImagePreviews.length > 0 && (
+          <div className="mb-2">
+            <p className="text-[11px] font-body text-muted mb-1">Current photos — click × to remove</p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {existingImagePreviews.map((url, i) => (
+                <div key={i} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-out-var group">
+                  <img src={url} alt={`Existing ${i + 1}`} className="w-full h-full object-cover" />
+                  {onRemoveExisting && (
+                    <button type="button" onClick={() => onRemoveExisting(url)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="material-symbols-outlined text-white" style={{ fontSize: 14 }}>close</span>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* New file upload */}
+        <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-out-var rounded-xl cursor-pointer hover:border-clay/50 hover:bg-surf-lo/50 transition-all">
+          <span className="material-symbols-outlined text-outline text-xl">add_a_photo</span>
+          <span className="text-sm font-body text-muted">
+            {existingImagePreviews ? 'Add more photos' : 'Click to upload images'}
+          </span>
+          <input type="file" accept="image/*" multiple className="hidden" onChange={onNewFileSelect} />
+        </label>
+        <PhotoStrip previews={newPreviews} onRemove={onRemoveNew} />
+      </div>
+
+      {/* Status message */}
+      {statusMsg && (
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-surf-lo rounded-xl border border-out-var/40">
+          {saving
+            ? <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.15)', borderTopColor: '#6b4c3b', width: 16, height: 16, flexShrink: 0 }} />
+            : <span className="material-symbols-outlined text-clay text-base">info</span>}
+          <span className="text-xs font-body text-clay-dark">{statusMsg}</span>
+        </div>
+      )}
+
+      {/* Submit */}
+      <button type="submit" disabled={saving}
+        className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25 mt-2 disabled:opacity-60">
+        <span className="material-symbols-outlined text-base">{saving ? 'hourglass_top' : 'save'}</span>
+        {saving ? 'Saving…' : 'Save Listing'}
+      </button>
+    </>
+  )
+}
+
 /* ─── Main portal page ──────────────────────────────── */
 export default function LandlordPortal() {
   const router   = useRouter()
@@ -575,184 +750,8 @@ export default function LandlordPortal() {
   const totalApplicants = listings.reduce((s, l) =>
     s + (Array.isArray(l.interest_count) ? (l.interest_count[0]?.count ?? 0) : (l.interest_count ?? 0)), 0)
   const activeCount   = listings.filter((l) => l.status === 'active').length
-  const draftCount    = listings.filter((l) => l.status === 'draft').length
   const rentedCount   = listings.filter((l) => l.status === 'rented').length
   const archivedCount = listings.filter((l) => l.status === 'archived').length
-
-  /* ─── Shared form fields (used in both Add and Edit modals) ─── */
-  function ListingFormFields({
-    defaults,
-    listingType,
-    setListingType,
-    amenities,
-    setAmenities,
-    existingImagePreviews,
-    onRemoveExisting,
-    newPreviews,
-    onRemoveNew,
-    onNewFileSelect,
-    saving,
-    statusMsg,
-  }: {
-    defaults?: Listing | null
-    listingType: 'open-room' | 'group-formation'
-    setListingType: (t: 'open-room' | 'group-formation') => void
-    amenities: string[]
-    setAmenities: (a: string[]) => void
-    existingImagePreviews?: string[]
-    onRemoveExisting?: (url: string) => void
-    newPreviews: string[]
-    onRemoveNew: (i: number) => void
-    onNewFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
-    saving: boolean
-    statusMsg: string | null
-  }) {
-    return (
-      <>
-        {/* Address */}
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Street Address *</label>
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_on</span>
-            <input type="text" name="address" className="auth-input" placeholder="6570 W 84th Place"
-              defaultValue={defaults?.address ?? ''} required />
-          </div>
-        </div>
-
-        {/* City / Unit */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">City *</label>
-            <input type="text" name="city" className="auth-input no-icon" placeholder="Los Angeles"
-              defaultValue={defaults?.city ?? ''} required />
-          </div>
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit (optional)</label>
-            <input type="text" name="unit" className="auth-input no-icon" placeholder="Unit 3B"
-              defaultValue={defaults?.unit ?? ''} />
-          </div>
-        </div>
-
-        {/* State / Zip */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">State</label>
-            <input type="text" name="state" maxLength={2} className="auth-input no-icon" placeholder="CA"
-              defaultValue={defaults?.state ?? 'CA'} />
-          </div>
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Zip Code</label>
-            <input type="text" name="zip" maxLength={10} className="auth-input no-icon" placeholder="90045"
-              defaultValue={defaults?.zip ?? ''} />
-          </div>
-        </div>
-
-        {/* Beds / Baths / Rent */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds *</label>
-            <input type="number" name="bedrooms" min={1} className="auth-input no-icon" placeholder="3"
-              defaultValue={defaults?.bedrooms ?? ''} required />
-          </div>
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths *</label>
-            <input type="number" name="bathrooms" min={0.5} step={0.5} className="auth-input no-icon" placeholder="2"
-              defaultValue={defaults?.bathrooms ?? ''} required />
-          </div>
-          <div>
-            <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo *</label>
-            <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950"
-              defaultValue={defaults?.rent ?? ''} required />
-          </div>
-        </div>
-
-        {/* Type toggle */}
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Listing Type</label>
-          <div className="flex gap-2">
-            {(['open-room', 'group-formation'] as const).map((t) => (
-              <button key={t} type="button" onClick={() => setListingType(t)}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-head font-bold border transition-all
-                  ${listingType === t
-                    ? 'clay-grad text-white border-transparent shadow-sm'
-                    : 'border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
-                {t === 'open-room' ? 'Open Room' : 'Group Formation'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Description</label>
-          <textarea name="description" rows={3} defaultValue={defaults?.description ?? ''}
-            placeholder="Describe the property, neighbourhood, lease terms…"
-            className="w-full bg-white border-[1.5px] border-out-var rounded-xl px-4 py-3 font-body text-sm text-stone outline-none resize-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990]" />
-        </div>
-
-        {/* Amenities */}
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-1">Amenities</label>
-          <AmenityPills selected={amenities} onChange={setAmenities} />
-        </div>
-
-        {/* Photos */}
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
-            Property Photos
-            <span className="font-normal normal-case text-muted ml-1">(1+ photo required to publish)</span>
-          </label>
-
-          {/* Existing images (edit mode) */}
-          {existingImagePreviews && existingImagePreviews.length > 0 && (
-            <div className="mb-2">
-              <p className="text-[11px] font-body text-muted mb-1">Current photos — click × to remove</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {existingImagePreviews.map((url, i) => (
-                  <div key={i} className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-out-var group">
-                    <img src={url} alt={`Existing ${i + 1}`} className="w-full h-full object-cover" />
-                    {onRemoveExisting && (
-                      <button type="button" onClick={() => onRemoveExisting(url)}
-                        className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="material-symbols-outlined text-white" style={{ fontSize: 14 }}>close</span>
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* New file upload */}
-          <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-out-var rounded-xl cursor-pointer hover:border-clay/50 hover:bg-surf-lo/50 transition-all">
-            <span className="material-symbols-outlined text-outline text-xl">add_a_photo</span>
-            <span className="text-sm font-body text-muted">
-              {existingImagePreviews ? 'Add more photos' : 'Click to upload images'}
-            </span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={onNewFileSelect} />
-          </label>
-          <PhotoStrip previews={newPreviews} onRemove={onRemoveNew} />
-        </div>
-
-        {/* Status message */}
-        {statusMsg && (
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-surf-lo rounded-xl border border-out-var/40">
-            {saving
-              ? <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.15)', borderTopColor: '#6b4c3b', width: 16, height: 16, flexShrink: 0 }} />
-              : <span className="material-symbols-outlined text-clay text-base">info</span>}
-            <span className="text-xs font-body text-clay-dark">{statusMsg}</span>
-          </div>
-        )}
-
-        {/* Submit */}
-        <button type="submit" disabled={saving}
-          className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25 mt-2 disabled:opacity-60">
-          <span className="material-symbols-outlined text-base">{saving ? 'hourglass_top' : 'save'}</span>
-          {saving ? 'Saving…' : 'Save Listing'}
-        </button>
-      </>
-    )
-  }
 
   /* ─── RENDER ─── */
   return (
