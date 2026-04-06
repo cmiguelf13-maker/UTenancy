@@ -15,6 +15,7 @@ export interface Profile {
   smoking: boolean
   pets: boolean
   studying: string | null
+  email: string | null
   phone: string | null
   company: string | null
   updated_at: string
@@ -32,7 +33,8 @@ export interface Listing {
   bathrooms: number
   rent: number
   type: 'open-room' | 'group-formation'
-  status: 'active' | 'draft'
+  /** active = published; draft = incomplete; rented = filled; archived = closed out */
+  status: 'active' | 'draft' | 'rented' | 'archived'
   description: string | null
   amenities: string[]
   images: string[]
