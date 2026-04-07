@@ -95,11 +95,9 @@ export default function Nav() {
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 clay-grad rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
-            <span className="text-white font-head font-black text-sm leading-none">U</span>
-          </div>
-          <span className="font-head font-black text-xl text-clay-dark tracking-tight">Tenancy</span>
+        <Link href="/" className="flex items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="UTenancy" className="h-10 w-auto" />
         </Link>
 
         {/* Desktop links */}
