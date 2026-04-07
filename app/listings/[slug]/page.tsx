@@ -45,11 +45,13 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
 
   // Try DB listing (slug is a UUID)
   const supabase = createServerClient()
-  const { data: dbListing } = await supabase
+  const { data: dbListing, error } = await supabase
     .from('listings')
-    .select('*, landlord:profiles!landlord_id(first_name, last_name, company)')
+    .select('*')
     .eq('id', slug)
     .single()
+
+  if (error) console.error('[listing page] fetch error:', error.message)
 
   if (!dbListing) notFound()
 
