@@ -38,6 +38,11 @@ export interface Listing {
   description: string | null
   amenities: string[]
   images: string[]
+  available_date: string | null
+  lease_term: string | null
+  deposit: number | null
+  utilities: string | null
+  pets_allowed: string | null
   created_at: string
   updated_at: string
   // optional joined fields
