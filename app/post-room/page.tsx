@@ -30,6 +30,13 @@ export default function PostRoomPage() {
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
 
+  // Lease detail fields
+  const [availableDate, setAvailableDate] = useState('')
+  const [leaseTerm, setLeaseTerm] = useState('12 months')
+  const [deposit, setDeposit] = useState('')
+  const [utilities, setUtilities] = useState('Tenant pays')
+  const [petsAllowed, setPetsAllowed] = useState('Negotiable')
+
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -140,6 +147,11 @@ export default function PostRoomPage() {
           description: description || null,
           amenities,
           images: [],
+          available_date: availableDate || null,
+          lease_term: leaseTerm,
+          deposit: deposit ? Number(deposit) : null,
+          utilities,
+          pets_allowed: petsAllowed,
         })
         .select()
         .single()
@@ -248,22 +260,22 @@ export default function PostRoomPage() {
           <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
             <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Room Details</h2>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds *</label>
                 <select value={bedrooms} onChange={e => setBedrooms(Number(e.target.value))} required
                   className="w-full px-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white">
                   {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths *</label>
                 <select value={bathrooms} onChange={e => setBathrooms(Number(e.target.value))} required
                   className="w-full px-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white">
                   {[1, 1.5, 2, 2.5, 3].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              <div>
+              <div className="min-w-0 col-span-2 sm:col-span-1">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent/mo *</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
@@ -278,6 +290,83 @@ export default function PostRoomPage() {
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
                 placeholder="Describe the room, house vibe, what you're looking for in a roommate…"
                 className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none resize-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990] bg-white" />
+            </div>
+          </div>
+
+          {/* Lease Details */}
+          <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Lease Details</h2>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Available From</label>
+                <input
+                  type="date"
+                  value={availableDate}
+                  onChange={(e) => setAvailableDate(e.target.value)}
+                  className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] bg-white"
+                />
+              </div>
+              <div className="min-w-0">
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Security Deposit</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={deposit}
+                    onChange={(e) => setDeposit(e.target.value)}
+                    placeholder="0"
+                    className="w-full pl-6 pr-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Lease Term</label>
+              <select
+                value={leaseTerm}
+                onChange={(e) => setLeaseTerm(e.target.value)}
+                className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white"
+              >
+                <option>Month-to-month</option>
+                <option>3 months</option>
+                <option>6 months</option>
+                <option>9 months</option>
+                <option>12 months</option>
+                <option>18 months</option>
+                <option>24 months</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Utilities</label>
+                <select
+                  value={utilities}
+                  onChange={(e) => setUtilities(e.target.value)}
+                  className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white"
+                >
+                  <option>Tenant pays</option>
+                  <option>Included in rent</option>
+                  <option>Partially included</option>
+                </select>
+              </div>
+              <div className="min-w-0">
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Pets Allowed</label>
+                <select
+                  value={petsAllowed}
+                  onChange={(e) => setPetsAllowed(e.target.value)}
+                  className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white"
+                >
+                  <option>Negotiable</option>
+                  <option>Yes</option>
+                  <option>No</option>
+                  <option>Cats only</option>
+                  <option>Small pets only</option>
+                </select>
+              </div>
             </div>
           </div>
 

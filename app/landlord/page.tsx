@@ -405,18 +405,18 @@ function ListingFormFields({
       </div>
 
       {/* Beds / Baths / Rent */}
-      <div className="grid grid-cols-3 gap-3">
-        <div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="min-w-0">
           <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds *</label>
           <input type="number" name="bedrooms" min={1} className="auth-input no-icon" placeholder="3"
             defaultValue={defaults?.bedrooms ?? ''} required />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths *</label>
           <input type="number" name="bathrooms" min={0.5} step={0.5} className="auth-input no-icon" placeholder="2"
             defaultValue={defaults?.bathrooms ?? ''} required />
         </div>
-        <div>
+        <div className="min-w-0 col-span-2 sm:col-span-1">
           <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo *</label>
           <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950"
             defaultValue={defaults?.rent ?? ''} required />
@@ -439,6 +439,84 @@ function ListingFormFields({
         <textarea name="description" rows={3} defaultValue={defaults?.description ?? ''}
           placeholder="Describe the property, neighbourhood, lease terms… or leave blank to auto-generate."
           className="w-full bg-white border-[1.5px] border-out-var rounded-xl px-4 py-3 font-body text-sm text-stone outline-none resize-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990]" />
+      </div>
+
+      {/* Lease Details */}
+      <div className="space-y-3 pt-1 pb-1">
+        <p className="text-xs font-head font-bold text-clay-dark uppercase tracking-wider">Lease Details</p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <label className="block text-xs font-head font-semibold text-muted uppercase tracking-wider mb-2">Available From</label>
+            <input
+              type="date"
+              name="available_date"
+              className="auth-input no-icon"
+              defaultValue={(defaults as any)?.available_date?.slice(0, 10) ?? ''}
+            />
+          </div>
+          <div className="min-w-0">
+            <label className="block text-xs font-head font-semibold text-muted uppercase tracking-wider mb-2">Security Deposit</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body pointer-events-none">$</span>
+              <input
+                type="number"
+                name="deposit"
+                min="0"
+                className="auth-input no-icon"
+                style={{ paddingLeft: 24 }}
+                placeholder="0"
+                defaultValue={(defaults as any)?.deposit ?? ''}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-head font-semibold text-muted uppercase tracking-wider mb-2">Lease Term</label>
+          <select
+            name="lease_term"
+            className="auth-input no-icon"
+            defaultValue={(defaults as any)?.lease_term ?? '12 months'}
+          >
+            <option>Month-to-month</option>
+            <option>3 months</option>
+            <option>6 months</option>
+            <option>9 months</option>
+            <option>12 months</option>
+            <option>18 months</option>
+            <option>24 months</option>
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <label className="block text-xs font-head font-semibold text-muted uppercase tracking-wider mb-2">Utilities</label>
+            <select
+              name="utilities"
+              className="auth-input no-icon"
+              defaultValue={(defaults as any)?.utilities ?? 'Tenant pays'}
+            >
+              <option>Tenant pays</option>
+              <option>Included in rent</option>
+              <option>Partially included</option>
+            </select>
+          </div>
+          <div className="min-w-0">
+            <label className="block text-xs font-head font-semibold text-muted uppercase tracking-wider mb-2">Pets Allowed</label>
+            <select
+              name="pets_allowed"
+              className="auth-input no-icon"
+              defaultValue={(defaults as any)?.pets_allowed ?? 'Negotiable'}
+            >
+              <option>Negotiable</option>
+              <option>Yes</option>
+              <option>No</option>
+              <option>Cats only</option>
+              <option>Small pets only</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Amenities */}
@@ -621,7 +699,12 @@ export default function LandlordPortal() {
     const bedrooms    = parseInt((form.elements.namedItem('bedrooms')  as HTMLInputElement).value)
     const bathrooms   = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
-    const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
+    const description   = (form.elements.namedItem('description')   as HTMLTextAreaElement).value.trim()
+    const availableDate = (form.elements.namedItem('available_date') as HTMLInputElement).value
+    const leaseTerm     = (form.elements.namedItem('lease_term')     as HTMLSelectElement).value
+    const depositRaw    = (form.elements.namedItem('deposit')        as HTMLInputElement).value
+    const utilities     = (form.elements.namedItem('utilities')      as HTMLSelectElement).value
+    const petsAllowed   = (form.elements.namedItem('pets_allowed')   as HTMLSelectElement).value
 
     if (!address) {
       setAddStatus('Please search and select a property address from the dropdown.')
@@ -656,11 +739,16 @@ export default function LandlordPortal() {
         bedrooms:     isNaN(bedrooms)  ? 1 : bedrooms,
         bathrooms:    isNaN(bathrooms) ? 1 : bathrooms,
         rent:         isNaN(rent)      ? 0 : rent,
-        type:         addListingType,
-        status:       isDraft ? 'draft' : 'active',
-        description:  finalDescription,
-        amenities:    addAmenities,
-        images:       [],
+        type:           addListingType,
+        status:         isDraft ? 'draft' : 'active',
+        description:    finalDescription,
+        amenities:      addAmenities,
+        images:         [],
+        available_date: availableDate || null,
+        lease_term:     leaseTerm || null,
+        deposit:        depositRaw ? parseInt(depositRaw) : null,
+        utilities:      utilities || null,
+        pets_allowed:   petsAllowed || null,
       })
       .select()
       .single()
@@ -743,7 +831,12 @@ export default function LandlordPortal() {
     const bedrooms    = parseInt((form.elements.namedItem('bedrooms')  as HTMLInputElement).value)
     const bathrooms   = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
-    const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
+    const description   = (form.elements.namedItem('description')   as HTMLTextAreaElement).value.trim()
+    const availableDate = (form.elements.namedItem('available_date') as HTMLInputElement).value
+    const leaseTerm     = (form.elements.namedItem('lease_term')     as HTMLSelectElement).value
+    const depositRaw    = (form.elements.namedItem('deposit')        as HTMLInputElement).value
+    const utilities     = (form.elements.namedItem('utilities')      as HTMLSelectElement).value
+    const petsAllowed   = (form.elements.namedItem('pets_allowed')   as HTMLSelectElement).value
 
     if (!address) {
       setEditStatus('Please search and select a property address from the dropdown.')
@@ -782,12 +875,17 @@ export default function LandlordPortal() {
         bedrooms:     isNaN(bedrooms)  ? editListing.bedrooms  : bedrooms,
         bathrooms:    isNaN(bathrooms) ? editListing.bathrooms : bathrooms,
         rent:         isNaN(rent)      ? editListing.rent      : rent,
-        type:         editListingType,
-        status:       newStatus,
-        description:  description || null,
-        amenities:    editAmenities,
-        images:       allImages,
-        updated_at:   new Date().toISOString(),
+        type:           editListingType,
+        status:         newStatus,
+        description:    description || null,
+        amenities:      editAmenities,
+        images:         allImages,
+        available_date: availableDate || null,
+        lease_term:     leaseTerm || null,
+        deposit:        depositRaw ? parseInt(depositRaw) : null,
+        utilities:      utilities || null,
+        pets_allowed:   petsAllowed || null,
+        updated_at:     new Date().toISOString(),
       })
       .eq('id', editListing.id)
       .select()
