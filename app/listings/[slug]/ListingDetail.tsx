@@ -7,7 +7,41 @@ import type { Listing } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
 
-/* ── Message Landlord button — creates or opens a conversation ── */
+/* ── Shared helper: open or create a 1-on-1 conversation with another user ── */
+async function openConversation(supabase: any, listingId: string, userId: string, otherUserId: string) {
+  const { data: myConvs } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id')
+    .eq('user_id', userId)
+  const myIds = myConvs?.map((r: any) => r.conversation_id) ?? []
+
+  if (myIds.length > 0) {
+    const { data: shared } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', otherUserId)
+      .in('conversation_id', myIds)
+    if (shared && shared.length > 0) {
+      window.location.href = `/messages/${shared[0].conversation_id}`
+      return
+    }
+  }
+
+  const { data: conv } = await supabase
+    .from('conversations')
+    .insert({ listing_id: listingId })
+    .select()
+    .single()
+  if (conv) {
+    await supabase.from('conversation_participants').insert([
+      { conversation_id: conv.id, user_id: userId },
+      { conversation_id: conv.id, user_id: otherUserId },
+    ])
+    window.location.href = `/messages/${conv.id}`
+  }
+}
+
+/* ── Message Landlord button (group-formation listings) ── */
 function MessageLandlordButton({ listingId, userId }: { listingId: string; userId: string }) {
   const [sending, setSending] = useState(false)
 
@@ -15,52 +49,10 @@ function MessageLandlordButton({ listingId, userId }: { listingId: string; userI
     setSending(true)
     const supabase = createClient()
     try {
-      // Find the landlord for this listing
-      const { data: listing } = await supabase
-        .from('listings')
-        .select('landlord_id')
-        .eq('id', listingId)
-        .single()
+      const { data: listing } = await supabase.from('listings').select('landlord_id').eq('id', listingId).single()
       if (!listing) { setSending(false); return }
-      const landlordId = listing.landlord_id
-
-      // Look for existing conversation between these two users
-      const { data: myConvs } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', userId)
-      const myIds = myConvs?.map((r: any) => r.conversation_id) ?? []
-
-      if (myIds.length > 0) {
-        const { data: shared } = await supabase
-          .from('conversation_participants')
-          .select('conversation_id')
-          .eq('user_id', landlordId)
-          .in('conversation_id', myIds)
-        if (shared && shared.length > 0) {
-          window.location.href = `/messages/${shared[0].conversation_id}`
-          return
-        }
-      }
-
-      // Create new conversation
-      const { data: conv } = await supabase
-        .from('conversations')
-        .insert({ listing_id: listingId })
-        .select()
-        .single()
-      if (conv) {
-        await supabase.from('conversation_participants').insert([
-          { conversation_id: conv.id, user_id: userId },
-          { conversation_id: conv.id, user_id: landlordId },
-        ])
-        window.location.href = `/messages/${conv.id}`
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSending(false)
-    }
+      await openConversation(supabase, listingId, userId, listing.landlord_id)
+    } catch (err) { console.error(err) } finally { setSending(false) }
   }
 
   return (
@@ -68,6 +60,29 @@ function MessageLandlordButton({ listingId, userId }: { listingId: string; userI
       className="w-full bg-surf text-clay-dark font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60">
       <span className="material-symbols-outlined text-sm">chat_bubble</span>
       {sending ? 'Opening chat…' : 'Message Landlord'}
+    </button>
+  )
+}
+
+/* ── Message Tenant button (open-room listings) ── */
+function MessageTenantButton({ listingId, userId }: { listingId: string; userId: string }) {
+  const [sending, setSending] = useState(false)
+
+  async function handleClick() {
+    setSending(true)
+    const supabase = createClient()
+    try {
+      const { data: listing } = await supabase.from('listings').select('landlord_id').eq('id', listingId).single()
+      if (!listing) { setSending(false); return }
+      await openConversation(supabase, listingId, userId, listing.landlord_id)
+    } catch (err) { console.error(err) } finally { setSending(false) }
+  }
+
+  return (
+    <button onClick={handleClick} disabled={sending}
+      className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2 disabled:opacity-60">
+      <span className="material-symbols-outlined text-sm">chat_bubble</span>
+      {sending ? 'Opening chat…' : 'Message Tenant'}
     </button>
   )
 }
@@ -533,8 +548,8 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
             <div className="divider mb-8" />
 
-            {/* Group formation */}
-            <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
+            {/* Group formation — only for group-formation listings */}
+            {listing.type !== 'open' && <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
@@ -557,7 +572,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
               <button onClick={() => setShowGroup(true)} className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20">
                 Join This Group
               </button>
-            </div>
+            </div>}
 
             {/* Verification pills */}
             <div className="reveal flex flex-wrap gap-3 mb-8">
@@ -595,19 +610,33 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
               {/* CTAs */}
               <div className="p-6 space-y-3">
-                <button onClick={() => setShowApply(true)} className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
-                </button>
-                <button onClick={() => setShowGroup(true)} className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
-                </button>
-                {user && user.user_metadata?.role !== 'landlord' ? (
-                  <MessageLandlordButton listingId={String(listing.id)} userId={user.id} />
-                ) : !user ? (
-                  <a href="/auth" className="w-full bg-surf text-muted font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen transition-all flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-sm">chat_bubble</span> Sign in to message
-                  </a>
-                ) : null}
+                {listing.type === 'open' ? (
+                  /* Open room: only "Message Tenant" */
+                  user && user.user_metadata?.role !== 'landlord' ? (
+                    <MessageTenantButton listingId={String(listing.id)} userId={user.id} />
+                  ) : !user ? (
+                    <a href="/auth" className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-sm">chat_bubble</span> Sign in to message tenant
+                    </a>
+                  ) : null
+                ) : (
+                  /* Group formation: full CTA set */
+                  <>
+                    <button onClick={() => setShowApply(true)} className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
+                    </button>
+                    <button onClick={() => setShowGroup(true)} className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
+                    </button>
+                    {user && user.user_metadata?.role !== 'landlord' ? (
+                      <MessageLandlordButton listingId={String(listing.id)} userId={user.id} />
+                    ) : !user ? (
+                      <a href="/auth" className="w-full bg-surf text-muted font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen transition-all flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined text-sm">chat_bubble</span> Sign in to message
+                      </a>
+                    ) : null}
+                  </>
+                )}
               </div>
 
               {/* Quick stats */}
