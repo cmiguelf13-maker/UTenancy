@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
@@ -300,44 +300,116 @@ function ListingFormFields({
   saving: boolean
   statusMsg: string | null
 }) {
+  const autocompleteInputRef = useRef<HTMLInputElement>(null)
+  const hiddenAddressRef     = useRef<HTMLInputElement>(null)
+  const hiddenCityRef        = useRef<HTMLInputElement>(null)
+  const hiddenStateRef       = useRef<HTMLInputElement>(null)
+  const hiddenZipRef         = useRef<HTMLInputElement>(null)
+
+  const [parsedAddress, setParsedAddress] = useState<{
+    street: string; city: string; state: string; zip: string
+  } | null>(
+    defaults?.address
+      ? { street: defaults.address, city: defaults.city ?? '', state: defaults.state ?? 'CA', zip: defaults.zip ?? '' }
+      : null
+  )
+
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    if (!key) return
+
+    function initAutocomplete() {
+      const inputEl = autocompleteInputRef.current
+      if (!inputEl || !(window as any).google) return
+      const ac = new (window as any).google.maps.places.Autocomplete(inputEl, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+        fields: ['address_components'],
+      })
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace()
+        const comps: { types: string[]; long_name: string; short_name: string }[] =
+          place.address_components ?? []
+        let streetNum = '', route = '', city = '', state = '', zip = ''
+        for (let i = 0; i < comps.length; i++) {
+          const c = comps[i]
+          if (c.types.indexOf('street_number') !== -1)               streetNum = c.long_name
+          else if (c.types.indexOf('route') !== -1)                  route     = c.short_name
+          else if (c.types.indexOf('locality') !== -1)               city      = c.long_name
+          else if (c.types.indexOf('administrative_area_level_1') !== -1) state = c.short_name
+          else if (c.types.indexOf('postal_code') !== -1)            zip       = c.long_name
+        }
+        const street = streetNum ? `${streetNum} ${route}` : route
+        setParsedAddress({ street, city, state, zip })
+        if (hiddenAddressRef.current) hiddenAddressRef.current.value = street
+        if (hiddenCityRef.current)    hiddenCityRef.current.value    = city
+        if (hiddenStateRef.current)   hiddenStateRef.current.value   = state
+        if (hiddenZipRef.current)     hiddenZipRef.current.value     = zip
+        // Show just the street in the visible input
+        if (autocompleteInputRef.current) autocompleteInputRef.current.value = street
+      })
+    }
+
+    const scriptId = 'google-maps-places-api'
+    if (document.getElementById(scriptId)) {
+      initAutocomplete()
+      return
+    }
+    const script    = document.createElement('script')
+    script.id       = scriptId
+    script.src      = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`
+    script.async    = true
+    script.onload   = initAutocomplete
+    document.head.appendChild(script)
+  }, [])
+
+  // Initial display value: show full address string so user can see what's saved
+  const displayValue = defaults?.address
+    ? [defaults.address, defaults.city, defaults.state].filter(Boolean).join(', ')
+    : ''
+
   return (
     <>
-      {/* Address */}
+      {/* Address Search */}
       <div>
-        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Street Address *</label>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
+          Property Address *
+        </label>
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_on</span>
-          <input type="text" name="address" className="auth-input" placeholder="6570 W 84th Place"
-            defaultValue={defaults?.address ?? ''} required />
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
+            search
+          </span>
+          <input
+            ref={autocompleteInputRef}
+            type="text"
+            className="auth-input"
+            placeholder="Search address…"
+            defaultValue={displayValue}
+            required
+          />
         </div>
+        {/* Hidden inputs — populated by autocomplete, read by form submit handlers */}
+        <input ref={hiddenAddressRef} type="hidden" name="address" defaultValue={defaults?.address ?? ''} />
+        <input ref={hiddenCityRef}    type="hidden" name="city"    defaultValue={defaults?.city    ?? ''} />
+        <input ref={hiddenStateRef}   type="hidden" name="state"   defaultValue={defaults?.state   ?? 'CA'} />
+        <input ref={hiddenZipRef}     type="hidden" name="zip"     defaultValue={defaults?.zip     ?? ''} />
       </div>
 
-      {/* City / Unit */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">City *</label>
-          <input type="text" name="city" className="auth-input no-icon" placeholder="Los Angeles"
-            defaultValue={defaults?.city ?? ''} required />
+      {/* Confirmed address chip — shown after autocomplete selection */}
+      {parsedAddress && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-surf-lo rounded-xl border border-out-var text-xs font-body">
+          <span className="material-symbols-outlined text-clay" style={{ fontSize: 15 }}>location_on</span>
+          <span className="font-semibold text-clay-dark">{parsedAddress.street}</span>
+          <span className="text-outline">·</span>
+          <span className="text-muted">{parsedAddress.city}, {parsedAddress.state} {parsedAddress.zip}</span>
         </div>
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit (optional)</label>
-          <input type="text" name="unit" className="auth-input no-icon" placeholder="Unit 3B"
-            defaultValue={defaults?.unit ?? ''} />
-        </div>
-      </div>
+      )}
 
-      {/* State / Zip */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">State</label>
-          <input type="text" name="state" maxLength={2} className="auth-input no-icon" placeholder="CA"
-            defaultValue={defaults?.state ?? 'CA'} />
-        </div>
-        <div>
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Zip Code</label>
-          <input type="text" name="zip" maxLength={10} className="auth-input no-icon" placeholder="90045"
-            defaultValue={defaults?.zip ?? ''} />
-        </div>
+      {/* Unit */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit (optional)</label>
+        <input type="text" name="unit" className="auth-input no-icon" placeholder="Unit 3B"
+          defaultValue={defaults?.unit ?? ''} />
       </div>
 
       {/* Beds / Baths / Rent */}
@@ -566,7 +638,10 @@ export default function LandlordPortal() {
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
 
-    if (!address || !city) return
+    if (!address || !city) {
+      setAddStatus('Please select an address from the dropdown to continue.')
+      return
+    }
 
     const hasRequired = !!(address && city && rent && !isNaN(bedrooms) && !isNaN(bathrooms))
     const isDraft = !hasRequired || addFiles.length === 0
@@ -683,6 +758,11 @@ export default function LandlordPortal() {
     const bathrooms   = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
+
+    if (!address) {
+      setEditStatus('Please select an address from the dropdown to continue.')
+      return
+    }
 
     setSavingEdit(true)
     setEditStatus('Saving…')
@@ -823,7 +903,7 @@ export default function LandlordPortal() {
         <div className="max-w-7xl mx-auto px-6 md:px-10 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="UTenancy" className="h-8 w-auto" />
+            <img src="/logo.png" alt="UTenancy" className="h-14 w-auto" />
             <span className="text-[10px] font-head font-bold text-terra uppercase tracking-widest leading-none">Landlord Portal</span>
           </div>
 
