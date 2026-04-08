@@ -254,7 +254,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8 relative">
             <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-out-var via-clay/30 to-out-var" />
             {[
-              { icon: 'verified_user', label: '01', title: 'Verify your .edu', body: 'Sign up with your university email. We verify it instantly — no manual review, no waiting. Students only, always.', bg: 'bg-linen border border-clay/20 shadow-clay/10', iconColor: 'text-clay' },
+              { icon: 'verified_user', label: '01', title: 'Verify your .edu', body: 'Sign up with your university email. We verify it instantly — no manual review, no waiting. Students only, always.', bg: 'clay-grad shadow-clay/20', iconColor: 'text-cream fill' },
               { icon: 'search',        label: '02', title: 'Browse & filter',  body: 'Real listings with real availability. Filter by price per person, distance from campus, move-in date, and listing type.', bg: 'bg-linen', iconColor: 'text-clay' },
               { icon: 'handshake',     label: '03', title: 'Move in & split',  body: "Once you're in, UTenancy handles rent splitting and shared expenses — keeping your whole house on the same page.", bg: 'bg-sec-con', iconColor: 'text-clay' },
             ].map((step, i) => (
@@ -574,7 +574,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row justify-between gap-12 mb-12">
             <div className="max-w-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="UTenancy" className="h-10 w-auto mb-4" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+              <img src="/logo.png" alt="UTenancy" className="h-14 w-auto mb-4" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
               <p className="font-body text-white/40 text-sm leading-relaxed">Student housing, reimagined. Verified listings, built-in rent tools, and a SaaS layer for landlords.</p>
             </div>
             {[
