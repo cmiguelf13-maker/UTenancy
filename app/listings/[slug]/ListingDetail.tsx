@@ -7,7 +7,31 @@ import type { Listing } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
 
-/* ── Shared helper: open or create a 1-on-1 conversation with another user ── */
+/* ── Types ─────────────────────────────────────────────────────── */
+type LandlordProfile = {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  company: string | null
+  bio: string | null
+  email: string | null
+  phone: string | null
+}
+
+type SimilarListing = {
+  id: string
+  address: string
+  city: string
+  state: string
+  rent: number
+  bedrooms: number
+  bathrooms: number
+  type: string
+  img: string
+  slug?: string
+}
+
+/* ── Shared helper: open or create a 1-on-1 conversation ─────── */
 async function openConversation(supabase: any, listingId: string, userId: string, otherUserId: string) {
   const { data: myConvs } = await supabase
     .from('conversation_participants')
@@ -41,7 +65,7 @@ async function openConversation(supabase: any, listingId: string, userId: string
   }
 }
 
-/* ── Message Landlord button (group-formation listings) ── */
+/* ── Message Landlord button (group-formation listings) ─────── */
 function MessageLandlordButton({ listingId, userId }: { listingId: string; userId: string }) {
   const [sending, setSending] = useState(false)
 
@@ -64,7 +88,7 @@ function MessageLandlordButton({ listingId, userId }: { listingId: string; userI
   )
 }
 
-/* ── Message Tenant button (open-room listings) ── */
+/* ── Message Tenant button (open-room listings) ─────────────── */
 function MessageTenantButton({ listingId, userId }: { listingId: string; userId: string }) {
   const [sending, setSending] = useState(false)
 
@@ -87,12 +111,137 @@ function MessageTenantButton({ listingId, userId }: { listingId: string; userId:
   )
 }
 
-/* ── Fallback photo when no images are available ── */
+/* ── Landlord card ───────────────────────────────────────────── */
+function LandlordCard({
+  profile,
+  listingId,
+  currentUser,
+}: {
+  profile: LandlordProfile
+  listingId: string
+  currentUser: any
+}) {
+  const [messaging, setMessaging] = useState(false)
+  const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Property Owner'
+  const initials = ((profile.first_name?.[0] ?? '') + (profile.last_name?.[0] ?? '')).toUpperCase() || 'LL'
+
+  async function handleMessage() {
+    if (!currentUser) { window.location.href = '/auth'; return }
+    setMessaging(true)
+    const supabase = createClient()
+    await openConversation(supabase, listingId, currentUser.id, profile.id)
+    setMessaging(false)
+  }
+
+  return (
+    <div className="reveal mb-8">
+      <h2 className="font-head text-xl font-bold text-clay-dark mb-4">About the Landlord</h2>
+      <div className="bg-surf-lo rounded-2xl border border-out-var/30 p-5">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="w-14 h-14 clay-grad rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+            <span className="text-white font-head font-black text-base">{initials}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-head font-bold text-clay-dark text-base">{fullName}</p>
+            {profile.company && (
+              <p className="text-sm font-body text-muted">{profile.company}</p>
+            )}
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="material-symbols-outlined fill text-clay text-sm">verified</span>
+              <span className="text-xs font-head font-semibold text-clay">UTenancy Verified</span>
+            </div>
+          </div>
+        </div>
+
+        {profile.bio && (
+          <p className="text-sm font-body text-muted leading-relaxed mb-4 italic">"{profile.bio}"</p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-4 text-xs font-body text-muted mb-4">
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm text-clay">schedule</span>
+            <span>Responds within 24 hours</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-sm text-clay">shield</span>
+            <span>Background checked</span>
+          </div>
+        </div>
+
+        {currentUser && currentUser.user_metadata?.role !== 'landlord' ? (
+          <button
+            onClick={handleMessage}
+            disabled={messaging}
+            className="w-full bg-white text-clay-dark font-head font-semibold text-sm py-2.5 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-sm">chat_bubble</span>
+            {messaging ? 'Opening chat…' : 'Message Landlord'}
+          </button>
+        ) : !currentUser ? (
+          <a
+            href="/auth"
+            className="block w-full text-center py-2.5 rounded-xl font-head font-semibold text-sm border border-out-var text-muted hover:border-clay/40 hover:text-clay transition-all"
+          >
+            Sign in to message
+          </a>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/* ── Similar listing card ────────────────────────────────────── */
+function SimilarListingCard({ listing }: { listing: SimilarListing }) {
+  const href = listing.slug ? `/listings/${listing.slug}` : `/listings/${listing.id}`
+  const isOpen = listing.type === 'open-room' || listing.type === 'open'
+
+  return (
+    <a href={href} className="group block flex-shrink-0 w-72 lg:w-auto">
+      <div className="bg-white rounded-2xl border border-out-var/40 overflow-hidden hover:shadow-lg hover:border-clay/20 transition-all duration-300">
+        <div className="relative h-44 overflow-hidden bg-linen">
+          {listing.img ? (
+            <img
+              src={listing.img}
+              alt={listing.address}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="absolute inset-0 clay-grad opacity-10" />
+          )}
+          <div className="absolute top-3 left-3">
+            <span className={`text-[10px] font-head font-bold px-2.5 py-1 rounded-full ${isOpen ? 'badge-open' : 'bg-espresso text-cream'}`}>
+              {isOpen ? 'Open Room' : 'Group Formation'}
+            </span>
+          </div>
+        </div>
+        <div className="p-4">
+          <p className="font-head font-bold text-clay-dark text-sm mb-1 truncate">{listing.address}</p>
+          <p className="text-xs font-body text-muted mb-3">{listing.city}, {listing.state}</p>
+          <div className="flex items-center justify-between">
+            <p className="font-display text-lg text-clay-dark font-light">
+              ${listing.rent.toLocaleString()}
+              <span className="text-xs text-muted font-body">/mo</span>
+            </p>
+            <div className="flex items-center gap-1.5 text-xs font-body text-muted">
+              <span className="material-symbols-outlined text-sm">bed</span>
+              <span>{listing.bedrooms}</span>
+              <span className="text-out-var">·</span>
+              <span className="material-symbols-outlined text-sm">bathtub</span>
+              <span>{listing.bathrooms}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  )
+}
+
+/* ── Fallback photo ──────────────────────────────────────────── */
 const FALLBACK_PHOTOS = [
   { src: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=960&q=75', alt: 'Property exterior' },
 ]
 
-/* ── Lightbox ── */
+/* ── Lightbox ────────────────────────────────────────────────── */
 type PhotoItem = { src: string; alt: string }
 function Lightbox({ index, onClose, photos }: { index: number; onClose: () => void; photos: PhotoItem[] }) {
   const [current, setCurrent] = useState(index)
@@ -132,16 +281,69 @@ function Lightbox({ index, onClose, photos }: { index: number; onClose: () => vo
   )
 }
 
-/* ── Apply Modal ── */
-function ApplyModal({ listing, onClose }: { listing: Listing; onClose: () => void }) {
+/* ── Apply Modal ─────────────────────────────────────────────── */
+function ApplyModal({ listing, user, onClose }: { listing: Listing; user: any; onClose: () => void }) {
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [alreadyApplied, setAlreadyApplied] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
+  const [moveIn, setMoveIn] = useState('')
+  const [roomsNeeded, setRoomsNeeded] = useState('')
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!user) return
+    const supabase = createClient()
+    supabase
+      .from('rent_applications')
+      .select('id')
+      .eq('listing_id', String(listing.id))
+      .eq('student_id', user.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) setAlreadyApplied(true)
+      })
+  }, [user, listing.id])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user) { window.location.href = '/auth'; return }
+    setSubmitting(true)
+    setApplyError(null)
+    const supabase = createClient()
+    const { error: insertErr } = await supabase.from('rent_applications').insert({
+      listing_id: String(listing.id),
+      student_id: user.id,
+      move_in_date: moveIn || null,
+      rooms_needed: roomsNeeded,
+      message: message,
+      application_type: 'direct',
+      status: 'pending',
+    })
+    setSubmitting(false)
+    if (insertErr) {
+      setApplyError('Something went wrong. Please try again.')
+    } else {
+      setSubmitted(true)
+    }
+  }
+
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="modal-box">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-clay transition-colors">
           <span className="material-symbols-outlined">close</span>
         </button>
-        {submitted ? (
+
+        {alreadyApplied ? (
+          <div className="text-center py-6">
+            <div className="check-circle mx-auto mb-4">
+              <span className="material-symbols-outlined text-white text-3xl fill">check</span>
+            </div>
+            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">Already <em>applied!</em></h3>
+            <p className="text-sm font-body text-muted">You've already submitted an application for this property. The landlord will review it and reach out.</p>
+          </div>
+        ) : submitted ? (
           <div className="text-center py-6">
             <div className="check-circle mx-auto mb-4">
               <span className="material-symbols-outlined text-white text-3xl fill">check</span>
@@ -152,15 +354,37 @@ function ApplyModal({ listing, onClose }: { listing: Listing; onClose: () => voi
         ) : (
           <>
             <h3 className="font-display text-2xl font-light text-clay-dark mb-1">Apply to rent</h3>
-            <p className="text-sm font-body text-muted mb-6">{listing.title} — {listing.beds} bed / {listing.baths} bath</p>
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setSubmitted(true) }}>
+            <p className="text-sm font-body text-muted mb-6">{listing.title} — {listing.beds} bed / {listing.baths ?? 1} bath</p>
+
+            {!user && (
+              <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-body text-amber-800">
+                You need to be signed in to apply.{' '}
+                <a href="/auth" className="font-bold underline">Sign in</a>
+              </div>
+            )}
+            {applyError && (
+              <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-body text-red-700">{applyError}</div>
+            )}
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="form-label">Move-in Date</label>
-                <input type="date" className="form-input" required />
+                <input
+                  type="date"
+                  className="form-input"
+                  required
+                  value={moveIn}
+                  onChange={(e) => setMoveIn(e.target.value)}
+                />
               </div>
               <div>
                 <label className="form-label">Rooms Needed</label>
-                <select className="form-input" required>
+                <select
+                  className="form-input"
+                  required
+                  value={roomsNeeded}
+                  onChange={(e) => setRoomsNeeded(e.target.value)}
+                >
                   <option value="">Select…</option>
                   <option>1 room (just me)</option>
                   <option>2 rooms (me + roommate)</option>
@@ -169,10 +393,22 @@ function ApplyModal({ listing, onClose }: { listing: Listing; onClose: () => voi
               </div>
               <div>
                 <label className="form-label">Note to Landlord</label>
-                <textarea className="form-input" rows={3} placeholder="Tell them a bit about yourself…" />
+                <textarea
+                  className="form-input"
+                  rows={3}
+                  placeholder="Tell them a bit about yourself — your schedule, lifestyle, why you'd be a great tenant…"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
               </div>
-              <button type="submit" className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all">
-                Submit Application
+              <button
+                type="submit"
+                disabled={submitting || !user}
+                className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting
+                  ? <><span className="spinner" /> Submitting…</>
+                  : <><span className="material-symbols-outlined text-sm">send</span> Submit Application</>}
               </button>
             </form>
           </>
@@ -182,22 +418,74 @@ function ApplyModal({ listing, onClose }: { listing: Listing; onClose: () => voi
   )
 }
 
-/* ── Group Modal ── */
-function GroupModal({ listing, onClose }: { listing: Listing; onClose: () => void }) {
+/* ── Group Modal ─────────────────────────────────────────────── */
+function GroupModal({ listing, user, onClose }: { listing: Listing; user: any; onClose: () => void }) {
   const [joined, setJoined] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [alreadyJoined, setAlreadyJoined] = useState(false)
+  const [groupError, setGroupError] = useState<string | null>(null)
+  const [moveIn, setMoveIn] = useState('')
+  const [roomsNeeded, setRoomsNeeded] = useState('1 room')
+
+  useEffect(() => {
+    if (!user) return
+    const supabase = createClient()
+    supabase
+      .from('rent_applications')
+      .select('id')
+      .eq('listing_id', String(listing.id))
+      .eq('student_id', user.id)
+      .eq('application_type', 'group')
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) setAlreadyJoined(true)
+      })
+  }, [user, listing.id])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!user) { window.location.href = '/auth'; return }
+    setSubmitting(true)
+    setGroupError(null)
+    const supabase = createClient()
+    const { error: insertErr } = await supabase.from('rent_applications').insert({
+      listing_id: String(listing.id),
+      student_id: user.id,
+      move_in_date: moveIn || null,
+      rooms_needed: roomsNeeded,
+      application_type: 'group',
+      status: 'pending',
+    })
+    setSubmitting(false)
+    if (insertErr) {
+      setGroupError('Something went wrong. Please try again.')
+    } else {
+      setJoined(true)
+    }
+  }
+
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="modal-box">
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-clay transition-colors">
           <span className="material-symbols-outlined">close</span>
         </button>
-        {joined ? (
+
+        {alreadyJoined ? (
+          <div className="text-center py-6">
+            <div className="check-circle mx-auto mb-4">
+              <span className="material-symbols-outlined text-white text-3xl fill">group</span>
+            </div>
+            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">You're <em>already in!</em></h3>
+            <p className="text-sm font-body text-muted">You've already joined this group. We'll notify you as more spots fill up.</p>
+          </div>
+        ) : joined ? (
           <div className="text-center py-6">
             <div className="check-circle mx-auto mb-4">
               <span className="material-symbols-outlined text-white text-3xl fill">group</span>
             </div>
             <h3 className="font-display text-2xl font-light text-clay-dark mb-2">You're <em>in the group!</em></h3>
-            <p className="text-sm font-body text-muted">2 of {listing.beds} spots filled. We'll notify you when the group is complete.</p>
+            <p className="text-sm font-body text-muted">You've joined the group. We'll notify you when all spots are filled.</p>
           </div>
         ) : (
           <>
@@ -206,19 +494,48 @@ function GroupModal({ listing, onClose }: { listing: Listing; onClose: () => voi
             <div className="progress-track mb-6">
               <div className="progress-fill" style={{ width: `${Math.round(100 / listing.beds)}%` }} />
             </div>
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setJoined(true) }}>
+
+            {!user && (
+              <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-body text-amber-800">
+                You need to be signed in to join.{' '}
+                <a href="/auth" className="font-bold underline">Sign in</a>
+              </div>
+            )}
+            {groupError && (
+              <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-body text-red-700">{groupError}</div>
+            )}
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="form-label">Your Move-in Date</label>
-                <input type="date" className="form-input" required />
+                <input
+                  type="date"
+                  className="form-input"
+                  required
+                  value={moveIn}
+                  onChange={(e) => setMoveIn(e.target.value)}
+                />
               </div>
               <div>
                 <label className="form-label">Rooms you need</label>
-                <select className="form-input" required>
-                  <option>1 room</option><option>2 rooms</option>
+                <select
+                  className="form-input"
+                  required
+                  value={roomsNeeded}
+                  onChange={(e) => setRoomsNeeded(e.target.value)}
+                >
+                  <option>1 room</option>
+                  <option>2 rooms</option>
                 </select>
               </div>
-              <button type="submit" className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all">
-                Join Group
+              <button
+                type="submit"
+                disabled={submitting || !user}
+                className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting
+                  ? <><span className="spinner" /> Joining…</>
+                  : <><span className="material-symbols-outlined text-sm">group_add</span> Join Group</>}
               </button>
             </form>
           </>
@@ -228,8 +545,16 @@ function GroupModal({ listing, onClose }: { listing: Listing; onClose: () => voi
   )
 }
 
-/* ── Main client component ── */
-export default function ListingDetail({ listing }: { listing: Listing }) {
+/* ── Main client component ───────────────────────────────────── */
+export default function ListingDetail({
+  listing,
+  landlordProfile,
+  similarListings = [],
+}: {
+  listing: Listing
+  landlordProfile?: LandlordProfile
+  similarListings?: SimilarListing[]
+}) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [showApply, setShowApply]         = useState(false)
   const [showGroup, setShowGroup]         = useState(false)
@@ -239,28 +564,26 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
   const [submitting, setSubmitting] = useState(false)
   const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null }>>([])
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
-
-  const perPerson = listing.beds > 0 ? Math.round(listing.price / listing.beds) : listing.price
-
-  // Use DB images if available, otherwise fall back to hardcoded sample photos
-  const dbImages = (listing as any).images as string[] | undefined
-  const hasDbImages = dbImages && dbImages.length > 0 && dbImages[0] !== ''
-  const PHOTOS = hasDbImages
-    ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
-    : FALLBACK_PHOTOS
-
-  // Distance from nearest school — computed on mount for DB listings
+  const [hasApplied, setHasApplied] = useState(false)
+  const [copyDone, setCopyDone] = useState(false)
   const [distanceInfo, setDistanceInfo] = useState<{ distanceMi: number; university: string } | null>(
     listing.distanceMi && listing.university
       ? { distanceMi: listing.distanceMi, university: listing.university }
       : null
   )
 
-  // Compute distance for DB listings that don't have it
+  const perPerson = listing.beds > 0 ? Math.round(listing.price / listing.beds) : listing.price
+
+  const dbImages = (listing as any).images as string[] | undefined
+  const hasDbImages = dbImages && dbImages.length > 0 && dbImages[0] !== ''
+  const PHOTOS = hasDbImages
+    ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
+    : FALLBACK_PHOTOS
+
+  // Compute distance for DB listings that don't have it pre-computed
   useEffect(() => {
     if (!distanceInfo && listing.title && listing.location) {
-      // listing.title = address, listing.location = "City, State"
-      const [city] = listing.location.split(',').map(s => s.trim())
+      const [city] = listing.location.split(',').map((s: string) => s.trim())
       getDistanceToNearestSchool(listing.title, city).then((info) => {
         if (info) setDistanceInfo(info)
       })
@@ -283,7 +606,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
     return () => io.disconnect()
   }, [])
 
-  // Load session + real interest data on mount
+  // Load session + interest data on mount
   useEffect(() => {
     async function loadSession() {
       const supabase = createClient()
@@ -291,7 +614,6 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
       const u = session?.user ?? null
       setUser(u)
 
-      // Fetch real interest count and interested students
       const { data: interests } = await supabase
         .from('listing_interests')
         .select('student_id, profile:profiles(id, first_name, last_name, university)')
@@ -299,16 +621,23 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
       if (interests) {
         setInterestCount(interests.length)
-        const students = interests
-          .map((i: any) => i.profile)
-          .filter(Boolean)
+        const students = interests.map((i: any) => i.profile).filter(Boolean)
         setInterestedStudents(students)
-
-        // Check if current user already expressed interest
         if (u) {
           const alreadyInterested = interests.some((i: any) => i.student_id === u.id)
           setInterested(alreadyInterested)
         }
+      }
+
+      // Check if already applied
+      if (u) {
+        const { data: apps } = await supabase
+          .from('rent_applications')
+          .select('id')
+          .eq('listing_id', String(listing.id))
+          .eq('student_id', u.id)
+          .limit(1)
+        if (apps && apps.length > 0) setHasApplied(true)
       }
     }
     loadSession()
@@ -326,23 +655,22 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
           .eq('listing_id', String(listing.id))
           .eq('student_id', user.id)
         setInterested(false)
-        setInterestCount(c => c - 1)
-        setInterestedStudents(prev => prev.filter(s => s.id !== user.id))
+        setInterestCount((c) => c - 1)
+        setInterestedStudents((prev) => prev.filter((s) => s.id !== user.id))
       } else {
         await supabase
           .from('listing_interests')
           .insert({ listing_id: String(listing.id), student_id: user.id })
         setInterested(true)
-        setInterestCount(c => c + 1)
-        // Fetch own profile to add to the list
+        setInterestCount((c) => c + 1)
         const { data: myProfile } = await supabase
           .from('profiles')
           .select('id, first_name, last_name, university')
           .eq('id', user.id)
           .single()
-        if (myProfile) setInterestedStudents(prev => [...prev, myProfile])
+        if (myProfile) setInterestedStudents((prev) => [...prev, myProfile])
 
-        // For open-room listings: send a message request to the current tenants (listing poster)
+        // For open-room listings: open a message thread with the tenant
         if (listing.type === 'open') {
           const { data: listingData } = await supabase
             .from('listings')
@@ -352,8 +680,6 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
           if (listingData?.landlord_id) {
             const tenantId = listingData.landlord_id
-
-            // Find or create a conversation between the student and the current tenant
             const { data: myConvs } = await supabase
               .from('conversation_participants')
               .select('conversation_id')
@@ -400,6 +726,20 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
     }
   }
 
+  function handleShare() {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopyDone(true)
+        setTimeout(() => setCopyDone(false), 2500)
+      })
+    }
+  }
+
+  const mapDestination = distanceInfo?.university
+    ? `${distanceInfo.university}`
+    : 'Loyola Marymount University, Los Angeles, CA'
+
   return (
     <>
       {/* Breadcrumb */}
@@ -417,11 +757,23 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
       {/* Gallery */}
       <section className="max-w-7xl mx-auto px-6 md:px-10 mt-6 relative">
-        <button onClick={() => setLightboxIndex(0)}
-          className="absolute top-4 right-10 md:right-16 z-10 bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var/40 flex items-center gap-2 hover:bg-cream transition-all">
-          <span className="material-symbols-outlined text-sm">photo_camera</span>
-          All Photos ({PHOTOS.length})
-        </button>
+        {/* Gallery action buttons */}
+        <div className="absolute top-4 right-10 md:right-16 z-10 flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            className="bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var/40 flex items-center gap-2 hover:bg-cream transition-all"
+          >
+            <span className="material-symbols-outlined text-sm">{copyDone ? 'check' : 'ios_share'}</span>
+            {copyDone ? 'Copied!' : 'Share'}
+          </button>
+          <button
+            onClick={() => setLightboxIndex(0)}
+            className="bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var/40 flex items-center gap-2 hover:bg-cream transition-all"
+          >
+            <span className="material-symbols-outlined text-sm">photo_camera</span>
+            All Photos ({PHOTOS.length})
+          </button>
+        </div>
 
         <div className="photo-gallery">
           <div className="hero-slot img-zoom cursor-pointer overflow-hidden relative" onClick={() => setLightboxIndex(0)}>
@@ -443,7 +795,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
         </div>
 
         {/* Mobile thumbnail strip */}
-        <div className="mobile-strip mt-3 gap-2 overflow-x-auto pb-1" style={{ display: 'none' }}>
+        <div className="mobile-strip mt-3 gap-2 overflow-x-auto pb-1">
           {PHOTOS.slice(1).map((p, i) => (
             <div key={i} onClick={() => setLightboxIndex(i + 1)}
               className="flex-shrink-0 relative cursor-pointer rounded-xl overflow-hidden" style={{ width: 128, height: 80 }}>
@@ -452,7 +804,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
               ) : (
                 <Image src={p.src} alt={p.alt} fill className="object-cover" />
               )}
-              {i === PHOTOS.length - 2 && (
+              {i === PHOTOS.length - 2 && PHOTOS.length > 3 && (
                 <div className="absolute inset-0 bg-espresso/70 flex items-center justify-center">
                   <span className="text-white font-head font-bold text-xs">+{PHOTOS.length - 3} more</span>
                 </div>
@@ -468,20 +820,35 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
           {/* ─ LEFT COLUMN ─ */}
           <div className="flex-1 min-w-0">
+
             {/* Header */}
             <div className="mb-8">
               <span className="badge-open text-xs font-head font-bold px-4 py-1.5 rounded-full inline-flex items-center gap-1.5 mb-5 shadow-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse-dot" />
                 Available for Rent
               </span>
-              <h1 className="font-display text-4xl md:text-5xl font-light text-clay-dark leading-tight mb-3">{listing.title}</h1>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted font-body mb-6">
-                <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">location_on</span>{listing.location}</span>
-                {distanceInfo && (
-                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm">school</span>{distanceInfo.distanceMi} mi from {distanceInfo.university}</span>
-                )}
-                <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm fill text-amber-400">star</span>New listing</span>
+
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <h1 className="font-display text-4xl md:text-5xl font-light text-clay-dark leading-tight">{listing.title}</h1>
               </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted font-body mb-6">
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm">location_on</span>
+                  {listing.location}
+                </span>
+                {distanceInfo && (
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">school</span>
+                    {distanceInfo.distanceMi} mi from {distanceInfo.university}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-sm fill text-amber-400">star</span>
+                  New listing
+                </span>
+              </div>
+
               <div className="flex flex-wrap gap-3">
                 {[
                   { icon: 'bed',          label: `${listing.beds} Bedroom${listing.beds !== 1 ? 's' : ''}` },
@@ -503,7 +870,9 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
             {/* Description */}
             <div className="mb-8 reveal">
               <h2 className="font-head text-xl font-bold text-clay-dark mb-4">About this home</h2>
-              <p className="font-body text-muted leading-relaxed">{listing.description || `A ${listing.beds}-bedroom, ${listing.baths ?? 1}-bath property in ${listing.location}. Contact the landlord for more details.`}</p>
+              <p className="font-body text-muted leading-relaxed">
+                {listing.description || `A ${listing.beds}-bedroom, ${listing.baths ?? 1}-bath property in ${listing.location}. Contact the landlord for more details.`}
+              </p>
             </div>
 
             <div className="divider mb-8" />
@@ -523,25 +892,37 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
             <div className="divider mb-8" />
 
+            {/* Landlord Card — only for DB listings with profile data */}
+            {landlordProfile && (
+              <>
+                <LandlordCard
+                  profile={landlordProfile}
+                  listingId={String(listing.id)}
+                  currentUser={user}
+                />
+                <div className="divider mb-8" />
+              </>
+            )}
+
             {/* Location & Map */}
             <div className="mb-8 reveal">
               <h2 className="font-head text-xl font-bold text-clay-dark mb-4">Location</h2>
               <div className="rounded-2xl overflow-hidden border border-out-var/40 shadow-sm" style={{ height: 320 }}>
                 <iframe
-                  title="Property location relative to LMU"
+                  title="Property location"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}&origin=${encodeURIComponent(`${listing.title}, ${listing.location}`)}&destination=${encodeURIComponent('Loyola Marymount University, Los Angeles, CA')}&mode=walking`}
+                  src={`https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}&origin=${encodeURIComponent(`${listing.title}, ${listing.location}`)}&destination=${encodeURIComponent(mapDestination)}&mode=walking`}
                 />
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <span className="material-symbols-outlined text-clay text-sm">school</span>
                 {distanceInfo
                   ? <p className="text-xs font-body text-muted"><strong className="text-clay-dark font-semibold">{distanceInfo.distanceMi} mi</strong> walking distance to {distanceInfo.university}</p>
-                  : <p className="text-xs font-body text-muted">Walking directions to Loyola Marymount University</p>
+                  : <p className="text-xs font-body text-muted">Walking directions to nearby university</p>
                 }
               </div>
             </div>
@@ -549,30 +930,35 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
             <div className="divider mb-8" />
 
             {/* Group formation — only for group-formation listings */}
-            {listing.type !== 'open' && <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
-                  <p className="text-sm font-body text-muted">1 of {listing.beds} spots filled — join to fill the house together.</p>
+            {listing.type !== 'open' && (
+              <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
+                    <p className="text-sm font-body text-muted">1 of {listing.beds} spots filled — join to fill the house together.</p>
+                  </div>
+                  <span className="badge-open text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap">Forming Now</span>
                 </div>
-                <span className="badge-open text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap">Forming Now</span>
-              </div>
-              <div className="progress-track mb-2">
-                <div className="progress-fill" style={{ width: `${Math.round(100 / listing.beds)}%` }} />
-              </div>
-              <p className="text-xs text-muted font-body mb-5">1 of {listing.beds} joined</p>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex -space-x-2">
-                  {['J', '?', '?'].map((c, i) => (
-                    <div key={i} className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-xs font-head font-bold ${i === 0 ? 'bg-clay text-cream' : 'bg-linen text-muted'}`}>{c}</div>
-                  ))}
+                <div className="progress-track mb-2">
+                  <div className="progress-fill" style={{ width: `${Math.round(100 / listing.beds)}%` }} />
                 </div>
-                <span className="text-xs font-body text-muted">Jordan M. is looking for {listing.beds - 1} more roommates</span>
+                <p className="text-xs text-muted font-body mb-5">1 of {listing.beds} joined</p>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="flex -space-x-2">
+                    {['J', '?', '?'].map((c, i) => (
+                      <div key={i} className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-xs font-head font-bold ${i === 0 ? 'bg-clay text-cream' : 'bg-linen text-muted'}`}>{c}</div>
+                    ))}
+                  </div>
+                  <span className="text-xs font-body text-muted">Jordan M. is looking for {listing.beds - 1} more roommates</span>
+                </div>
+                <button
+                  onClick={() => setShowGroup(true)}
+                  className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20"
+                >
+                  Join This Group
+                </button>
               </div>
-              <button onClick={() => setShowGroup(true)} className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20">
-                Join This Group
-              </button>
-            </div>}
+            )}
 
             {/* Verification pills */}
             <div className="reveal flex flex-wrap gap-3 mb-8">
@@ -590,6 +976,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
           {/* ─ RIGHT SIDEBAR ─ */}
           <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 sidebar-sticky">
             <div className="bg-white rounded-3xl border border-out-var/40 shadow-2xl shadow-clay/8 overflow-hidden">
+
               {/* Price header */}
               <div className="clay-grad p-6 text-white">
                 <div className="flex items-end justify-between mb-1">
@@ -604,14 +991,13 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                 </div>
                 <div className="flex items-center gap-2 mt-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse-dot" />
-                  <span className="text-white/70 text-xs font-body">{listing.interested} students interested</span>
+                  <span className="text-white/70 text-xs font-body">{interestCount} student{interestCount !== 1 ? 's' : ''} interested</span>
                 </div>
               </div>
 
               {/* CTAs */}
               <div className="p-6 space-y-3">
                 {listing.type === 'open' ? (
-                  /* Open room: only "Message Tenant" */
                   user && user.user_metadata?.role !== 'landlord' ? (
                     <MessageTenantButton listingId={String(listing.id)} userId={user.id} />
                   ) : !user ? (
@@ -620,12 +1006,23 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                     </a>
                   ) : null
                 ) : (
-                  /* Group formation: full CTA set */
                   <>
-                    <button onClick={() => setShowApply(true)} className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2">
-                      <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
-                    </button>
-                    <button onClick={() => setShowGroup(true)} className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2">
+                    {hasApplied ? (
+                      <div className="w-full bg-green-50 border border-green-200 text-green-700 py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined text-sm fill">check_circle</span> Application Submitted
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowApply(true)}
+                        className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowGroup(true)}
+                      className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2"
+                    >
                       <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
                     </button>
                     {user && user.user_metadata?.role !== 'landlord' ? (
@@ -642,11 +1039,34 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
               {/* Quick stats */}
               <div className="border-t border-out-var/40 px-6 py-4 space-y-3">
                 {[
-                  { label: 'Available', val: 'Now' },
-                  { label: 'Lease term', val: '12 months' },
-                  { label: 'Deposit',   val: `$${perPerson.toLocaleString()}` },
-                  { label: 'Utilities', val: 'Tenant pays' },
-                  { label: 'Pets',      val: 'Negotiable' },
+                  {
+                    label: 'Available',
+                    val: (listing as any).available_date
+                      ? new Date((listing as any).available_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : 'Now',
+                  },
+                  {
+                    label: 'Lease term',
+                    val: (listing as any).lease_term ?? '12 months',
+                  },
+                  {
+                    label: 'Deposit',
+                    val: (listing as any).deposit
+                      ? `$${Number((listing as any).deposit).toLocaleString()}`
+                      : `$${perPerson.toLocaleString()}`,
+                  },
+                  {
+                    label: 'Utilities',
+                    val: (listing as any).utilities ?? 'Tenant pays',
+                  },
+                  {
+                    label: 'Pets',
+                    val: (listing as any).pets_allowed ?? 'Negotiable',
+                  },
+                  {
+                    label: 'Type',
+                    val: listing.type === 'open' ? 'Open Room' : 'Group Formation',
+                  },
                 ].map(({ label, val }) => (
                   <div key={label} className="flex justify-between items-center">
                     <span className="text-xs font-body text-muted">{label}</span>
@@ -664,20 +1084,22 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
               </div>
 
               {/* Interest section */}
-              <div className="mt-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
+              <div className="m-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
                     <span className="material-symbols-outlined text-base text-clay">group</span>
                     {interestCount} student{interestCount !== 1 ? 's' : ''} interested
                   </p>
                   {interestCount > 0 && (
-                    <button onClick={() => setShowInterestedPanel(true)}
-                      className="text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                    <button
+                      onClick={() => setShowInterestedPanel(true)}
+                      className="text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
+                    >
                       See who
                     </button>
                   )}
                 </div>
-                {/* Stacked avatars preview */}
+
                 {interestedStudents.length > 0 && (
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex -space-x-2">
@@ -692,6 +1114,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                     )}
                   </div>
                 )}
+
                 {user && user.user_metadata?.role !== 'landlord' && (
                   <button
                     onClick={handleInterest}
@@ -707,6 +1130,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                     {submitting ? 'Saving…' : interested ? "You're interested" : "I'm Interested"}
                   </button>
                 )}
+
                 {!user && (
                   <a href="/auth" className="block w-full text-center py-2.5 rounded-xl font-head font-bold text-sm border border-out-var text-muted hover:border-clay/40 hover:text-clay transition-all">
                     Sign in to express interest
@@ -721,23 +1145,49 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
             </p>
           </div>
         </div>
+
+        {/* ─ SIMILAR LISTINGS ─ */}
+        {similarListings.length > 0 && (
+          <div className="mt-16 pt-10 border-t border-out-var/40 reveal">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="font-head text-2xl font-bold text-clay-dark">Similar listings nearby</h2>
+                <p className="text-sm font-body text-muted mt-1">Other properties students are viewing</p>
+              </div>
+              <Link href="/#listings" className="text-sm font-head font-bold text-clay hover:text-clay-dark transition-colors flex items-center gap-1">
+                View all <span className="material-symbols-outlined text-base">arrow_forward</span>
+              </Link>
+            </div>
+            <div className="flex lg:grid lg:grid-cols-3 gap-5 overflow-x-auto pb-2">
+              {similarListings.map((sl) => (
+                <SimilarListingCard key={sl.id} listing={sl} />
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Overlays */}
       {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} photos={PHOTOS} />}
-      {showApply && <ApplyModal listing={listing} onClose={() => setShowApply(false)} />}
-      {showGroup && <GroupModal listing={listing} onClose={() => setShowGroup(false)} />}
+      {showApply  && <ApplyModal listing={listing} user={user} onClose={() => { setShowApply(false); if (hasApplied === false) { /* refresh */ } }} />}
+      {showGroup  && <GroupModal listing={listing} user={user} onClose={() => setShowGroup(false)} />}
 
-      {/* Who's Interested modal */}
+      {/* Who's Interested panel */}
       {showInterestedPanel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ background: 'rgba(30,20,16,.55)', backdropFilter: 'blur(6px)' }}
-          onClick={() => setShowInterestedPanel(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl border border-out-var w-full max-w-sm p-7 relative"
+          onClick={() => setShowInterestedPanel(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-out-var w-full max-w-sm p-7 relative"
             style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)' }}
-            onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowInterestedPanel(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowInterestedPanel(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all"
+            >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
             <div className="flex items-center gap-3 mb-6">
@@ -749,6 +1199,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                 <p className="text-xs font-body text-muted">{interestCount} student{interestCount !== 1 ? 's' : ''} want this listing</p>
               </div>
             </div>
+
             {interestedStudents.length === 0 ? (
               <p className="text-sm font-body text-muted text-center py-6">No students yet.</p>
             ) : (
@@ -762,21 +1213,30 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
                       <p className="text-sm font-head font-bold text-clay-dark truncate">{s.first_name} {s.last_name}</p>
                       {s.university && <p className="text-xs font-body text-muted truncate">{s.university}</p>}
                     </div>
-                    {/* Students can view other students' profiles and message them */}
                     {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && (
-                      <a href={`/profile/${s.id}`}
-                        className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                      <a
+                        href={`/profile/${s.id}`}
+                        className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
+                      >
                         View
                       </a>
                     )}
-                    {/* Landlords can only see names, not initiate */}
+                    {user && user.id === s.id && (
+                      <span className="flex-shrink-0 text-[10px] font-body text-muted italic">You</span>
+                    )}
                     {user && user.user_metadata?.role === 'landlord' && (
-                      <span className="flex-shrink-0 text-[10px] font-body text-muted">Interested</span>
+                      <a
+                        href={`/profile/${s.id}`}
+                        className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
+                      >
+                        View
+                      </a>
                     )}
                   </div>
                 ))}
               </div>
             )}
+
             {user && user.user_metadata?.role !== 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
                 Click "View" to see a student's profile and message them.
@@ -784,7 +1244,7 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
             )}
             {user && user.user_metadata?.role === 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
-                Students can message you directly — you'll see it in your inbox.
+                Click &quot;View&quot; to see a student&apos;s profile and reach out.
               </p>
             )}
           </div>
