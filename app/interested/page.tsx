@@ -7,13 +7,72 @@ import { createClient } from '@/lib/supabase'
 import { Listing } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 
+/* ── Find-or-create a conversation for a given listing + landlord ── */
+async function openConversation(
+  supabase: ReturnType<typeof createClient>,
+  listingId: string,
+  userId: string,
+  landlordId: string,
+): Promise<string | null> {
+  // 1. Look for an existing conversation for this specific listing that both users are in
+  const { data: myConvs } = await supabase
+    .from('conversation_participants')
+    .select('conversation_id')
+    .eq('user_id', userId)
+
+  const myIds = myConvs?.map((r: any) => r.conversation_id) ?? []
+
+  if (myIds.length > 0) {
+    // Find conversations shared with the landlord
+    const { data: shared } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', landlordId)
+      .in('conversation_id', myIds)
+
+    if (shared && shared.length > 0) {
+      const sharedIds = shared.map((r: any) => r.conversation_id)
+      // Prefer a conversation tied to this listing
+      const { data: listingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('listing_id', listingId)
+        .in('id', sharedIds)
+        .limit(1)
+        .single()
+
+      if (listingConv) return listingConv.id
+
+      // Fall back to any existing conversation between these two users
+      return shared[0].conversation_id
+    }
+  }
+
+  // 2. No existing conversation — create one
+  const { data: conv } = await supabase
+    .from('conversations')
+    .insert({ listing_id: listingId })
+    .select()
+    .single()
+
+  if (!conv) return null
+
+  await supabase.from('conversation_participants').insert([
+    { conversation_id: conv.id, user_id: userId },
+    { conversation_id: conv.id, user_id: landlordId },
+  ])
+
+  return conv.id
+}
+
 export default function InterestedPage() {
   const router   = useRouter()
   const supabase = createClient()
 
-  const [user,     setUser]     = useState<User | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [listings, setListings] = useState<Listing[]>([])
+  const [user,      setUser]      = useState<User | null>(null)
+  const [loading,   setLoading]   = useState(true)
+  const [listings,  setListings]  = useState<Listing[]>([])
+  const [messaging, setMessaging] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -36,7 +95,22 @@ export default function InterestedPage() {
           setLoading(false)
         })
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function handleMessage(listing: Listing) {
+    if (!user) { router.push('/auth'); return }
+    const key = listing.id
+    setMessaging((prev) => new Set(prev).add(key))
+    try {
+      const convId = await openConversation(supabase, listing.id, user.id, listing.landlord_id)
+      if (convId) router.push(`/messages/${convId}`)
+    } catch (err) {
+      console.error('[interested] message error:', err)
+    } finally {
+      setMessaging((prev) => { const s = new Set(prev); s.delete(key); return s })
+    }
+  }
 
   if (loading) return (
     <main className="min-h-screen flex items-center justify-center bg-cream">
@@ -57,7 +131,7 @@ export default function InterestedPage() {
             Interested <em>Properties</em>
           </h1>
           <p className="text-sm font-body text-muted">
-            Properties you&apos;ve expressed interest in. Click any listing to view details.
+            Properties you&apos;ve expressed interest in. Click any listing to view details or message the landlord directly.
           </p>
         </div>
 
@@ -78,41 +152,58 @@ export default function InterestedPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {listings.map((listing) => {
               const img = listing.images?.[0]
+              const isSending = messaging.has(listing.id)
               return (
-                <Link key={listing.id} href={`/listings/${listing.id}`}
-                  className="bg-white rounded-2xl border border-out-var overflow-hidden shadow-sm hover:shadow-md hover:border-clay/30 transition-all group">
-                  {/* Image */}
-                  <div className="relative h-44 overflow-hidden bg-gradient-to-br from-linen to-surf-lo">
-                    {img ? (
-                      <img src={img} alt={listing.address} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-out-var text-5xl">home</span>
-                      </div>
-                    )}
-                    <span className={`absolute top-3 left-3 ${listing.type === 'open-room' ? 'bg-terra/90' : 'bg-clay/90'} text-white text-[10px] font-head font-bold px-2.5 py-1 rounded-full`}>
-                      {listing.type === 'open-room' ? 'Open Room' : 'Group Formation'}
-                    </span>
-                  </div>
-                  {/* Content */}
-                  <div className="p-4">
-                    <p className="font-head font-bold text-clay-dark text-sm leading-tight">
-                      {listing.address}{listing.unit ? `, ${listing.unit}` : ''}
-                    </p>
-                    <p className="text-xs font-body text-muted">{listing.city}</p>
-                    <div className="flex items-center gap-3 text-xs font-body text-muted mt-2">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-terra">bed</span> {listing.bedrooms} bed
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm text-terra">bathtub</span> {listing.bathrooms} bath
-                      </span>
-                      <span className="ml-auto font-head font-black text-clay-dark text-sm">
-                        ${listing.rent.toLocaleString()}<span className="font-normal text-muted text-xs">/mo</span>
+                <div key={listing.id} className="bg-white rounded-2xl border border-out-var overflow-hidden shadow-sm hover:shadow-md hover:border-clay/30 transition-all flex flex-col">
+
+                  {/* Clickable image + content area → listing detail */}
+                  <Link href={`/listings/${listing.id}`} className="flex-1 block group">
+                    {/* Image */}
+                    <div className="relative h-44 overflow-hidden bg-gradient-to-br from-linen to-surf-lo">
+                      {img ? (
+                        <img src={img} alt={listing.address} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="material-symbols-outlined text-out-var text-5xl">home</span>
+                        </div>
+                      )}
+                      <span className={`absolute top-3 left-3 ${listing.type === 'open-room' ? 'bg-terra/90' : 'bg-clay/90'} text-white text-[10px] font-head font-bold px-2.5 py-1 rounded-full`}>
+                        {listing.type === 'open-room' ? 'Open Room' : 'Group Formation'}
                       </span>
                     </div>
+
+                    {/* Content */}
+                    <div className="p-4">
+                      <p className="font-head font-bold text-clay-dark text-sm leading-tight">
+                        {listing.address}{listing.unit ? `, ${listing.unit}` : ''}
+                      </p>
+                      <p className="text-xs font-body text-muted">{listing.city}, {listing.state}</p>
+                      <div className="flex items-center gap-3 text-xs font-body text-muted mt-2">
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm text-terra">bed</span> {listing.bedrooms} bed
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm text-terra">bathtub</span> {listing.bathrooms} bath
+                        </span>
+                        <span className="ml-auto font-head font-black text-clay-dark text-sm">
+                          ${listing.rent.toLocaleString()}<span className="font-normal text-muted text-xs">/mo</span>
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Message button — outside the Link so it doesn't navigate to detail */}
+                  <div className="px-4 pb-4 pt-0">
+                    <button
+                      onClick={() => handleMessage(listing)}
+                      disabled={isSending}
+                      className="w-full bg-surf text-clay-dark font-head font-semibold text-sm py-2.5 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                      <span className="material-symbols-outlined text-sm">chat_bubble</span>
+                      {isSending ? 'Opening chat…' : 'Message Landlord'}
+                    </button>
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>
