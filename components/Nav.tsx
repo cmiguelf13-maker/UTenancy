@@ -183,11 +183,18 @@ export default function Nav() {
                         My Portal
                       </Link>
                     ) : (
-                      <Link href="/interested" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
-                        <span className="material-symbols-outlined text-clay text-lg">favorite</span>
-                        Interested Properties
-                      </Link>
+                      <>
+                        <Link href="/interested" onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                          <span className="material-symbols-outlined text-clay text-lg">favorite</span>
+                          Interested Properties
+                        </Link>
+                        <Link href="/post-room" onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                          <span className="material-symbols-outlined text-clay text-lg">add_home</span>
+                          Post a Room
+                        </Link>
+                      </>
                     )}
                     <div className="border-t border-out-var/40 my-1.5" />
                     <button onClick={handleLogout}
