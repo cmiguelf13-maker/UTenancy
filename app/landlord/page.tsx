@@ -423,20 +423,11 @@ function ListingFormFields({
         </div>
       </div>
 
-      {/* Type toggle */}
-      <div>
-        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Listing Type</label>
-        <div className="flex gap-2">
-          {(['open-room', 'group-formation'] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setListingType(t)}
-              className={`flex-1 py-2.5 rounded-xl text-xs font-head font-bold border transition-all
-                ${listingType === t
-                  ? 'clay-grad text-white border-transparent shadow-sm'
-                  : 'border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
-              {t === 'open-room' ? 'Open Room' : 'Group Formation'}
-            </button>
-          ))}
-        </div>
+      {/* Listing type — landlords only post group-formation listings */}
+      {/* Open-room listings are posted by students via Post a Room */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-surf-lo rounded-xl border border-out-var/40 text-xs font-body text-muted">
+        <span className="material-symbols-outlined text-clay" style={{ fontSize: 15 }}>group</span>
+        Listing type: <span className="font-head font-bold text-clay-dark">Group Formation</span>
       </div>
 
       {/* Description */}
@@ -532,7 +523,7 @@ export default function LandlordPortal() {
 
   /* ── CREATE listing state ── */
   const [showAddModal,    setShowAddModal]    = useState(false)
-  const [addListingType,  setAddListingType]  = useState<'open-room' | 'group-formation'>('open-room')
+  const [addListingType,  setAddListingType]  = useState<'open-room' | 'group-formation'>('group-formation')
   const [addAmenities,    setAddAmenities]    = useState<string[]>([])
   const [addFiles,        setAddFiles]        = useState<File[]>([])
   const [addPreviews,     setAddPreviews]     = useState<string[]>([])
@@ -543,7 +534,7 @@ export default function LandlordPortal() {
   /* ── EDIT listing state ── */
   const [editListing,       setEditListing]       = useState<Listing | null>(null)
   const [editFormAddress,   setEditFormAddress]   = useState<ParsedAddress | null>(null)
-  const [editListingType,   setEditListingType]   = useState<'open-room' | 'group-formation'>('open-room')
+  const [editListingType,   setEditListingType]   = useState<'open-room' | 'group-formation'>('group-formation')
   const [editAmenities,     setEditAmenities]     = useState<string[]>([])
   const [editExistingImgs,  setEditExistingImgs]  = useState<string[]>([])  // kept URLs
   const [editNewFiles,      setEditNewFiles]      = useState<File[]>([])
@@ -709,7 +700,7 @@ export default function LandlordPortal() {
         setAddFiles([])
         setAddPreviews([])
         setAddAmenities([])
-        setAddListingType('open-room')
+        setAddListingType('group-formation')
         form.reset()
       }, 2000)
     }
@@ -721,7 +712,7 @@ export default function LandlordPortal() {
       setAddFiles([])
       setAddPreviews([])
       setAddAmenities([])
-      setAddListingType('open-room')
+      setAddListingType('group-formation')
       form.reset()
     }, 2000)
   }
@@ -1083,7 +1074,7 @@ export default function LandlordPortal() {
             style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)', maxHeight: '90vh' }}>
             {/* Header */}
             <div className="flex-shrink-0 px-8 pt-8 pb-2">
-              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('open-room'); setAddFormAddress(null) }}
+              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('group-formation'); setAddFormAddress(null) }}
                 className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
