@@ -74,7 +74,7 @@ export default function UserAgreementPage() {
                 <li>Tour properties in person before committing.</li>
                 <li>Never send payment (deposits, rent) before signing a written lease.</li>
                 <li>Verify the landlord&apos;s identity and ownership of the property.</li>
-                <li>Report suspicious listings or behavior using the in-platform reporting tools or by emailing <a href="mailto:support@utenancy.com" className="text-sand hover:underline">support@utenancy.com</a>.</li>
+                <li>Report suspicious listings or behavior using the in-platform reporting tools or by emailing <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>.</li>
               </ul>
             </SubSection>
           </Section>
@@ -123,7 +123,7 @@ export default function UserAgreementPage() {
           </Section>
 
           <Section title="5. Reporting and Enforcement">
-            <p>Users may report violations of this Agreement by contacting <a href="mailto:support@utenancy.com" className="text-sand hover:underline">support@utenancy.com</a>. UTenancy will investigate reported violations and may take action including warnings, listing removal, account suspension, or permanent termination, at our sole discretion. We are not obligated to take action on every report, and our enforcement decisions are final.</p>
+            <p>Users may report violations of this Agreement by contacting <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>. UTenancy will investigate reported violations and may take action including warnings, listing removal, account suspension, or permanent termination, at our sole discretion. We are not obligated to take action on every report, and our enforcement decisions are final.</p>
           </Section>
 
           <Section title="6. Amendments">
@@ -139,7 +139,7 @@ export default function UserAgreementPage() {
             <address className="not-italic mt-2 text-white/50">
               UTenancy, Inc.<br />
               Los Angeles, California<br />
-              <a href="mailto:legal@utenancy.com" className="text-sand hover:underline">legal@utenancy.com</a>
+              <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>
             </address>
           </Section>
 

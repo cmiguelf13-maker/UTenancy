@@ -44,7 +44,7 @@ export default function TermsOfServicePage() {
           </Section>
 
           <Section title="2. Account Registration">
-            <p>You are responsible for safeguarding your account credentials and for all activity under your account. You must notify us immediately at <a href="mailto:legal@utenancy.com" className="text-sand hover:underline">legal@utenancy.com</a> of any unauthorized use. We reserve the right to terminate accounts at our discretion, including for violation of these Terms.</p>
+            <p>You are responsible for safeguarding your account credentials and for all activity under your account. You must notify us immediately at <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a> of any unauthorized use. We reserve the right to terminate accounts at our discretion, including for violation of these Terms.</p>
           </Section>
 
           <Section title="3. User Roles">
@@ -116,7 +116,7 @@ export default function TermsOfServicePage() {
             <address className="not-italic mt-2 text-white/50">
               UTenancy, Inc.<br />
               Los Angeles, California<br />
-              <a href="mailto:legal@utenancy.com" className="text-sand hover:underline">legal@utenancy.com</a>
+              <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>
             </address>
           </Section>
 

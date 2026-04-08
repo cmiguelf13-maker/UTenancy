@@ -133,7 +133,7 @@ export default function PrivacyPolicyPage() {
             </SubSection>
 
             <SubSection title="How to Submit a Request">
-              <p>To exercise any of the rights above, please submit a verifiable consumer request to <a href="mailto:privacy@utenancy.com" className="text-sand hover:underline">privacy@utenancy.com</a> or by contacting us at the address below. We will respond within 45 days of receipt (extendable by an additional 45 days with notice). We may need to verify your identity before processing your request.</p>
+              <p>To exercise any of the rights above, please submit a verifiable consumer request to <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a> or by contacting us at the address below. We will respond within 45 days of receipt (extendable by an additional 45 days with notice). We may need to verify your identity before processing your request.</p>
             </SubSection>
 
             <SubSection title="Authorized Agent">
@@ -183,7 +183,7 @@ export default function PrivacyPolicyPage() {
             <address className="not-italic mt-2 text-white/50">
               UTenancy, Inc. — Privacy Team<br />
               Los Angeles, California<br />
-              <a href="mailto:privacy@utenancy.com" className="text-sand hover:underline">privacy@utenancy.com</a>
+              <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>
             </address>
           </Section>
 
