@@ -28,23 +28,6 @@ export interface Listing {
 
 export const LISTINGS: Listing[] = [
   {
-    id: 1,
-    slug: '6570-w-84th-place',
-    title: '6570 W 84th Pl',
-    location: 'Westchester, LA',
-    price: 4821,
-    beds: 3,
-    baths: 1,
-    type: 'open',
-    interested: 17,
-    img: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=960&q=75',
-    featured: true,
-    distanceMi: 0.5,
-    university: 'LMU',
-    description: 'A bright 3-bedroom, 1-bath bungalow in Westchester — just 0.5 mi from LMU. Hardwood floors, updated kitchen, and a private backyard.',
-    amenities: ['Parking', 'Backyard', 'Hardwood floors', 'In-unit laundry', 'A/C'],
-  },
-  {
     id: 2,
     slug: 'the-beacon-collective',
     title: 'The Beacon Collective',
