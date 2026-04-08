@@ -627,7 +627,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row justify-between gap-12 mb-12">
             <div className="max-w-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="UTenancy" className="h-8 w-auto mb-4" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+              <img src="/logo.png" alt="UTenancy" className="h-14 w-auto mb-4" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
               <p className="font-body text-white/40 text-sm leading-relaxed">Student housing, reimagined. Verified listings, built-in rent tools, and a SaaS layer for landlords.</p>
             </div>
             {[
@@ -646,9 +646,9 @@ export default function HomePage() {
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="font-body text-white/30 text-xs">© {new Date().getFullYear()} UTenancy, Inc. All rights reserved.</p>
             <div className="flex gap-6">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((l) => (
-                <a key={l} href="#" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">{l}</a>
-              ))}
+              <Link href="/legal/privacy" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">Privacy Policy</Link>
+              <Link href="/legal/terms" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">Terms of Service</Link>
+              <Link href="/legal/user-agreement" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">User Agreement</Link>
             </div>
           </div>
         </div>
