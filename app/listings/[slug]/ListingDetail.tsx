@@ -455,6 +455,31 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
 
             <div className="divider mb-8" />
 
+            {/* Location & Map */}
+            <div className="mb-8 reveal">
+              <h2 className="font-head text-xl font-bold text-clay-dark mb-4">Location</h2>
+              <div className="rounded-2xl overflow-hidden border border-out-var/40 shadow-sm" style={{ height: 320 }}>
+                <iframe
+                  title="Property location relative to LMU"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={`https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}&origin=${encodeURIComponent(`${listing.title}, ${listing.location}`)}&destination=${encodeURIComponent('Loyola Marymount University, Los Angeles, CA')}&mode=walking`}
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-3">
+                <span className="material-symbols-outlined text-clay text-sm">school</span>
+                {distanceInfo
+                  ? <p className="text-xs font-body text-muted"><strong className="text-clay-dark font-semibold">{distanceInfo.distanceMi} mi</strong> walking distance to {distanceInfo.university}</p>
+                  : <p className="text-xs font-body text-muted">Walking directions to Loyola Marymount University</p>
+                }
+              </div>
+            </div>
+
+            <div className="divider mb-8" />
+
             {/* Group formation */}
             <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
               <div className="flex items-start justify-between gap-4 mb-4">
