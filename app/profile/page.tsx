@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 
@@ -9,11 +10,12 @@ import type { User } from '@supabase/supabase-js'
 interface ProfileData {
   firstName:   string
   lastName:    string
+  gender:      string
   university:  string
   major:       string
   gradYear:    string
   bio:         string
-  // Lifestyle preferences
+  // Lifestyle preferences (student only)
   sleepTime:   string
   cleanliness: string
   noise:       string
@@ -21,6 +23,10 @@ interface ProfileData {
   smoking:     boolean
   pets:        boolean
   studying:    string
+  // Contact info (landlord only)
+  email:       string
+  phone:       string
+  company:     string
 }
 
 const UNIVERSITIES = [
@@ -36,6 +42,8 @@ const UNIVERSITIES = [
   'University of Miami',
   'Other',
 ]
+
+const GENDER_OPTIONS = ['Man', 'Woman', 'Non-binary', 'Prefer not to say']
 
 const SLEEP_OPTIONS  = ['Before 10pm', '10pm – Midnight', 'Midnight – 2am', 'Night owl (2am+)']
 const CLEAN_OPTIONS  = ['Very tidy', 'Reasonably clean', 'Relaxed', 'Messy but fine']
@@ -106,9 +114,12 @@ export default function ProfilePage() {
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
 
+  const [role, setRole] = useState<string>('student')
+
   const [profile, setProfile] = useState<ProfileData>({
     firstName:   '',
     lastName:    '',
+    gender:      '',
     university:  '',
     major:       '',
     gradYear:    '',
@@ -120,6 +131,9 @@ export default function ProfilePage() {
     smoking:     false,
     pets:        false,
     studying:    '',
+    email:       '',
+    phone:       '',
+    company:     '',
   })
 
   /* ── Load user session and profile data ── */
@@ -128,6 +142,7 @@ export default function ProfilePage() {
       const u = data.session?.user ?? null
       if (!u) { router.push('/auth'); return }
       setUser(u)
+      setRole(u.user_metadata?.role ?? 'student')
 
       // Fetch from profiles table
       supabase
@@ -141,6 +156,7 @@ export default function ProfilePage() {
               ...p,
               firstName:   profileData.first_name ?? '',
               lastName:    profileData.last_name ?? '',
+              gender:      profileData.gender ?? '',
               university:  profileData.university ?? '',
               major:       profileData.major ?? '',
               gradYear:    profileData.grad_year ?? '',
@@ -152,6 +168,9 @@ export default function ProfilePage() {
               smoking:     profileData.smoking ?? false,
               pets:        profileData.pets ?? false,
               studying:    profileData.studying ?? '',
+              email:       profileData.email ?? u.email ?? '',
+              phone:       profileData.phone ?? '',
+              company:     profileData.company ?? '',
             }))
             } else {
             // Fallback to user_metadata if profiles table fetch fails
@@ -160,6 +179,7 @@ export default function ProfilePage() {
               ...p,
               firstName:   m.first_name ?? '',
               lastName:    m.last_name ?? '',
+              gender:      m.gender ?? '',
               university:  m.university ?? '',
               major:       m.major ?? '',
               gradYear:    m.grad_year ?? '',
@@ -171,6 +191,9 @@ export default function ProfilePage() {
               smoking:     m.smoking ?? false,
               pets:        m.pets ?? false,
               studying:    m.studying ?? '',
+              email:       u.email ?? '',
+              phone:       m.phone ?? '',
+              company:     m.company ?? '',
             }))
           }
           setLoading(false)
@@ -190,25 +213,37 @@ export default function ProfilePage() {
 
     try {
       // Upsert profile data (no avatar — removed to prevent cookie bloat)
-      const { error: upsertErr } = await supabase.from('profiles').upsert({
+      const upsertData: Record<string, any> = {
         id: user.id,
-        role: user.user_metadata?.role ?? 'student',
+        role: role,
         first_name: profile.firstName,
         last_name: profile.lastName,
-        university: profile.university,
-        major: profile.major,
-        grad_year: profile.gradYear,
+        gender: profile.gender,
         bio: profile.bio,
         avatar_url: null,
-        sleep_time: profile.sleepTime,
-        cleanliness: profile.cleanliness,
-        noise: profile.noise,
-        guests: profile.guests,
-        smoking: profile.smoking,
-        pets: profile.pets,
-        studying: profile.studying,
         updated_at: new Date().toISOString(),
-      })
+      }
+
+      if (role === 'landlord') {
+        // Landlord-specific fields
+        upsertData.email = profile.email
+        upsertData.phone = profile.phone
+        upsertData.company = profile.company
+      } else {
+        // Student-specific fields
+        upsertData.university = profile.university
+        upsertData.major = profile.major
+        upsertData.grad_year = profile.gradYear
+        upsertData.sleep_time = profile.sleepTime
+        upsertData.cleanliness = profile.cleanliness
+        upsertData.noise = profile.noise
+        upsertData.guests = profile.guests
+        upsertData.smoking = profile.smoking
+        upsertData.pets = profile.pets
+        upsertData.studying = profile.studying
+      }
+
+      const { error: upsertErr } = await supabase.from('profiles').upsert(upsertData)
 
       // Sync name to user_metadata so Nav refreshes — no avatar_url to avoid cookie bloat
       await supabase.auth.updateUser({
@@ -254,127 +289,188 @@ export default function ProfilePage() {
             <span className="material-symbols-outlined text-base">arrow_back</span> Back to Home
           </a>
           <h1 className="font-display text-4xl font-light text-clay-dark mb-1">Your <em>profile</em></h1>
-          <p className="text-sm font-body text-muted">Help roommates and landlords get to know you.</p>
+          <p className="text-sm font-body text-muted">
+            {role === 'landlord'
+              ? 'Manage your contact information so tenants can reach you.'
+              : 'Help roommates and landlords get to know you.'}
+          </p>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
 
           {/* ── BASIC INFO ── */}
           <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
-            <SectionHeading icon="person" title="Basic Information" subtitle="This is how you'll appear to other students." />
+            <SectionHeading icon="person" title="Basic Information"
+              subtitle={role === 'landlord' ? 'This is how tenants will see you.' : 'This is how you\'ll appear to other students.'} />
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">First Name</label>
                   <input value={profile.firstName} onChange={(e) => set('firstName', e.target.value)}
-                    className="auth-input no-icon" placeholder="Maya" />
+                    className="auth-input no-icon" placeholder={role === 'landlord' ? 'John' : 'Maya'} />
                 </div>
                 <div>
                   <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Last Name</label>
                   <input value={profile.lastName} onChange={(e) => set('lastName', e.target.value)}
-                    className="auth-input no-icon" placeholder="Johnson" />
+                    className="auth-input no-icon" placeholder={role === 'landlord' ? 'Smith' : 'Johnson'} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">University</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">school</span>
-                  <select value={profile.university} onChange={(e) => set('university', e.target.value)}
-                    className="auth-input appearance-none cursor-pointer" style={{ paddingLeft: 44 }}>
-                    <option value="">Select your university…</option>
-                    {UNIVERSITIES.map((u) => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Gender</label>
+                <PillSelect options={GENDER_OPTIONS} value={profile.gender} onChange={(v) => set('gender', v)} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Major</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">menu_book</span>
-                    <input value={profile.major} onChange={(e) => set('major', e.target.value)}
-                      className="auth-input" placeholder="Psychology" />
+              {role !== 'landlord' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">University</label>
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">school</span>
+                      <select value={profile.university} onChange={(e) => set('university', e.target.value)}
+                        className="auth-input appearance-none cursor-pointer" style={{ paddingLeft: 44 }}>
+                        <option value="">Select your university…</option>
+                        {UNIVERSITIES.map((u) => <option key={u}>{u}</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Grad Year</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">event</span>
-                    <input value={profile.gradYear} onChange={(e) => set('gradYear', e.target.value)}
-                      className="auth-input" placeholder="2026" maxLength={4} />
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Major</label>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">menu_book</span>
+                        <input value={profile.major} onChange={(e) => set('major', e.target.value)}
+                          className="auth-input" placeholder="Psychology" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Grad Year</label>
+                      <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">event</span>
+                        <input value={profile.gradYear} onChange={(e) => set('gradYear', e.target.value)}
+                          className="auth-input" placeholder="2026" maxLength={4} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Bio</label>
                 <textarea value={profile.bio} onChange={(e) => set('bio', e.target.value)} rows={3}
-                  placeholder="Tell potential roommates a little about yourself — your interests, your schedule, what you're looking for in a home…"
+                  placeholder={role === 'landlord'
+                    ? 'Tell tenants a little about yourself or your properties…'
+                    : 'Tell potential roommates a little about yourself — your interests, your schedule, what you\'re looking for in a home…'}
                   className="w-full bg-white border-[1.5px] border-out-var rounded-xl px-4 py-3 font-body text-sm text-stone outline-none resize-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990]" />
                 <p className="text-[11px] font-body text-muted mt-1 text-right">{profile.bio.length}/280</p>
               </div>
             </div>
           </div>
 
-          {/* ── LIFESTYLE PREFERENCES ── */}
-          <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
-            <SectionHeading icon="emoji_people" title="Lifestyle Preferences"
-              subtitle="Help us match you with compatible roommates. Pick what fits you best." />
-
-            <div className="space-y-6">
-              {/* Sleep schedule */}
-              <div>
-                <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
-                  <span className="material-symbols-outlined text-terra text-base">bedtime</span> Sleep schedule
-                </p>
-                <PillSelect options={SLEEP_OPTIONS} value={profile.sleepTime} onChange={(v) => set('sleepTime', v)} />
+          {/* ── LANDLORD: CONTACT INFO ── */}
+          {role === 'landlord' && (
+            <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
+              <SectionHeading icon="contact_phone" title="Contact Information"
+                subtitle="How tenants can reach you. This will be visible on your listings." />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Email Address</label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">mail</span>
+                    <input type="email" value={profile.email} onChange={(e) => set('email', e.target.value)}
+                      className="auth-input" placeholder="john@example.com" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Phone Number</label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">phone</span>
+                    <input type="tel" value={profile.phone} onChange={(e) => set('phone', e.target.value)}
+                      className="auth-input" placeholder="(310) 555-0123" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Company / Property Management</label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">business</span>
+                    <input value={profile.company} onChange={(e) => set('company', e.target.value)}
+                      className="auth-input" placeholder="Westside Properties LLC" />
+                  </div>
+                </div>
               </div>
 
-              {/* Cleanliness */}
-              <div>
-                <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
-                  <span className="material-symbols-outlined text-terra text-base">cleaning_services</span> Cleanliness
-                </p>
-                <PillSelect options={CLEAN_OPTIONS} value={profile.cleanliness} onChange={(v) => set('cleanliness', v)} />
+              {/* Messenger shortcut */}
+              <div className="mt-6 pt-5 border-t border-out-var/40">
+                <Link href="/messages"
+                  className="flex items-center gap-3 w-full px-4 py-3 bg-surf-lo rounded-xl border border-out-var/40 hover:border-clay/40 hover:bg-linen transition-all">
+                  <div className="w-9 h-9 clay-grad rounded-lg flex items-center justify-center shadow-sm">
+                    <span className="material-symbols-outlined fill text-white text-lg">chat</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-head font-bold text-clay-dark">Messages</p>
+                    <p className="text-xs font-body text-muted">View and respond to tenant inquiries</p>
+                  </div>
+                  <span className="material-symbols-outlined text-outline text-lg">arrow_forward</span>
+                </Link>
               </div>
+            </div>
+          )}
 
-              {/* Noise level */}
-              <div>
-                <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
-                  <span className="material-symbols-outlined text-terra text-base">volume_up</span> Noise & social vibe
-                </p>
-                <PillSelect options={NOISE_OPTIONS} value={profile.noise} onChange={(v) => set('noise', v)} />
-              </div>
+          {/* ── STUDENT: LIFESTYLE PREFERENCES ── */}
+          {role !== 'landlord' && (
+            <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
+              <SectionHeading icon="emoji_people" title="Lifestyle Preferences"
+                subtitle="Help us match you with compatible roommates. Pick what fits you best." />
 
-              {/* Guests */}
-              <div>
-                <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
-                  <span className="material-symbols-outlined text-terra text-base">group</span> Having guests over
-                </p>
-                <PillSelect options={GUEST_OPTIONS} value={profile.guests} onChange={(v) => set('guests', v)} />
-              </div>
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
+                    <span className="material-symbols-outlined text-terra text-base">bedtime</span> Sleep schedule
+                  </p>
+                  <PillSelect options={SLEEP_OPTIONS} value={profile.sleepTime} onChange={(v) => set('sleepTime', v)} />
+                </div>
 
-              {/* Studying */}
-              <div>
-                <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
-                  <span className="material-symbols-outlined text-terra text-base">auto_stories</span> Where you study
-                </p>
-                <PillSelect options={STUDY_OPTIONS} value={profile.studying} onChange={(v) => set('studying', v)} />
-              </div>
+                <div>
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
+                    <span className="material-symbols-outlined text-terra text-base">cleaning_services</span> Cleanliness
+                  </p>
+                  <PillSelect options={CLEAN_OPTIONS} value={profile.cleanliness} onChange={(v) => set('cleanliness', v)} />
+                </div>
 
-              {/* Smoking / Pets toggles */}
-              <div>
-                <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-terra text-base">tune</span> Other preferences
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <TogglePill label="I smoke" value={profile.smoking} onChange={(v) => set('smoking', v)} />
-                  <TogglePill label="Pet-friendly" value={profile.pets} onChange={(v) => set('pets', v)} />
+                <div>
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
+                    <span className="material-symbols-outlined text-terra text-base">volume_up</span> Noise & social vibe
+                  </p>
+                  <PillSelect options={NOISE_OPTIONS} value={profile.noise} onChange={(v) => set('noise', v)} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
+                    <span className="material-symbols-outlined text-terra text-base">group</span> Having guests over
+                  </p>
+                  <PillSelect options={GUEST_OPTIONS} value={profile.guests} onChange={(v) => set('guests', v)} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
+                    <span className="material-symbols-outlined text-terra text-base">auto_stories</span> Where you study
+                  </p>
+                  <PillSelect options={STUDY_OPTIONS} value={profile.studying} onChange={(v) => set('studying', v)} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-terra text-base">tune</span> Other preferences
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <TogglePill label="I smoke" value={profile.smoking} onChange={(v) => set('smoking', v)} />
+                    <TogglePill label="Pet-friendly" value={profile.pets} onChange={(v) => set('pets', v)} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── SAVE BUTTON ── */}
           <div className="flex items-center justify-between pb-4">
