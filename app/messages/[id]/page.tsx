@@ -245,6 +245,18 @@ export default function ConversationPage() {
               </p>
             </div>
           </div>
+
+          {/* View profile — students only */}
+          {otherParticipant && otherParticipant.role !== 'landlord' && (
+            <a
+              href={`/profile/${otherParticipant.id}`}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors px-3 py-1.5 rounded-lg hover:bg-linen"
+              aria-label="View profile"
+            >
+              <span className="material-symbols-outlined text-base">person</span>
+              Profile
+            </a>
+          )}
         </div>
       </div>
 
