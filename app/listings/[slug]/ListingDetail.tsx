@@ -326,6 +326,59 @@ export default function ListingDetail({ listing }: { listing: Listing }) {
           .eq('id', user.id)
           .single()
         if (myProfile) setInterestedStudents(prev => [...prev, myProfile])
+
+        // For open-room listings: send a message request to the current tenants (listing poster)
+        if (listing.type === 'open') {
+          const { data: listingData } = await supabase
+            .from('listings')
+            .select('landlord_id')
+            .eq('id', String(listing.id))
+            .single()
+
+          if (listingData?.landlord_id) {
+            const tenantId = listingData.landlord_id
+
+            // Find or create a conversation between the student and the current tenant
+            const { data: myConvs } = await supabase
+              .from('conversation_participants')
+              .select('conversation_id')
+              .eq('user_id', user.id)
+            const myIds = (myConvs ?? []).map((r: any) => r.conversation_id)
+
+            let convId: string | null = null
+
+            if (myIds.length > 0) {
+              const { data: shared } = await supabase
+                .from('conversation_participants')
+                .select('conversation_id')
+                .eq('user_id', tenantId)
+                .in('conversation_id', myIds)
+              if (shared && shared.length > 0) {
+                convId = shared[0].conversation_id
+              }
+            }
+
+            if (!convId) {
+              const { data: conv } = await supabase
+                .from('conversations')
+                .insert({ listing_id: String(listing.id) })
+                .select()
+                .single()
+              if (conv) {
+                await supabase.from('conversation_participants').insert([
+                  { conversation_id: conv.id, user_id: user.id },
+                  { conversation_id: conv.id, user_id: tenantId },
+                ])
+                convId = conv.id
+              }
+            }
+
+            if (convId) {
+              window.location.href = `/messages/${convId}`
+              return
+            }
+          }
+        }
       }
     } finally {
       setSubmitting(false)
