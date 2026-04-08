@@ -575,6 +575,10 @@ export default function ListingDetail({
 
   const perPerson = listing.beds > 0 ? Math.round(listing.price / listing.beds) : listing.price
 
+  // Mock listings have numeric IDs (2, 3…); real DB listings have UUID strings.
+  // Only DB listings can have interests saved — mock IDs aren't valid FK targets.
+  const isDbListing = typeof listing.id === 'string' && (listing.id as string).includes('-')
+
   const dbImages = (listing as any).images as string[] | undefined
   const hasDbImages = dbImages && dbImages.length > 0 && dbImages[0] !== ''
   const PHOTOS = hasDbImages
@@ -606,6 +610,41 @@ export default function ListingDetail({
     document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [])
+
+  // Real-time interest subscription — keeps count + student list live across all viewers
+  useEffect(() => {
+    if (!isDbListing) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`listing-interests-${listing.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'listing_interests', filter: `listing_id=eq.${listing.id}` },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newId = (payload.new as any).student_id
+            setInterestCount((c) => c + 1)
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, first_name, last_name, university')
+              .eq('id', newId)
+              .single()
+            if (profile) {
+              setInterestedStudents((prev) =>
+                prev.some((s) => s.id === profile.id) ? prev : [...prev, profile]
+              )
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const removedId = (payload.old as any).student_id
+            setInterestCount((c) => Math.max(0, c - 1))
+            setInterestedStudents((prev) => prev.filter((s) => s.id !== removedId))
+          }
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDbListing, listing.id])
 
   // Load session + interest data on mount
   useEffect(() => {
@@ -645,23 +684,32 @@ export default function ListingDetail({
   }, [])
 
   async function handleInterest() {
-    if (!user) return
+    if (!user || !isDbListing) return
     setSubmitting(true)
     const supabase = createClient()
     try {
       if (interested) {
-        await supabase
+        const { error } = await supabase
           .from('listing_interests')
           .delete()
           .eq('listing_id', String(listing.id))
           .eq('student_id', user.id)
-        setInterested(false)
-        setInterestCount((c) => c - 1)
-        setInterestedStudents((prev) => prev.filter((s) => s.id !== user.id))
+        if (!error) {
+          setInterested(false)
+          setInterestCount((c) => Math.max(0, c - 1))
+          setInterestedStudents((prev) => prev.filter((s) => s.id !== user.id))
+        } else {
+          console.error('[interest] remove error:', error.message)
+        }
       } else {
-        await supabase
+        const { error } = await supabase
           .from('listing_interests')
           .insert({ listing_id: String(listing.id), student_id: user.id })
+        if (error) {
+          console.error('[interest] insert error:', error.message)
+          // Don't update UI — the save failed
+          return
+        }
         setInterested(true)
         setInterestCount((c) => c + 1)
         const { data: myProfile } = await supabase
@@ -1097,8 +1145,8 @@ export default function ListingDetail({
                 </div>
               </div>
 
-              {/* Interest section */}
-              <div className="m-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
+              {/* Interest section — only for real DB listings with a saveable UUID */}
+              {isDbListing && <div className="m-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
                     <span className="material-symbols-outlined text-base text-clay">group</span>
@@ -1150,7 +1198,7 @@ export default function ListingDetail({
                     Sign in to express interest
                   </a>
                 )}
-              </div>
+              </div>}
             </div>
 
             <p className="text-xs text-muted font-body text-center mt-4 leading-relaxed px-2">
