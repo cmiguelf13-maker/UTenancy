@@ -91,6 +91,8 @@ export default function HomePage() {
   const [listingFilter, setListingFilter] = useState<'all' | ListingType>('all')
   const [pricePeriod, setPricePeriod] = useState<'monthly' | 'annual'>('monthly')
   const [waitlistType, setWaitlistType] = useState<'student' | 'landlord'>('student')
+  const [waitlistEmail, setWaitlistEmail] = useState('')
+  const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
   const [priceMax, setPriceMax] = useState(3000)
   const [dbListings, setDbListings] = useState<MockListing[]>([])
 
@@ -139,6 +141,28 @@ export default function HomePage() {
 
   const allListings = [...dbListings, ...LISTINGS]
   const filtered = listingFilter === 'all' ? allListings : allListings.filter((l) => l.type === listingFilter)
+
+  async function handleWaitlistSubmit() {
+    if (!waitlistEmail.trim() || waitlistStatus === 'loading') return
+    setWaitlistStatus('loading')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: waitlistEmail.trim(), type: waitlistType }),
+      })
+      if (res.ok) {
+        setWaitlistStatus('success')
+        setWaitlistEmail('')
+      } else if (res.status === 409) {
+        setWaitlistStatus('duplicate')
+      } else {
+        setWaitlistStatus('error')
+      }
+    } catch {
+      setWaitlistStatus('error')
+    }
+  }
 
   const PRICES: Record<string, { monthly: number; annual: number }> = {
     starter: { monthly: 29,  annual: 23  },
@@ -276,7 +300,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 reveal">
             <div>
-              <span className="feature-pill mb-3 inline-flex">Live Listings</span>
+              <span className="feature-pill mb-3 inline-flex">Sample Listings</span>
               <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">Newest student<br /><em>homes near you.</em></h2>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -558,13 +582,42 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="flex gap-3 max-w-md mx-auto">
-            <input className="waitlist-input flex-1" placeholder={waitlistType === 'student' ? 'your@edu.edu' : 'your@email.com'} type="email" />
-            <button className="clay-grad text-white px-6 py-3.5 rounded-full font-head font-bold text-sm whitespace-nowrap hover:opacity-90 transition-all shadow-xl shadow-clay/30">
-              Join Waitlist
-            </button>
-          </div>
-          <p className="text-white/30 text-xs font-body mt-4">No spam. Unsubscribe anytime.</p>
+          {waitlistStatus === 'success' ? (
+            <div className="max-w-md mx-auto py-4 px-6 rounded-2xl border border-white/20 bg-white/5 text-white text-center">
+              <p className="font-head font-bold text-sand text-lg mb-1">You&apos;re on the list! 🎉</p>
+              <p className="font-body text-white/60 text-sm">We&apos;ll reach out when we launch. Stay tuned.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-3 max-w-md mx-auto">
+                <input
+                  className="waitlist-input flex-1"
+                  placeholder={waitlistType === 'student' ? 'your@edu.edu' : 'your@email.com'}
+                  type="email"
+                  value={waitlistEmail}
+                  onChange={(e) => { setWaitlistEmail(e.target.value); setWaitlistStatus('idle') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleWaitlistSubmit() }}
+                  disabled={waitlistStatus === 'loading'}
+                />
+                <button
+                  onClick={handleWaitlistSubmit}
+                  disabled={waitlistStatus === 'loading'}
+                  className="clay-grad text-white px-6 py-3.5 rounded-full font-head font-bold text-sm whitespace-nowrap hover:opacity-90 transition-all shadow-xl shadow-clay/30 disabled:opacity-60"
+                >
+                  {waitlistStatus === 'loading' ? 'Joining…' : 'Join Waitlist'}
+                </button>
+              </div>
+              {waitlistStatus === 'duplicate' && (
+                <p className="text-sand/80 text-xs font-body mt-3">You&apos;re already on the list — we&apos;ll be in touch soon!</p>
+              )}
+              {waitlistStatus === 'error' && (
+                <p className="text-red-400 text-xs font-body mt-3">Something went wrong. Please try again.</p>
+              )}
+              {waitlistStatus === 'idle' && (
+                <p className="text-white/30 text-xs font-body mt-4">No spam. Unsubscribe anytime.</p>
+              )}
+            </>
+          )}
         </div>
       </section>
 
