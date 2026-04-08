@@ -41,7 +41,7 @@ export default function WaitlistPage() {
         {/* Logo */}
         <Link href="/" className="inline-block mb-12">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="UTenancy" className="h-8 w-auto mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+          <img src="/logo.png" alt="UTenancy" className="h-14 w-auto mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
         </Link>
 
         {/* Badge */}
