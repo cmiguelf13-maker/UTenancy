@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 
-const ADMIN_EMAIL = 'cmiguelf13@icloud.com'
+const ADMIN_EMAIL = 'cfernandez@utenancy.com'
 
 /**
  * GET /api/admin/waitlist
