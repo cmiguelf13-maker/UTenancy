@@ -13,6 +13,7 @@ interface Profile {
   university: string | null
   major: string | null
   grad_year: string | null
+  gender: string | null
   role: string
   sleep_time: string | null
   cleanliness: string | null
@@ -218,9 +219,14 @@ export default function ProfilePage() {
             <h1 className="font-display text-2xl text-clay-dark font-light text-center mb-1">
               {getFullName(profile)}
             </h1>
-            <p className="text-sm text-muted text-center font-body mb-4">
+            <p className="text-sm text-muted text-center font-body mb-2">
               {profile.major} • {profile.university}
             </p>
+            {profile.gender && (
+              <p className="text-xs text-muted text-center font-body mb-4">
+                {profile.gender}
+              </p>
+            )}
 
             {/* Grad year badge */}
             {profile.grad_year && (
