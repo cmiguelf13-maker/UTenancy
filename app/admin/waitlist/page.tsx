@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
 
 type Entry = {
   id: string
@@ -19,15 +18,8 @@ export default function WaitlistAdminPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { setError('Not signed in.'); setLoading(false); return }
-
-      const res = await fetch('/api/admin/waitlist', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      if (!res.ok) { setError('Access denied.'); setLoading(false); return }
-
+      const res = await fetch('/api/admin/waitlist')
+      if (!res.ok) { setError('Failed to load waitlist.'); setLoading(false); return }
       const { entries } = await res.json()
       setEntries(entries ?? [])
       setLoading(false)
