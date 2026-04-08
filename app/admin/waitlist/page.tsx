@@ -20,32 +20,27 @@ export default function WaitlistAdminPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
 
+      const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         setError('You must be signed in as the admin to view this page.')
         setLoading(false)
         return
       }
 
-      const res = await fetch('/api/admin/waitlist', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
+      // RLS policy only allows cfernandez@utenancy.com to select from waitlist
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-      if (res.status === 401 || res.status === 403) {
+      if (error || !data) {
         setError('Access denied. This page is restricted to the admin account.')
         setLoading(false)
         return
       }
 
-      if (!res.ok) {
-        setError('Failed to load waitlist data.')
-        setLoading(false)
-        return
-      }
-
-      const { entries } = await res.json()
-      setEntries(entries ?? [])
+      setEntries(data)
       setLoading(false)
     }
     load()
