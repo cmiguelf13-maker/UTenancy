@@ -35,7 +35,7 @@ export default function TermsOfServicePage() {
 
           <section>
             <p>
-              Welcome to UTenancy. These Terms of Service (&quot;Terms&quot;) govern your access to and use of the UTenancy website, mobile application, and related services (collectively, the &quot;Platform&quot;) operated by UTenancy, Inc. (&quot;UTenancy,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). By accessing or using the Platform you agree to be bound by these Terms. If you do not agree, do not access or use the Platform.
+              Welcome to UTenancy. These Terms of Service (&quot;Terms&quot;) govern your access to and use of the UTenancy website, mobile application, and related services (collectively, the &quot;Platform&quot;) operated by Tenancy LLC (&quot;UTenancy,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). By accessing or using the Platform you agree to be bound by these Terms. If you do not agree, do not access or use the Platform.
             </p>
           </section>
 
@@ -84,7 +84,7 @@ export default function TermsOfServicePage() {
           </Section>
 
           <Section title="7. Intellectual Property">
-            <p>The Platform and its original content, features, and functionality are and will remain the exclusive property of UTenancy, Inc. and its licensors. You retain ownership of content you submit, but grant UTenancy a worldwide, royalty-free, sublicensable license to use, reproduce, modify, and display your content solely to operate and improve the Platform.</p>
+            <p>The Platform and its original content, features, and functionality are and will remain the exclusive property of Tenancy LLC and its licensors. You retain ownership of content you submit, but grant UTenancy a worldwide, royalty-free, sublicensable license to use, reproduce, modify, and display your content solely to operate and improve the Platform.</p>
           </Section>
 
           <Section title="8. Disclaimers">
@@ -114,7 +114,7 @@ export default function TermsOfServicePage() {
           <Section title="14. Contact Us">
             <p>For questions about these Terms, please contact us at:</p>
             <address className="not-italic mt-2 text-white/50">
-              UTenancy, Inc.<br />
+              Tenancy LLC<br />
               Los Angeles, California<br />
               <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>
             </address>

@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
 
           <section>
             <p>
-              UTenancy, Inc. (&quot;UTenancy,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your personal information when you use our Platform. It also describes your rights under the California Consumer Privacy Act (&quot;CCPA&quot;) and other applicable laws. Please read this policy carefully. If you do not agree with its terms, please do not use the Platform.
+              Tenancy LLC (&quot;UTenancy,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your personal information when you use our Platform. It also describes your rights under the California Consumer Privacy Act (&quot;CCPA&quot;) and other applicable laws. Please read this policy carefully. If you do not agree with its terms, please do not use the Platform.
             </p>
           </section>
 
@@ -181,7 +181,7 @@ export default function PrivacyPolicyPage() {
           <Section title="11. Contact Us">
             <p>For privacy-related inquiries or to exercise your rights, please contact:</p>
             <address className="not-italic mt-2 text-white/50">
-              UTenancy, Inc. — Privacy Team<br />
+              Tenancy LLC — Privacy Team<br />
               Los Angeles, California<br />
               <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>
             </address>

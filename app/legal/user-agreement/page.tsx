@@ -137,7 +137,7 @@ export default function UserAgreementPage() {
           <Section title="8. Contact">
             <p>Questions about this Agreement may be directed to:</p>
             <address className="not-italic mt-2 text-white/50">
-              UTenancy, Inc.<br />
+              Tenancy LLC<br />
               Los Angeles, California<br />
               <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:underline">cfernandez@utenancy.com</a>
             </address>
