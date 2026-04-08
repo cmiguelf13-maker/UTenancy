@@ -564,6 +564,7 @@ export default function ListingDetail({
   const [submitting, setSubmitting] = useState(false)
   const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null }>>([])
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
+  const [messagingStudent, setMessagingStudent] = useState<string | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [copyDone, setCopyDone] = useState(false)
   const [distanceInfo, setDistanceInfo] = useState<{ distanceMi: number; university: string } | null>(
@@ -723,6 +724,19 @@ export default function ListingDetail({
       }
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleMessageStudent(studentId: string) {
+    if (!user) { window.location.href = '/auth'; return }
+    setMessagingStudent(studentId)
+    const supabase = createClient()
+    try {
+      await openConversation(supabase, String(listing.id), user.id, studentId)
+    } catch (err) {
+      console.error('[interested panel] message student error:', err)
+    } finally {
+      setMessagingStudent(null)
     }
   }
 
@@ -1213,18 +1227,23 @@ export default function ListingDetail({
                       <p className="text-sm font-head font-bold text-clay-dark truncate">{s.first_name} {s.last_name}</p>
                       {s.university && <p className="text-xs font-body text-muted truncate">{s.university}</p>}
                     </div>
-                    {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && (
-                      <a
-                        href={`/profile/${s.id}`}
-                        className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
-                      >
-                        View
-                      </a>
-                    )}
+                    {/* Own row */}
                     {user && user.id === s.id && (
                       <span className="flex-shrink-0 text-[10px] font-body text-muted italic">You</span>
                     )}
-                    {user && user.user_metadata?.role === 'landlord' && (
+                    {/* Student → message another student to form a group */}
+                    {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && (
+                      <button
+                        onClick={() => handleMessageStudent(s.id)}
+                        disabled={messagingStudent === s.id}
+                        className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors disabled:opacity-60"
+                      >
+                        <span className="material-symbols-outlined text-sm">chat_bubble</span>
+                        {messagingStudent === s.id ? '…' : 'Message'}
+                      </button>
+                    )}
+                    {/* Landlord → view student profile */}
+                    {user && user.user_metadata?.role === 'landlord' && user.id !== s.id && (
                       <a
                         href={`/profile/${s.id}`}
                         className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
@@ -1239,12 +1258,12 @@ export default function ListingDetail({
 
             {user && user.user_metadata?.role !== 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
-                Click "View" to see a student's profile and message them.
+                Message other interested students to form a group together.
               </p>
             )}
             {user && user.user_metadata?.role === 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
-                Click &quot;View&quot; to see a student&apos;s profile and reach out.
+                Click &quot;View&quot; to see a student&apos;s profile.
               </p>
             )}
           </div>
