@@ -18,6 +18,7 @@ const AMENITIES_LIST = [
 /* ─── Types ─────────────────────────────────────────── */
 type ListingStatus = 'active' | 'draft' | 'rented' | 'archived'
 type FilterTab     = 'all' | ListingStatus
+type ParsedAddress = { street: string; city: string; state: string; zip: string }
 
 const STATUS_CONFIG: Record<ListingStatus, { label: string; bg: string; dot: string }> = {
   active:   { label: 'Active',   bg: 'bg-green-50 text-green-700 border border-green-200',  dot: 'bg-green-500' },
@@ -286,6 +287,7 @@ function ListingFormFields({
   onNewFileSelect,
   saving,
   statusMsg,
+  onAddressParsed,
 }: {
   defaults?: Listing | null
   listingType: 'open-room' | 'group-formation'
@@ -299,12 +301,9 @@ function ListingFormFields({
   onNewFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
   saving: boolean
   statusMsg: string | null
+  onAddressParsed?: (addr: ParsedAddress) => void
 }) {
   const autocompleteInputRef = useRef<HTMLInputElement>(null)
-  const hiddenAddressRef     = useRef<HTMLInputElement>(null)
-  const hiddenCityRef        = useRef<HTMLInputElement>(null)
-  const hiddenStateRef       = useRef<HTMLInputElement>(null)
-  const hiddenZipRef         = useRef<HTMLInputElement>(null)
 
   const [parsedAddress, setParsedAddress] = useState<{
     street: string; city: string; state: string; zip: string
@@ -341,10 +340,7 @@ function ListingFormFields({
         }
         const street = streetNum ? `${streetNum} ${route}` : route
         setParsedAddress({ street, city, state, zip })
-        if (hiddenAddressRef.current) hiddenAddressRef.current.value = street
-        if (hiddenCityRef.current)    hiddenCityRef.current.value    = city
-        if (hiddenStateRef.current)   hiddenStateRef.current.value   = state
-        if (hiddenZipRef.current)     hiddenZipRef.current.value     = zip
+        if (onAddressParsed) onAddressParsed({ street, city, state, zip })
         // Show just the street in the visible input
         if (autocompleteInputRef.current) autocompleteInputRef.current.value = street
       })
@@ -389,11 +385,6 @@ function ListingFormFields({
             required
           />
         </div>
-        {/* Hidden inputs — populated by autocomplete, read by form submit handlers */}
-        <input ref={hiddenAddressRef} type="hidden" name="address" defaultValue={defaults?.address ?? ''} />
-        <input ref={hiddenCityRef}    type="hidden" name="city"    defaultValue={defaults?.city    ?? ''} />
-        <input ref={hiddenStateRef}   type="hidden" name="state"   defaultValue={defaults?.state   ?? 'CA'} />
-        <input ref={hiddenZipRef}     type="hidden" name="zip"     defaultValue={defaults?.zip     ?? ''} />
       </div>
 
       {/* Confirmed address chip — shown after autocomplete selection */}
@@ -547,9 +538,11 @@ export default function LandlordPortal() {
   const [addPreviews,     setAddPreviews]     = useState<string[]>([])
   const [savingAdd,       setSavingAdd]       = useState(false)
   const [addStatus,       setAddStatus]       = useState<string | null>(null)
+  const [addFormAddress,  setAddFormAddress]  = useState<ParsedAddress | null>(null)
 
   /* ── EDIT listing state ── */
   const [editListing,       setEditListing]       = useState<Listing | null>(null)
+  const [editFormAddress,   setEditFormAddress]   = useState<ParsedAddress | null>(null)
   const [editListingType,   setEditListingType]   = useState<'open-room' | 'group-formation'>('open-room')
   const [editAmenities,     setEditAmenities]     = useState<string[]>([])
   const [editExistingImgs,  setEditExistingImgs]  = useState<string[]>([])  // kept URLs
@@ -629,19 +622,18 @@ export default function LandlordPortal() {
     if (!user) return
 
     const form        = e.target as HTMLFormElement
-    const address     = ((form.elements.namedItem('address') as HTMLInputElement).value.trim())
-                     || ((form.elements.namedItem('address_visible') as HTMLInputElement)?.value.trim() ?? '')
+    const address     = addFormAddress?.street ?? ''
+    const city        = addFormAddress?.city   ?? ''
+    const state       = addFormAddress?.state  ?? 'CA'
+    const zip         = addFormAddress?.zip    ?? ''
     const unit        = (form.elements.namedItem('unit')        as HTMLInputElement).value.trim()
-    const city        = (form.elements.namedItem('city')        as HTMLInputElement).value.trim()
-    const state       = (form.elements.namedItem('state')       as HTMLInputElement).value.trim()
-    const zip         = (form.elements.namedItem('zip')         as HTMLInputElement).value.trim()
     const bedrooms    = parseInt((form.elements.namedItem('bedrooms')  as HTMLInputElement).value)
     const bathrooms   = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
 
     if (!address) {
-      setAddStatus('Please enter a property address.')
+      setAddStatus('Please search and select a property address from the dropdown.')
       return
     }
 
@@ -739,6 +731,7 @@ export default function LandlordPortal() {
     setEditListing(listing)
     setEditListingType(listing.type)
     setEditAmenities(listing.amenities ?? [])
+    setEditFormAddress({ street: listing.address ?? '', city: listing.city ?? '', state: listing.state ?? 'CA', zip: listing.zip ?? '' })
     setEditExistingImgs(listing.images ?? [])
     setEditNewFiles([])
     setEditNewPreviews([])
@@ -751,19 +744,18 @@ export default function LandlordPortal() {
     if (!editListing || !user) return
 
     const form        = e.target as HTMLFormElement
-    const address     = ((form.elements.namedItem('address') as HTMLInputElement).value.trim())
-                     || ((form.elements.namedItem('address_visible') as HTMLInputElement)?.value.trim() ?? '')
+    const address     = editFormAddress?.street ?? editListing.address ?? ''
+    const city        = editFormAddress?.city   ?? editListing.city   ?? ''
+    const state       = editFormAddress?.state  ?? editListing.state  ?? 'CA'
+    const zip         = editFormAddress?.zip    ?? editListing.zip    ?? ''
     const unit        = (form.elements.namedItem('unit')        as HTMLInputElement).value.trim()
-    const city        = (form.elements.namedItem('city')        as HTMLInputElement).value.trim()
-    const state       = (form.elements.namedItem('state')       as HTMLInputElement).value.trim()
-    const zip         = (form.elements.namedItem('zip')         as HTMLInputElement).value.trim()
     const bedrooms    = parseInt((form.elements.namedItem('bedrooms')  as HTMLInputElement).value)
     const bathrooms   = parseFloat((form.elements.namedItem('bathrooms') as HTMLInputElement).value)
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
 
     if (!address) {
-      setEditStatus('Please enter a property address.')
+      setEditStatus('Please search and select a property address from the dropdown.')
       return
     }
 
@@ -1091,7 +1083,7 @@ export default function LandlordPortal() {
             style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)', maxHeight: '90vh' }}>
             {/* Header */}
             <div className="flex-shrink-0 px-8 pt-8 pb-2">
-              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('open-room') }}
+              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('open-room'); setAddFormAddress(null) }}
                 className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
@@ -1116,6 +1108,7 @@ export default function LandlordPortal() {
                   onNewFileSelect={addFileSelect}
                   saving={savingAdd}
                   statusMsg={addStatus}
+                  onAddressParsed={setAddFormAddress}
                 />
               </form>
             </div>
@@ -1159,6 +1152,7 @@ export default function LandlordPortal() {
                   onNewFileSelect={editNewFileSelect}
                   saving={savingEdit}
                   statusMsg={editStatus}
+                  onAddressParsed={setEditFormAddress}
                 />
               </form>
             </div>
