@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase'
 
 type Entry = {
   id: string
@@ -18,8 +19,31 @@ export default function WaitlistAdminPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch('/api/admin/waitlist')
-      if (!res.ok) { setError('Failed to load waitlist.'); setLoading(false); return }
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        setError('You must be signed in as the admin to view this page.')
+        setLoading(false)
+        return
+      }
+
+      const res = await fetch('/api/admin/waitlist', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+
+      if (res.status === 401 || res.status === 403) {
+        setError('Access denied. This page is restricted to the admin account.')
+        setLoading(false)
+        return
+      }
+
+      if (!res.ok) {
+        setError('Failed to load waitlist data.')
+        setLoading(false)
+        return
+      }
+
       const { entries } = await res.json()
       setEntries(entries ?? [])
       setLoading(false)
@@ -47,7 +71,7 @@ export default function WaitlistAdminPage() {
 
   if (error) return (
     <div className="min-h-screen flex items-center justify-center bg-stone">
-      <p className="text-red-400 font-body">{error}</p>
+      <p className="text-red-400 font-body text-center max-w-sm">{error}</p>
     </div>
   )
 
@@ -66,9 +90,9 @@ export default function WaitlistAdminPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: 'Total', value: entries.length, color: 'text-white' },
-            { label: 'Students', value: students, color: 'text-sand' },
-            { label: 'Landlords', value: landlords, color: 'text-clay' },
+            { label: 'Total',     value: entries.length, color: 'text-white' },
+            { label: 'Students',  value: students,       color: 'text-sand'  },
+            { label: 'Landlords', value: landlords,      color: 'text-clay'  },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-5">
               <p className={`font-display text-3xl font-light ${color}`}>{value}</p>
