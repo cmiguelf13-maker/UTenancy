@@ -381,6 +381,7 @@ function ListingFormFields({
           </span>
           <input
             ref={autocompleteInputRef}
+            name="address_visible"
             type="text"
             className="auth-input"
             placeholder="Search address…"
@@ -628,7 +629,8 @@ export default function LandlordPortal() {
     if (!user) return
 
     const form        = e.target as HTMLFormElement
-    const address     = (form.elements.namedItem('address')     as HTMLInputElement).value.trim()
+    const address     = ((form.elements.namedItem('address') as HTMLInputElement).value.trim())
+                     || ((form.elements.namedItem('address_visible') as HTMLInputElement)?.value.trim() ?? '')
     const unit        = (form.elements.namedItem('unit')        as HTMLInputElement).value.trim()
     const city        = (form.elements.namedItem('city')        as HTMLInputElement).value.trim()
     const state       = (form.elements.namedItem('state')       as HTMLInputElement).value.trim()
@@ -638,8 +640,8 @@ export default function LandlordPortal() {
     const rent        = parseInt((form.elements.namedItem('rent')      as HTMLInputElement).value)
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
 
-    if (!address || !city) {
-      setAddStatus('Please select an address from the dropdown to continue.')
+    if (!address) {
+      setAddStatus('Please enter a property address.')
       return
     }
 
@@ -749,7 +751,8 @@ export default function LandlordPortal() {
     if (!editListing || !user) return
 
     const form        = e.target as HTMLFormElement
-    const address     = (form.elements.namedItem('address')     as HTMLInputElement).value.trim()
+    const address     = ((form.elements.namedItem('address') as HTMLInputElement).value.trim())
+                     || ((form.elements.namedItem('address_visible') as HTMLInputElement)?.value.trim() ?? '')
     const unit        = (form.elements.namedItem('unit')        as HTMLInputElement).value.trim()
     const city        = (form.elements.namedItem('city')        as HTMLInputElement).value.trim()
     const state       = (form.elements.namedItem('state')       as HTMLInputElement).value.trim()
@@ -760,7 +763,7 @@ export default function LandlordPortal() {
     const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value.trim()
 
     if (!address) {
-      setEditStatus('Please select an address from the dropdown to continue.')
+      setEditStatus('Please enter a property address.')
       return
     }
 
