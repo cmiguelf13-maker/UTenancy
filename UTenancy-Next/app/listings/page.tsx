@@ -8,7 +8,7 @@ import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/l
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
 
-type SortOption = 'newest' | 'price-asc' | 'price-desc' | 'most-interested'
+type SortOption = 'newest' | 'price-asc' | 'price-desc' | 'most-interested' | 'distance'
 
 function ListingsContent() {
   const searchParams = useSearchParams()
@@ -116,6 +116,7 @@ function ListingsContent() {
       case 'price-asc':  result = [...result].sort((a, b) => a.price - b.price); break
       case 'price-desc': result = [...result].sort((a, b) => b.price - a.price); break
       case 'most-interested': result = [...result].sort((a, b) => b.interested - a.interested); break
+      case 'distance': result = [...result].sort((a, b) => (a.distanceMi ?? 999) - (b.distanceMi ?? 999)); break
       case 'newest': default: break
     }
 
@@ -260,6 +261,7 @@ function ListingsContent() {
                   <option value="price-asc">Price: low → high</option>
                   <option value="price-desc">Price: high → low</option>
                   <option value="most-interested">Most interested</option>
+                  <option value="distance">Closest to campus</option>
                 </select>
               </div>
             </div>
