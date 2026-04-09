@@ -1048,10 +1048,6 @@ export default function LandlordPortal() {
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
               <span className="material-symbols-outlined text-base">chat</span> Messages
             </Link>
-            <Link href="/profile"
-              className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
-              <span className="material-symbols-outlined text-base">manage_accounts</span> Profile
-            </Link>
             {/* Pro badge or Upgrade button */}
             {subscriptionStatus === 'pro' ? (
               <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -1071,12 +1067,13 @@ export default function LandlordPortal() {
               className="clay-grad text-white px-4 py-2 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base">add</span> Add Listing
             </button>
-            <div className="flex items-center gap-2 bg-white border border-out-var rounded-full pl-1 pr-3 py-1">
+            <Link href="/profile"
+              className="flex items-center gap-2 bg-white border border-out-var rounded-full pl-1 pr-3 py-1 hover:border-clay/50 hover:bg-linen transition-all">
               <div className="w-7 h-7 clay-grad rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-white font-head font-black text-xs">{firstName[0]?.toUpperCase() ?? 'L'}</span>
               </div>
               <span className="text-sm font-head font-semibold text-clay-dark hidden md:block">{firstName}</span>
-            </div>
+            </Link>
           </div>
         </div>
       </header>
