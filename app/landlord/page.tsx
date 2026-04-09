@@ -599,6 +599,12 @@ export default function LandlordPortal() {
   const [applicants,         setApplicants]         = useState<Array<{ id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null }>>([])
   const [loadingApplicants,  setLoadingApplicants]  = useState(false)
 
+
+  /* ── Subscription ── */
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free')
+  const [checkingOut,        setCheckingOut]        = useState(false)
+  const [checkoutMsg,        setCheckoutMsg]        = useState<string | null>(null)
+
   /* ── CREATE listing state ── */
   const [showAddModal,    setShowAddModal]    = useState(false)
   const [addListingType,  setAddListingType]  = useState<'open-room' | 'group-formation'>('group-formation')
@@ -629,6 +635,16 @@ export default function LandlordPortal() {
       if (u.user_metadata?.role !== 'landlord') { router.push('/'); return }
       setUser(u)
 
+      // Fetch subscription status from profile
+      supabase
+        .from('profiles')
+        .select('subscription_status')
+        .eq('id', u.id)
+        .single()
+        .then(({ data: profile }) => {
+          if (profile?.subscription_status) setSubscriptionStatus(profile.subscription_status)
+        })
+
       supabase
         .from('listings')
         .select('*, interest_count:listing_interests(count)')
@@ -639,7 +655,36 @@ export default function LandlordPortal() {
           setLoading(false)
         })
     })
+
+    // Handle redirect back from Stripe Checkout
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('checkout') === 'success') {
+      setCheckoutMsg('🎉 Welcome to Pro! Your subscription is now active.')
+      window.history.replaceState({}, '', '/landlord')
+    } else if (params.get('checkout') === 'cancelled') {
+      setCheckoutMsg('Checkout cancelled — you can upgrade anytime.')
+      window.history.replaceState({}, '', '/landlord')
+    }
   }, [])
+
+
+  /* ── Upgrade to Pro ── */
+  async function handleUpgradeToPro() {
+    setCheckingOut(true)
+    try {
+      const res  = await fetch('/api/stripe/create-checkout', { method: 'POST' })
+      const json = await res.json()
+      if (json.url) {
+        window.location.href = json.url
+      } else {
+        setCheckoutMsg(json.error ?? 'Something went wrong. Please try again.')
+        setCheckingOut(false)
+      }
+    } catch {
+      setCheckoutMsg('Network error — please try again.')
+      setCheckingOut(false)
+    }
+  }
 
   /* ── File helpers ── */
   function addFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1015,6 +1060,22 @@ export default function LandlordPortal() {
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
               <span className="material-symbols-outlined text-base">open_in_new</span> View Site
             </Link>
+
+            {/* Pro badge or Upgrade button */}
+            {subscriptionStatus === 'pro' ? (
+              <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                <span className="material-symbols-outlined text-sm">workspace_premium</span> Pro
+              </span>
+            ) : (
+              <button
+                onClick={handleUpgradeToPro}
+                disabled={checkingOut}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
+                <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                {checkingOut ? 'Redirecting…' : 'Upgrade to Pro'}
+              </button>
+            )}
+
             <button onClick={() => setShowAddModal(true)}
               className="clay-grad text-white px-4 py-2 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base">add</span> Add Listing
@@ -1028,6 +1089,20 @@ export default function LandlordPortal() {
           </div>
         </div>
       </header>
+
+      {/* ── Checkout message banner ── */}
+      {checkoutMsg && (
+        <div className="max-w-7xl mx-auto px-6 md:px-10 pt-4">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border
+            bg-amber-50 border-amber-200 text-amber-800">
+            <span className="text-sm font-body">{checkoutMsg}</span>
+            <button onClick={() => setCheckoutMsg(null)}
+              className="flex-shrink-0 text-amber-500 hover:text-amber-700 transition-colors">
+              <span className="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── MAIN ── */}
       <main className="max-w-7xl mx-auto px-6 md:px-10 py-8">
