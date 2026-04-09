@@ -89,7 +89,6 @@ export default function HomePage() {
   useReveal()
 
   const [listingFilter, setListingFilter] = useState<'all' | ListingType>('all')
-  const [pricePeriod, setPricePeriod] = useState<'monthly' | 'annual'>('monthly')
   const [waitlistType, setWaitlistType] = useState<'student' | 'landlord'>('student')
   const [waitlistEmail, setWaitlistEmail] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
@@ -164,10 +163,10 @@ export default function HomePage() {
     }
   }
 
-  const PRICES: Record<string, { monthly: number; annual: number }> = {
-    starter: { monthly: 29,  annual: 23  },
-    growth:  { monthly: 59,  annual: 47  },
-    pro:     { monthly: 129, annual: 103 },
+  const PRICES: Record<string, number> = {
+    starter: 29,
+    growth:  59,
+    pro:     129,
   }
 
   return (
@@ -520,13 +519,6 @@ export default function HomePage() {
             <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-3">Simple pricing<br /><em>for landlords.</em></h2>
             <p className="font-body text-muted text-lg">Students always use UTenancy for free. Landlords pay a flat monthly subscription.</p>
           </div>
-          <div className="flex justify-center gap-2 mb-14 reveal">
-            {(['monthly', 'annual'] as const).map((p) => (
-              <button key={p} onClick={() => setPricePeriod(p)} className={`toggle-btn text-xs font-head font-bold px-5 py-2 rounded-full border border-out-var ${pricePeriod === p ? 'active' : ''}`}>
-                {p === 'monthly' ? 'Monthly' : <>Annual <span className="text-green-600 ml-1">Save 20%</span></>}
-              </button>
-            ))}
-          </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
@@ -540,7 +532,7 @@ export default function HomePage() {
               <div key={key} className={`reveal card-lift ${bg} rounded-3xl p-8 ${pop ? 'pricing-pop md:-mt-4' : ''}`} style={{ transitionDelay: `${i * 0.1}s` }}>
                 <p className={`font-head font-bold text-sm mb-2 uppercase tracking-widest ${nameColor}`}>{name}</p>
                 <p className={`font-display font-light text-5xl mb-1 ${pop ? 'text-white' : 'text-clay-dark'}`}>
-                  ${PRICES[key][pricePeriod]}<span className={`text-lg font-body ${pop ? 'text-sand/60' : 'text-muted'}`}>/mo</span>
+                  ${PRICES[key]}<span className={`text-lg font-body ${pop ? 'text-sand/60' : 'text-muted'}`}>/mo</span>
                 </p>
                 <p className={`text-xs font-body mb-6 ${pop ? 'text-sand/60' : 'text-muted'}`}>{sub}</p>
                 <div className="divider mb-6" />
@@ -656,3 +648,4 @@ export default function HomePage() {
     </>
   )
 }
+
