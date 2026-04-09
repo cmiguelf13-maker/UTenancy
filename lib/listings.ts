@@ -24,6 +24,7 @@ export interface Listing {
   university?: string
   description?: string
   amenities?: string[]
+  availableDate?: string // ISO date string, e.g. "2026-05-01"
 }
 
 export const LISTINGS: Listing[] = [
