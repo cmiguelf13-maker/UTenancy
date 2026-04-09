@@ -298,7 +298,7 @@ function ApplyModal({ listing, user, onClose }: { listing: Listing; user: any; o
       .from('rent_applications')
       .select('id')
       .eq('listing_id', String(listing.id))
-      .eq('student_id', user.id)
+      .eq('user_id', user.id)
       .limit(1)
       .then(({ data }) => {
         if (data && data.length > 0) setAlreadyApplied(true)
@@ -313,9 +313,7 @@ function ApplyModal({ listing, user, onClose }: { listing: Listing; user: any; o
     const supabase = createClient()
     const { error: insertErr } = await supabase.from('rent_applications').insert({
       listing_id: String(listing.id),
-      student_id: user.id,
-      move_in_date: moveIn || null,
-      rooms_needed: roomsNeeded,
+      user_id: user.id,
       message: message,
       application_type: 'direct',
       status: 'pending',
@@ -434,7 +432,7 @@ function GroupModal({ listing, user, onClose }: { listing: Listing; user: any; o
       .from('rent_applications')
       .select('id')
       .eq('listing_id', String(listing.id))
-      .eq('student_id', user.id)
+      .eq('user_id', user.id)
       .eq('application_type', 'group')
       .limit(1)
       .then(({ data }) => {
@@ -450,9 +448,7 @@ function GroupModal({ listing, user, onClose }: { listing: Listing; user: any; o
     const supabase = createClient()
     const { error: insertErr } = await supabase.from('rent_applications').insert({
       listing_id: String(listing.id),
-      student_id: user.id,
-      move_in_date: moveIn || null,
-      rooms_needed: roomsNeeded,
+      user_id: user.id,
       application_type: 'group',
       status: 'pending',
     })
@@ -564,6 +560,7 @@ export default function ListingDetail({
   const [submitting, setSubmitting] = useState(false)
   const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null }>>([])
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
+  const [messagingStudent, setMessagingStudent] = useState<string | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [copyDone, setCopyDone] = useState(false)
   const [distanceInfo, setDistanceInfo] = useState<{ distanceMi: number; university: string } | null>(
@@ -573,6 +570,10 @@ export default function ListingDetail({
   )
 
   const perPerson = listing.beds > 0 ? Math.round(listing.price / listing.beds) : listing.price
+
+  // Mock listings have numeric IDs (2, 3…); real DB listings have UUID strings.
+  // Only DB listings can have interests saved — mock IDs aren't valid FK targets.
+  const isDbListing = typeof listing.id === 'string' && (listing.id as string).includes('-')
 
   const dbImages = (listing as any).images as string[] | undefined
   const hasDbImages = dbImages && dbImages.length > 0 && dbImages[0] !== ''
@@ -606,6 +607,41 @@ export default function ListingDetail({
     return () => io.disconnect()
   }, [])
 
+  // Real-time interest subscription — keeps count + student list live across all viewers
+  useEffect(() => {
+    if (!isDbListing) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`listing-interests-${listing.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'listing_interests', filter: `listing_id=eq.${listing.id}` },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newId = (payload.new as any).student_id
+            setInterestCount((c) => c + 1)
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, first_name, last_name, university')
+              .eq('id', newId)
+              .single()
+            if (profile) {
+              setInterestedStudents((prev) =>
+                prev.some((s) => s.id === profile.id) ? prev : [...prev, profile]
+              )
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const removedId = (payload.old as any).student_id
+            setInterestCount((c) => Math.max(0, c - 1))
+            setInterestedStudents((prev) => prev.filter((s) => s.id !== removedId))
+          }
+        },
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDbListing, listing.id])
+
   // Load session + interest data on mount
   useEffect(() => {
     async function loadSession() {
@@ -614,18 +650,27 @@ export default function ListingDetail({
       const u = session?.user ?? null
       setUser(u)
 
+      // Fetch interest rows (no cross-schema FK join — student_id → auth.users, not profiles)
       const { data: interests } = await supabase
         .from('listing_interests')
-        .select('student_id, profile:profiles(id, first_name, last_name, university)')
+        .select('student_id')
         .eq('listing_id', String(listing.id))
 
       if (interests) {
         setInterestCount(interests.length)
-        const students = interests.map((i: any) => i.profile).filter(Boolean)
-        setInterestedStudents(students)
         if (u) {
           const alreadyInterested = interests.some((i: any) => i.student_id === u.id)
           setInterested(alreadyInterested)
+        }
+        // Fetch profiles separately — PostgREST can't join listing_interests→profiles
+        // because the FK references auth.users, not public.profiles
+        if (interests.length > 0) {
+          const studentIds = interests.map((i: any) => i.student_id)
+          const { data: profileRows } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, university')
+            .in('id', studentIds)
+          if (profileRows) setInterestedStudents(profileRows)
         }
       }
 
@@ -635,7 +680,7 @@ export default function ListingDetail({
           .from('rent_applications')
           .select('id')
           .eq('listing_id', String(listing.id))
-          .eq('student_id', u.id)
+          .eq('user_id', u.id)
           .limit(1)
         if (apps && apps.length > 0) setHasApplied(true)
       }
@@ -644,23 +689,32 @@ export default function ListingDetail({
   }, [])
 
   async function handleInterest() {
-    if (!user) return
+    if (!user || !isDbListing) return
     setSubmitting(true)
     const supabase = createClient()
     try {
       if (interested) {
-        await supabase
+        const { error } = await supabase
           .from('listing_interests')
           .delete()
           .eq('listing_id', String(listing.id))
           .eq('student_id', user.id)
-        setInterested(false)
-        setInterestCount((c) => c - 1)
-        setInterestedStudents((prev) => prev.filter((s) => s.id !== user.id))
+        if (!error) {
+          setInterested(false)
+          setInterestCount((c) => Math.max(0, c - 1))
+          setInterestedStudents((prev) => prev.filter((s) => s.id !== user.id))
+        } else {
+          console.error('[interest] remove error:', error.message)
+        }
       } else {
-        await supabase
+        const { error } = await supabase
           .from('listing_interests')
           .insert({ listing_id: String(listing.id), student_id: user.id })
+        if (error) {
+          console.error('[interest] insert error:', error.message)
+          // Don't update UI — the save failed
+          return
+        }
         setInterested(true)
         setInterestCount((c) => c + 1)
         const { data: myProfile } = await supabase
@@ -723,6 +777,19 @@ export default function ListingDetail({
       }
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleMessageStudent(studentId: string) {
+    if (!user) { window.location.href = '/auth'; return }
+    setMessagingStudent(studentId)
+    const supabase = createClient()
+    try {
+      await openConversation(supabase, String(listing.id), user.id, studentId)
+    } catch (err) {
+      console.error('[interested panel] message student error:', err)
+    } finally {
+      setMessagingStudent(null)
     }
   }
 
@@ -1083,8 +1150,8 @@ export default function ListingDetail({
                 </div>
               </div>
 
-              {/* Interest section */}
-              <div className="m-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
+              {/* Interest section — only for real DB listings with a saveable UUID */}
+              {isDbListing && <div className="m-4 p-4 bg-surf-lo rounded-2xl border border-out-var">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-head font-bold text-clay-dark flex items-center gap-2">
                     <span className="material-symbols-outlined text-base text-clay">group</span>
@@ -1136,7 +1203,7 @@ export default function ListingDetail({
                     Sign in to express interest
                   </a>
                 )}
-              </div>
+              </div>}
             </div>
 
             <p className="text-xs text-muted font-body text-center mt-4 leading-relaxed px-2">
@@ -1213,16 +1280,29 @@ export default function ListingDetail({
                       <p className="text-sm font-head font-bold text-clay-dark truncate">{s.first_name} {s.last_name}</p>
                       {s.university && <p className="text-xs font-body text-muted truncate">{s.university}</p>}
                     </div>
+                    {/* Own row */}
+                    {user && user.id === s.id && (
+                      <span className="flex-shrink-0 text-[10px] font-body text-muted italic">You</span>
+                    )}
+                    {/* Student → message another student to form a group */}
                     {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && (
+                      <button
+                        onClick={() => handleMessageStudent(s.id)}
+                        disabled={messagingStudent === s.id}
+                        className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors disabled:opacity-60"
+                      >
+                        <span className="material-symbols-outlined text-sm">chat_bubble</span>
+                        {messagingStudent === s.id ? '…' : 'Message'}
+                      </button>
+                    )}
+                    {/* Landlord → view student profile */}
+                    {user && user.user_metadata?.role === 'landlord' && user.id !== s.id && (
                       <a
                         href={`/profile/${s.id}`}
                         className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
                       >
                         View
                       </a>
-                    )}
-                    {user && user.user_metadata?.role === 'landlord' && (
-                      <span className="flex-shrink-0 text-[10px] font-body text-muted">Interested</span>
                     )}
                   </div>
                 ))}
@@ -1231,12 +1311,12 @@ export default function ListingDetail({
 
             {user && user.user_metadata?.role !== 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
-                Click "View" to see a student's profile and message them.
+                Message other interested students to form a group together.
               </p>
             )}
             {user && user.user_metadata?.role === 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
-                Students can message you directly — you'll see it in your inbox.
+                Click &quot;View&quot; to see a student&apos;s profile.
               </p>
             )}
           </div>
