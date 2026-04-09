@@ -677,7 +677,8 @@ export default function LandlordPortal() {
 
   function handleSelectPlan(url: string) {
     setShowPlanModal(false)
-    window.location.href = url
+    const dest = user ? `${url}?client_reference_id=${user.id}` : url
+    window.location.href = dest
   }
 
   /* ── File helpers ── */
@@ -1355,4 +1356,5 @@ export default function LandlordPortal() {
     </div>
   )
 }
+
 
