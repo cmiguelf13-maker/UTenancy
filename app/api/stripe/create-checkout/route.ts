@@ -3,11 +3,24 @@ import Stripe from 'stripe'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-03-25.dahlia',
-})
-
 const PRICE_ID = 'price_1TK6y0JF9e2N7acJeKFrzvXj'
+
+// Public keys — already embedded in the browser bundle, safe to inline as fallbacks
+// This guards against env var resolution issues in Vercel serverless functions
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  'https://dzoigotkcaghqjyrotgp.supabase.co'
+
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6b2lnb3RrY2FnaHFqeXJvdGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjg0MzksImV4cCI6MjA5MDkwNDQzOX0.coVY5stZKapQ_JiYek8ywckLC0VYumd4s_cNaNVmooE'
+
+// Lazy-init: Stripe v17+ validates the key at instantiation time, which
+// throws during Next.js build when STRIPE_SECRET_KEY isn't present.
+// Initialise inside the handler so it only runs at request time.
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!)
+}
 
 /**
  * POST /api/stripe/create-checkout
@@ -16,11 +29,13 @@ const PRICE_ID = 'price_1TK6y0JF9e2N7acJeKFrzvXj'
  * and returns the hosted checkout URL to redirect to.
  */
 export async function POST(req: NextRequest) {
+  const stripe = getStripe()
+
   // ── Auth: get session from Supabase cookies ──
   const cookieStore = await cookies()
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
@@ -42,14 +57,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only landlords can subscribe' }, { status: 403 })
   }
 
-  // ── Fetch profile to get or create Stripe customer ──
-  const { createClient } = await import('@supabase/supabase-js')
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-
-  const { data: profile } = await admin
+  // ── Fetch profile using the authenticated user's own session (no service key needed) ──
+  // The user can always read and update their own profile row via RLS.
+  const { data: profile } = await supabase
     .from('profiles')
     .select('stripe_customer_id, subscription_status')
     .eq('id', user.id)
@@ -60,7 +70,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Already subscribed to Pro' }, { status: 400 })
   }
 
-  let customerId = profile?.stripe_customer_id
+  let customerId: string | null = profile?.stripe_customer_id ?? null
 
   if (!customerId) {
     // Create a new Stripe customer
@@ -71,8 +81,8 @@ export async function POST(req: NextRequest) {
     })
     customerId = customer.id
 
-    // Persist the customer ID immediately
-    await admin
+    // Persist the customer ID using the user's own session
+    await supabase
       .from('profiles')
       .update({ stripe_customer_id: customerId })
       .eq('id', user.id)
