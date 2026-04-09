@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import ListingCard from '@/components/ListingCard'
 import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
@@ -10,8 +11,10 @@ import { getDistanceToNearestSchool } from '@/lib/distance'
 type SortOption = 'newest' | 'price-asc' | 'price-desc' | 'most-interested'
 
 export default function ListingsPage() {
+  const searchParams = useSearchParams()
+
   /* ── filter state ── */
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
   const [typeFilter, setTypeFilter] = useState<'all' | ListingType>('all')
   const [priceMax, setPriceMax] = useState(3000)
   const [bedsFilter, setBedsFilter] = useState('Any')

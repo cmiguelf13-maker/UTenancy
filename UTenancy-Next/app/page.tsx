@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
@@ -23,6 +24,7 @@ function useReveal() {
 /* ─── Main page ──────────────────────────────── */
 export default function HomePage() {
   useReveal()
+  const router = useRouter()
 
   const [listingFilter, setListingFilter] = useState<'all' | ListingType>('all')
   const [waitlistType, setWaitlistType] = useState<'student' | 'landlord'>('student')
@@ -33,7 +35,6 @@ export default function HomePage() {
   const [distanceFilter, setDistanceFilter] = useState('Any')
   const [moveInDate, setMoveInDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeSearch, setActiveSearch] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
 
   // Fetch active DB listings on mount
@@ -100,15 +101,6 @@ export default function HomePage() {
     if (moveInDate && l.availableDate) {
       if (new Date(l.availableDate) > new Date(moveInDate)) return false
     }
-    // Hero search query filter
-    if (activeSearch) {
-      const q = activeSearch.toLowerCase()
-      const match =
-        l.location?.toLowerCase().includes(q) ||
-        l.university?.toLowerCase().includes(q) ||
-        l.title?.toLowerCase().includes(q)
-      if (!match) return false
-    }
     return true
   })
 
@@ -118,13 +110,15 @@ export default function HomePage() {
     setBedsFilter('Any')
     setDistanceFilter('Any')
     setMoveInDate('')
-    setActiveSearch('')
-    setSearchQuery('')
   }
 
   function handleHeroSearch() {
-    setActiveSearch(searchQuery)
-    document.getElementById('listings')?.scrollIntoView({ behavior: 'smooth' })
+    const q = searchQuery.trim()
+    if (q) {
+      router.push('/listings?q=' + encodeURIComponent(q))
+    } else {
+      router.push('/listings')
+    }
   }
 
   async function handleWaitlistSubmit() {
@@ -292,14 +286,7 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 reveal">
             <div>
               <span className="feature-pill mb-3 inline-flex">Sample Listings</span>
-              <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">
-                {activeSearch ? <>Results for <em>&ldquo;{activeSearch}&rdquo;</em></> : <>Newest student<br /><em>homes near you.</em></>}
-              </h2>
-              {activeSearch && (
-                <button onClick={() => { setActiveSearch(''); setSearchQuery('') }} className="mt-3 text-xs font-head font-semibold text-clay flex items-center gap-1 hover:opacity-70 transition-opacity">
-                  <span className="material-symbols-outlined text-sm">close</span> Clear search
-                </button>
-              )}
+              <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">Newest student<br /><em>homes near you.</em></h2>
             </div>
             <div className="flex flex-wrap gap-2">
               {(['all', 'open', 'group'] as const).map((f) => (
