@@ -514,7 +514,7 @@ export default function HomePage() {
       {/* ── PRICING ───────────────────────────────── */}
       <section id="pricing" className="py-28 px-6 md:px-10 bg-cream">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-6 reveal">
+          <div className="text-center mb-16 reveal">
             <span className="feature-pill mb-4 inline-flex">Pricing</span>
             <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-3">Simple pricing<br /><em>for landlords.</em></h2>
             <p className="font-body text-muted text-lg">Students always use UTenancy for free. Landlords pay a flat monthly subscription.</p>
@@ -529,7 +529,7 @@ export default function HomePage() {
               { key: 'pro',     name: 'Pro',      sub: 'Unlimited properties', nameColor: 'text-muted',  bg: 'bg-white border border-out-var',      btnClass: 'border-2 border-clay text-clay-dark hover:bg-clay hover:text-white', pop: false,
                 features: ['Unlimited listings','Priority applicant review','API access','Dedicated account manager','White-label portal'], missing: [] },
             ].map(({ key, name, sub, nameColor, bg, btnClass, pop, features, missing }, i) => (
-              <div key={key} className={`reveal card-lift ${bg} rounded-3xl p-8 ${pop ? 'pricing-pop md:-mt-4' : ''}`} style={{ transitionDelay: `${i * 0.1}s` }}>
+              <div key={key} className={`reveal card-lift ${bg} rounded-3xl p-8 ${pop ? 'pricing-pop' : ''}`} style={{ transitionDelay: `${i * 0.1}s` }}>
                 <p className={`font-head font-bold text-sm mb-2 uppercase tracking-widest ${nameColor}`}>{name}</p>
                 <p className={`font-display font-light text-5xl mb-1 ${pop ? 'text-white' : 'text-clay-dark'}`}>
                   ${PRICES[key]}<span className={`text-lg font-body ${pop ? 'text-sand/60' : 'text-muted'}`}>/mo</span>
