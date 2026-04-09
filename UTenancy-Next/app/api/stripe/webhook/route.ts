@@ -6,8 +6,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-03-25.dahlia',
 })
 
-// Raw body is required for Stripe signature verification — disable body parsing
-export const config = { api: { bodyParser: false } }
 
 function getSubscriptionStatus(status: string): string {
   switch (status) {
