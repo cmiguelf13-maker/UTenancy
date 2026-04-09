@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-03-31.basil',
+  apiVersion: '2026-03-25.dahlia',
 })
 
 const PRICE_ID = 'price_1TK6y0JF9e2N7acJeKFrzvXj'
