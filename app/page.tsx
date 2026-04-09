@@ -93,6 +93,9 @@ export default function HomePage() {
   const [waitlistEmail, setWaitlistEmail] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
   const [priceMax, setPriceMax] = useState(3000)
+  const [bedsFilter, setBedsFilter] = useState('Any')
+  const [distanceFilter, setDistanceFilter] = useState('Any')
+  const [moveInDate, setMoveInDate] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
 
   // Fetch active DB listings on mount
@@ -119,6 +122,7 @@ export default function HomePage() {
           images: d.images ?? [],
           description: d.description,
           amenities: d.amenities,
+          availableDate: d.available_date ?? undefined,
         }))
         setDbListings(mapped)
 
@@ -139,7 +143,35 @@ export default function HomePage() {
   }, [])
 
   const allListings = [...dbListings, ...LISTINGS]
-  const filtered = listingFilter === 'all' ? allListings : allListings.filter((l) => l.type === listingFilter)
+
+  const filtered = allListings.filter((l) => {
+    // Type filter
+    if (listingFilter !== 'all' && l.type !== listingFilter) return false
+    // Price filter
+    if (l.price > priceMax) return false
+    // Beds filter
+    if (bedsFilter === '1 Bed' && l.beds !== 1) return false
+    if (bedsFilter === '2 Beds' && l.beds !== 2) return false
+    if (bedsFilter === '3+ Beds' && l.beds < 3) return false
+    // Distance filter (only applies when distanceMi is known)
+    if (distanceFilter !== 'Any' && l.distanceMi != null) {
+      if (distanceFilter === 'Walking' && l.distanceMi > 0.5) return false
+      if (distanceFilter === 'Bus / Bike' && l.distanceMi > 3) return false
+    }
+    // Move-in date filter (listing must be available on or before selected date)
+    if (moveInDate && l.availableDate) {
+      if (new Date(l.availableDate) > new Date(moveInDate)) return false
+    }
+    return true
+  })
+
+  function clearFilters() {
+    setListingFilter('all')
+    setPriceMax(3000)
+    setBedsFilter('Any')
+    setDistanceFilter('Any')
+    setMoveInDate('')
+  }
 
   async function handleWaitlistSubmit() {
     if (!waitlistEmail.trim() || waitlistStatus === 'loading') return
@@ -270,8 +302,8 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 reveal">
             <span className="feature-pill mb-4 inline-flex">For Students</span>
-            <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-4">Finding a place<br /><em>shouldn't be this hard.</em></h2>
-            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy makes it three steps. No Craigslist strangers. No expired listings. No guessing who you'll live with.</p>
+            <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-4">Finding a place<br /><em>shouldn&apos;t be this hard.</em></h2>
+            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy makes it three steps. No Craigslist strangers. No expired listings. No guessing who you&apos;ll live with.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
@@ -318,27 +350,55 @@ export default function HomePage() {
               <input type="range" min={500} max={3000} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} />
               <span className="text-xs font-head font-bold text-clay whitespace-nowrap">${priceMax.toLocaleString()}</span>
             </div>
-            {[
-              { label: 'Distance', options: ['Any', 'Walking', 'Bus / Bike'] },
-              { label: 'Beds',     options: ['Any', '1 Bed', '2 Beds', '3+ Beds'] },
-            ].map(({ label, options }) => (
-              <div key={label} className="flex items-center gap-2">
-                <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">{label}</label>
-                <select className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer">
-                  {options.map((o) => <option key={o}>{o}</option>)}
-                </select>
-              </div>
-            ))}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Distance</label>
+              <select
+                value={distanceFilter}
+                onChange={(e) => setDistanceFilter(e.target.value)}
+                className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
+              >
+                {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Beds</label>
+              <select
+                value={bedsFilter}
+                onChange={(e) => setBedsFilter(e.target.value)}
+                className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
+              >
+                {['Any', '1 Bed', '2 Beds', '3+ Beds'].map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Move-in</label>
-              <input type="date" className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none" />
+              <input
+                type="date"
+                value={moveInDate}
+                onChange={(e) => setMoveInDate(e.target.value)}
+                className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none"
+              />
             </div>
-            <button className="clay-grad text-white text-xs font-head font-bold px-5 py-2 rounded-full shadow-md ml-auto">Apply Filters</button>
+            <button
+              onClick={clearFilters}
+              className="clay-grad text-white text-xs font-head font-bold px-5 py-2 rounded-full shadow-md ml-auto"
+            >
+              Clear Filters
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filtered.map((l) => <ListingCard key={l.id} listing={l} />)}
-          </div>
+          {filtered.length === 0 ? (
+            <div className="text-center py-20">
+              <span className="material-symbols-outlined text-out-var text-5xl mb-4 block">search_off</span>
+              <p className="font-head font-bold text-clay-dark text-lg mb-2">No listings match your filters</p>
+              <p className="font-body text-muted text-sm mb-6">Try adjusting your criteria or clearing the filters.</p>
+              <button onClick={clearFilters} className="clay-grad text-white text-sm font-head font-bold px-6 py-2.5 rounded-full shadow-md">Clear Filters</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filtered.map((l) => <ListingCard key={l.id} listing={l} />)}
+            </div>
+          )}
 
           <div className="text-center mt-12">
             <button className="border-2 border-clay text-clay-dark font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-clay hover:text-white transition-all">View All Listings</button>
@@ -353,7 +413,7 @@ export default function HomePage() {
             <div className="reveal">
               <span className="feature-pill mb-6 inline-flex">Post-Move-In Tools</span>
               <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-6">Moving in is<br /><em>just the beginning.</em></h2>
-              <p className="font-body text-muted leading-relaxed mb-8 text-lg">UTenancy doesn't disappear after the match. Rent splitting, shared expense tracking, and payment reminders keep your whole household synced.</p>
+              <p className="font-body text-muted leading-relaxed mb-8 text-lg">UTenancy doesn&apos;t disappear after the match. Rent splitting, shared expense tracking, and payment reminders keep your whole household synced.</p>
               <ul className="space-y-4">
                 {[
                   { icon: 'payments',             title: 'Automatic rent splitting',  body: "Each roommate pays their share directly. No Venmo math, no awkward reminders." },
@@ -563,7 +623,7 @@ export default function HomePage() {
             <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Early Access
           </span>
           <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Be first.<br /><em className="text-sand">Join the waitlist.</em></h2>
-          <p className="font-body text-white/60 text-lg mb-10">Whether you're a student looking for your first off-campus place, or a landlord ready to simplify — get early access before we go public.</p>
+          <p className="font-body text-white/60 text-lg mb-10">Whether you&apos;re a student looking for your first off-campus place, or a landlord ready to simplify — get early access before we go public.</p>
 
           {/* Type toggle */}
           <div className="flex justify-center gap-2 mb-8">
@@ -648,4 +708,3 @@ export default function HomePage() {
     </>
   )
 }
-
