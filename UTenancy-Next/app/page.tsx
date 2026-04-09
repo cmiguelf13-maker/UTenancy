@@ -32,6 +32,8 @@ export default function HomePage() {
   const [bedsFilter, setBedsFilter] = useState('Any')
   const [distanceFilter, setDistanceFilter] = useState('Any')
   const [moveInDate, setMoveInDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeSearch, setActiveSearch] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
 
   // Fetch active DB listings on mount
@@ -98,6 +100,15 @@ export default function HomePage() {
     if (moveInDate && l.availableDate) {
       if (new Date(l.availableDate) > new Date(moveInDate)) return false
     }
+    // Hero search query filter
+    if (activeSearch) {
+      const q = activeSearch.toLowerCase()
+      const match =
+        l.location?.toLowerCase().includes(q) ||
+        l.university?.toLowerCase().includes(q) ||
+        l.title?.toLowerCase().includes(q)
+      if (!match) return false
+    }
     return true
   })
 
@@ -107,6 +118,13 @@ export default function HomePage() {
     setBedsFilter('Any')
     setDistanceFilter('Any')
     setMoveInDate('')
+    setActiveSearch('')
+    setSearchQuery('')
+  }
+
+  function handleHeroSearch() {
+    setActiveSearch(searchQuery)
+    document.getElementById('listings')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   async function handleWaitlistSubmit() {
@@ -168,21 +186,27 @@ export default function HomePage() {
               <div className="bg-white rounded-full shadow-2xl shadow-clay/10 p-2 flex items-center gap-2 border border-out-var/40 focus-within:ring-2 ring-clay/20 transition-all">
                 <div className="flex-1 flex items-center pl-4 gap-3">
                   <span className="material-symbols-outlined text-outline text-xl">location_on</span>
-                  <input className="w-full bg-transparent border-none focus:ring-0 text-stone font-body font-medium placeholder:text-outline text-sm outline-none" placeholder="Enter university or city…" defaultValue="LMU — Loyola Marymount University, LA" />
+                  <input
+                    className="w-full bg-transparent border-none focus:ring-0 text-stone font-body font-medium placeholder:text-outline text-sm outline-none"
+                    placeholder="Search by university, city, or neighborhood…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleHeroSearch() }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => { setSearchQuery(''); setActiveSearch('') }} className="text-outline hover:text-muted transition-colors mr-1">
+                      <span className="material-symbols-outlined text-lg">close</span>
+                    </button>
+                  )}
                 </div>
-                <button className="clay-grad text-white px-7 py-3.5 rounded-full font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all">
+                <button
+                  onClick={handleHeroSearch}
+                  className="clay-grad text-white px-7 py-3.5 rounded-full font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all">
                   <span className="material-symbols-outlined text-sm">search</span> Search
                 </button>
               </div>
             </div>
 
-            {/* Popular tags */}
-            <div className="f5 flex flex-wrap justify-center gap-2 text-xs">
-              <span className="text-muted font-body">Popular:</span>
-              {['Los Angeles', 'Miami', 'Austin', 'Boston', 'New York'].map((city) => (
-                <span key={city} className="feature-pill cursor-pointer hover:bg-clay hover:text-white transition-colors">{city}</span>
-              ))}
-            </div>
           </div>
 
           {/* Floating cards */}
@@ -268,7 +292,14 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 reveal">
             <div>
               <span className="feature-pill mb-3 inline-flex">Sample Listings</span>
-              <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">Newest student<br /><em>homes near you.</em></h2>
+              <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">
+                {activeSearch ? <>Results for <em>&ldquo;{activeSearch}&rdquo;</em></> : <>Newest student<br /><em>homes near you.</em></>}
+              </h2>
+              {activeSearch && (
+                <button onClick={() => { setActiveSearch(''); setSearchQuery('') }} className="mt-3 text-xs font-head font-semibold text-clay flex items-center gap-1 hover:opacity-70 transition-opacity">
+                  <span className="material-symbols-outlined text-sm">close</span> Clear search
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {(['all', 'open', 'group'] as const).map((f) => (

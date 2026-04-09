@@ -36,18 +36,22 @@ export default function WaitlistPage() {
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full opacity-10 blur-[180px] pointer-events-none" style={{ background: '#9c7060' }} />
 
-      <div className="relative z-10 w-full max-w-lg text-center">
+      <div className="relative z-10 w-full max-w-lg mx-auto text-center">
 
         {/* Logo */}
-        <Link href="/" className="inline-block mb-12">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="UTenancy" className="h-14 w-auto mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
-        </Link>
+        <div className="flex justify-center mb-12">
+          <Link href="/">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="UTenancy" className="h-14 w-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+          </Link>
+        </div>
 
         {/* Badge */}
-        <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-8">
-          <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Early Access
-        </span>
+        <div className="flex justify-center mb-8">
+          <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest">
+            <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Early Access
+          </span>
+        </div>
 
         {/* Heading */}
         <h1 className="font-display text-5xl md:text-6xl font-light text-white mb-5 leading-tight">
