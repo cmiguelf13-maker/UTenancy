@@ -101,41 +101,6 @@ function StatCard({ icon, value, label, sub }: {
       <p className="font-display text-3xl font-light text-clay-dark italic">{value}</p>
       <p className="text-sm font-head font-semibold text-espresso mt-0.5">{label}</p>
       {sub && <p className="text-xs font-body text-muted mt-0.5">{sub}</p>}
-      {/* ── Plan selection modal ── */}
-      {showPlanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative">
-            <button
-              onClick={() => setShowPlanModal(false)}
-              className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 transition-colors">
-              <span className="material-symbols-outlined">close</span>
-            </button>
-            <div className="text-center mb-6">
-              <span className="material-symbols-outlined text-4xl text-amber-500 mb-2 block">workspace_premium</span>
-              <h2 className="text-2xl font-head font-black text-clay-dark">Choose your plan</h2>
-              <p className="text-sm text-muted mt-1 font-body">Unlock more listings and premium features</p>
-            </div>
-            <div className="space-y-3">
-              {PLANS.map((plan) => (
-                <button
-                  key={plan.name}
-                  onClick={() => handleSelectPlan(plan.url)}
-                  className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 border-stone-200 hover:border-amber-400 hover:bg-amber-50 transition-all group text-left">
-                  <div>
-                    <div className="font-head font-bold text-clay-dark group-hover:text-amber-700 text-base">{plan.name}</div>
-                    <div className="text-xs text-muted font-body mt-0.5">{plan.desc}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-head font-black text-amber-600 text-lg">{plan.price}</span>
-                    <span className="material-symbols-outlined text-stone-400 group-hover:text-amber-500 transition-colors">arrow_forward</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   )
 }
@@ -1347,6 +1312,41 @@ export default function LandlordPortal() {
                   onAddressParsed={setEditFormAddress}
                 />
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Plan selection modal ── */}
+      {showPlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative">
+            <button
+              onClick={() => setShowPlanModal(false)}
+              className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 transition-colors">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <div className="text-center mb-6">
+              <span className="material-symbols-outlined text-4xl text-amber-500 mb-2 block">workspace_premium</span>
+              <h2 className="text-2xl font-head font-black text-clay-dark">Choose your plan</h2>
+              <p className="text-sm text-muted mt-1 font-body">Unlock more listings and premium features</p>
+            </div>
+            <div className="space-y-3">
+              {PLANS.map((plan) => (
+                <button
+                  key={plan.name}
+                  onClick={() => handleSelectPlan(plan.url)}
+                  className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 border-stone-200 hover:border-amber-400 hover:bg-amber-50 transition-all group text-left">
+                  <div>
+                    <div className="font-head font-bold text-clay-dark group-hover:text-amber-700 text-base">{plan.name}</div>
+                    <div className="text-xs text-muted font-body mt-0.5">{plan.desc}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-head font-black text-amber-600 text-lg">{plan.price}</span>
+                    <span className="material-symbols-outlined text-stone-400 group-hover:text-amber-500 transition-colors">arrow_forward</span>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         </div>
