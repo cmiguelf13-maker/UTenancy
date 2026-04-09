@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
+import ListingCard from '@/components/ListingCard'
 
 /* ─── Scroll-reveal hook ─────────────────────── */
 function useReveal() {
@@ -17,71 +18,6 @@ function useReveal() {
     document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
     return () => io.disconnect()
   }, [])
-}
-
-/* ─── Listing Card ───────────────────────────── */
-function ListingCard({ listing }: { listing: MockListing }) {
-  const [saved, setSaved] = useState(false)
-  return (
-    <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var/40'}`}>
-      {listing.featured && (
-        <div className="absolute top-0 left-0 right-0 z-10 flex justify-center">
-          <span className="clay-grad text-white text-[10px] font-head font-bold uppercase tracking-widest px-4 py-1.5 rounded-b-full shadow-md">⭐ Featured Listing</span>
-        </div>
-      )}
-      <Link href={`/listings/${listing.slug}`} className="block">
-        <div className="relative h-52 overflow-hidden">
-          {listing.img ? (
-            listing.img.includes('supabase.co') ? (
-              <img src={listing.img} alt={listing.title} className="absolute inset-0 w-full h-full object-cover" />
-            ) : (
-              <Image src={listing.img} alt={listing.title} fill className="object-cover" sizes="(max-width:640px) 100vw, (max-width:1280px) 50vw, 33vw" />
-            )
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-linen to-surf-lo flex items-center justify-center">
-              <span className="material-symbols-outlined text-out-var text-6xl">home</span>
-            </div>
-          )}
-          <span className={`${listing.type === 'open' ? 'badge-open' : 'badge-group'} absolute top-4 left-4 text-[10px] font-head font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg`}>
-            {listing.type === 'open' ? 'Open Room' : 'Group Formation'}
-          </span>
-          <button
-            className="absolute top-4 right-4 w-9 h-9 bg-white/85 backdrop-blur-sm rounded-full flex items-center justify-center text-clay hover:bg-white transition-all shadow-md"
-            onClick={(e) => { e.preventDefault(); setSaved((s) => !s) }}
-            aria-label="Save to favourites"
-          >
-            <span className={`material-symbols-outlined text-lg ${saved ? 'fill' : ''}`}>favorite</span>
-          </button>
-        </div>
-        <div className="p-5">
-          <h3 className="font-head font-bold text-clay-dark text-base truncate mb-1">{listing.title}</h3>
-          <p className="text-xs font-body text-muted flex items-center gap-1 mb-4">
-            <span className="material-symbols-outlined text-xs">location_on</span>{listing.location}
-          </p>
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-[9px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">{listing.featured ? 'Total Rent' : 'Per Person'}</p>
-              <p className="font-head font-black text-clay-dark text-lg">${listing.price.toLocaleString()}<span className="text-xs font-normal text-muted">/mo</span></p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-head font-bold text-clay">{listing.beds} bed{listing.beds !== 1 ? 's' : ''} avail.</p>
-              <p className="text-[10px] text-muted font-body flex items-center justify-end gap-1">
-                <span className="material-symbols-outlined fill text-[11px]">group</span>{listing.interested} interested
-              </p>
-            </div>
-          </div>
-          {(listing.featured || listing.distanceMi) && (
-            <div className="mt-4 pt-4 border-t border-out-var/30 flex items-center justify-between">
-              <span className="font-head font-bold text-clay text-xs flex items-center gap-1">View Listing <span className="material-symbols-outlined text-sm">arrow_forward</span></span>
-              {listing.distanceMi && listing.university && (
-                <span className="feature-pill text-[10px] px-2.5 py-1">~{listing.distanceMi} mi to {listing.university}</span>
-              )}
-            </div>
-          )}
-        </div>
-      </Link>
-    </article>
-  )
 }
 
 /* ─── Main page ──────────────────────────────── */
@@ -232,7 +168,7 @@ export default function HomePage() {
               <div className="bg-white rounded-full shadow-2xl shadow-clay/10 p-2 flex items-center gap-2 border border-out-var/40 focus-within:ring-2 ring-clay/20 transition-all">
                 <div className="flex-1 flex items-center pl-4 gap-3">
                   <span className="material-symbols-outlined text-outline text-xl">location_on</span>
-                  <input className="w-full bg-transparent border-none focus:ring-0 text-stone font-body font-medium placeholder:text-outline text-sm outline-none" placeholder="Enter university or city…" defaultValue="LMU — Loyola Marymount University, LA" />
+                  <input className="w-full bg-transparent border-none focus:ring-0 text-stone font-body font-medium placeholder:text-outline text-sm outline-none" placeholder="LMU — Loyola Marymount University, LA" />
                 </div>
                 <button className="clay-grad text-white px-7 py-3.5 rounded-full font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all">
                   <span className="material-symbols-outlined text-sm">search</span> Search
@@ -240,13 +176,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Popular tags */}
-            <div className="f5 flex flex-wrap justify-center gap-2 text-xs">
-              <span className="text-muted font-body">Popular:</span>
-              {['Los Angeles', 'Miami', 'Austin', 'Boston', 'New York'].map((city) => (
-                <span key={city} className="feature-pill cursor-pointer hover:bg-clay hover:text-white transition-colors">{city}</span>
-              ))}
-            </div>
           </div>
 
           {/* Floating cards */}
@@ -401,7 +330,9 @@ export default function HomePage() {
           )}
 
           <div className="text-center mt-12">
-            <button className="border-2 border-clay text-clay-dark font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-clay hover:text-white transition-all">View All Listings</button>
+            <Link href="/listings" className="inline-flex items-center gap-2 border-2 border-clay text-clay-dark font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-clay hover:text-white transition-all">
+              View All Listings <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
           </div>
         </div>
       </section>
