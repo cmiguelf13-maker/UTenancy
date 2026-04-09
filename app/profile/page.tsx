@@ -114,7 +114,8 @@ export default function ProfilePage() {
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
 
-  const [role, setRole] = useState<string>('student')
+  const [role,               setRole]               = useState<string>('student')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('trial')
 
   const [profile, setProfile] = useState<ProfileData>({
     firstName:   '',
@@ -196,6 +197,7 @@ export default function ProfilePage() {
               company:     m.company ?? '',
             }))
           }
+          setSubscriptionStatus(profileData.subscription_status ?? 'trial')
           setLoading(false)
         })
     })
@@ -367,6 +369,43 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* ── LANDLORD: SUBSCRIPTION ── */}
+          {role === 'landlord' && (
+            <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
+              <SectionHeading icon="workspace_premium" title="Subscription Plan"
+                subtitle="Your current UTenancy plan." />
+              <div className="mt-4">
+                {(() => {
+                  const PLAN_CONFIG: Record<string, { label: string; desc: string; bg: string; text: string; border: string; icon: string }> = {
+                    trial:     { label: 'Trial',     desc: 'Free tier — limited listings',       bg: 'bg-stone-50',  text: 'text-stone-600', border: 'border-stone-200', icon: 'schedule'           },
+                    starter:   { label: 'Starter',   desc: '$29 / month',                        bg: 'bg-teal-50',   text: 'text-teal-700',  border: 'border-teal-200',  icon: 'rocket_launch'      },
+                    growth:    { label: 'Growth',    desc: '$59 / month',                        bg: 'bg-blue-50',   text: 'text-blue-700',  border: 'border-blue-200',  icon: 'trending_up'        },
+                    pro:       { label: 'Pro',       desc: '$129 / month',                       bg: 'bg-amber-50',  text: 'text-amber-700', border: 'border-amber-200', icon: 'workspace_premium'  },
+                    past_due:  { label: 'Past Due',  desc: 'Payment failed — update billing',    bg: 'bg-red-50',    text: 'text-red-700',   border: 'border-red-200',   icon: 'warning'            },
+                    cancelled: { label: 'Cancelled', desc: 'Subscription ended',                 bg: 'bg-stone-50',  text: 'text-stone-500', border: 'border-stone-200', icon: 'cancel'             },
+                  }
+                  const cfg = PLAN_CONFIG[subscriptionStatus] ?? PLAN_CONFIG['trial']
+                  return (
+                    <div className={`flex items-center gap-4 px-5 py-4 rounded-2xl border ${cfg.bg} ${cfg.border}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${cfg.border} ${cfg.bg}`}>
+                        <span className={`material-symbols-outlined fill text-xl ${cfg.text}`}>{cfg.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-head font-bold text-base ${cfg.text}`}>{cfg.label}</p>
+                        <p className="text-xs font-body text-muted">{cfg.desc}</p>
+                      </div>
+                      {subscriptionStatus === 'trial' || subscriptionStatus === 'cancelled' ? (
+                        <a href="/landlord" className="text-xs font-head font-bold text-amber-600 hover:text-amber-700 underline underline-offset-2 transition-colors">
+                          Upgrade
+                        </a>
+                      ) : null}
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
 
           {/* ── LANDLORD: CONTACT INFO ── */}
           {role === 'landlord' && (
