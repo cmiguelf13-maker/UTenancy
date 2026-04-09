@@ -3,11 +3,14 @@ import Stripe from 'stripe'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-03-25.dahlia',
-})
-
 const PRICE_ID = 'price_1TK6y0JF9e2N7acJeKFrzvXj'
+
+// Lazy-init: Stripe v17+ validates the key at instantiation time, which
+// throws during Next.js build when STRIPE_SECRET_KEY isn't present.
+// Initialise inside the handler so it only runs at request time.
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!)
+}
 
 /**
  * POST /api/stripe/create-checkout
@@ -16,6 +19,7 @@ const PRICE_ID = 'price_1TK6y0JF9e2N7acJeKFrzvXj'
  * and returns the hosted checkout URL to redirect to.
  */
 export async function POST(req: NextRequest) {
+  const stripe = getStripe()
   // ── Auth: get session from Supabase cookies ──
   const cookieStore = await cookies()
   const supabase = createServerClient(
