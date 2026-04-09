@@ -97,6 +97,19 @@ export default function HomePage() {
   const [distanceFilter, setDistanceFilter] = useState('Any')
   const [moveInDate, setMoveInDate] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
+  const [mockListings, setMockListings] = useState<MockListing[]>([...LISTINGS])
+
+  // Geocode mock listings to compute distance to nearest school
+  useEffect(() => {
+    LISTINGS.forEach(async (listing, idx) => {
+      const info = await getDistanceToNearestSchool(listing.location, '', 'CA')
+      if (info) {
+        setMockListings(prev => prev.map((l, i) =>
+          i === idx ? { ...l, distanceMi: info.distanceMi, university: info.university } : l
+        ))
+      }
+    })
+  }, [])
 
   // Fetch active DB listings on mount
   useEffect(() => {
@@ -142,7 +155,7 @@ export default function HomePage() {
       })
   }, [])
 
-  const allListings = [...dbListings, ...LISTINGS]
+  const allListings = [...dbListings, ...mockListings]
 
   const filtered = allListings.filter((l) => {
     // Type filter
