@@ -1059,7 +1059,7 @@ export default function LandlordPortal() {
                 disabled={checkingOut}
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
                 <span className="material-symbols-outlined text-sm">workspace_premium</span>
-                {checkingOut ? 'Redirecting…' : 'Upgrade to Pro'}
+                {checkingOut ? 'Redirecting…' : 'Upgrade'}
               </button>
             )}
 
