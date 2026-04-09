@@ -85,9 +85,17 @@ function ListingsContent() {
     let result = allListings.filter((l) => {
       if (search) {
         const q = search.toLowerCase()
-        const inTitle = l.title.toLowerCase().includes(q)
-        const inLocation = l.location.toLowerCase().includes(q)
-        if (!inTitle && !inLocation) return false
+        const searchableText = [
+          l.title,
+          l.location,
+          l.university ?? '',
+          l.description ?? '',
+          ...(l.amenities ?? []),
+          `${l.beds} bed`,
+          `${l.beds} bedroom`,
+          l.type === 'open' ? 'open room' : 'group formation',
+        ].join(' ').toLowerCase()
+        if (!searchableText.includes(q)) return false
       }
       if (typeFilter !== 'all' && l.type !== typeFilter) return false
       if (l.price > priceMax) return false

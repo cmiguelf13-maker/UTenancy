@@ -33,7 +33,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 2,
     slug: 'the-beacon-collective',
-    title: 'The Beacon Collective',
+    title: '8919 Gulana Ave',
     location: 'Playa Vista, LA',
     price: 1450,
     beds: 2,
@@ -50,7 +50,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 3,
     slug: 'commonwealth-flats',
-    title: 'Commonwealth Flats',
+    title: '6416 W 87th St',
     location: 'Westchester, LA',
     price: 1800,
     beds: 4,
@@ -67,7 +67,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 4,
     slug: 'the-loyola-walk',
-    title: 'The Loyola Walk',
+    title: '8726 Lincoln Blvd',
     location: 'Westchester, LA',
     price: 975,
     beds: 1,
@@ -84,7 +84,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 5,
     slug: 'seaport-lofts',
-    title: 'Seaport Lofts',
+    title: '4366 Via Marina #302',
     location: 'Marina del Rey, LA',
     price: 2100,
     beds: 3,
@@ -101,7 +101,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 6,
     slug: 'westchester-studios',
-    title: 'Westchester Studios',
+    title: '7846 W 83rd St',
     location: 'Westchester, LA',
     price: 1250,
     beds: 1,
@@ -118,7 +118,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 7,
     slug: 'the-south-end-reserve',
-    title: 'The South End Reserve',
+    title: '722 Brooks Ave',
     location: 'Venice, LA',
     price: 1675,
     beds: 5,
@@ -137,7 +137,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 8,
     slug: 'lincoln-village-studios',
-    title: 'Lincoln Village Studios',
+    title: '8300 Redlands St',
     location: 'Playa del Rey, LA',
     price: 1350,
     beds: 1,
@@ -154,7 +154,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 9,
     slug: 'dockside-suites',
-    title: 'Dockside Suites',
+    title: '4115 Via Marina #210',
     location: 'Marina del Rey, LA',
     price: 1900,
     beds: 2,
@@ -173,7 +173,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 10,
     slug: 'mar-vista-commons',
-    title: 'Mar Vista Commons',
+    title: '4235 Centinela Ave',
     location: 'Mar Vista, LA',
     price: 1550,
     beds: 3,
@@ -190,7 +190,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 11,
     slug: 'fenway-garden-suites',
-    title: 'Fenway Garden Suites',
+    title: '10445 Tabor St',
     location: 'Culver City, LA',
     price: 1200,
     beds: 1,
@@ -207,7 +207,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 12,
     slug: 'the-palms-collective',
-    title: 'The Palms Collective',
+    title: '3416 Military Ave',
     location: 'Palms, LA',
     price: 1100,
     beds: 3,
@@ -226,7 +226,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 13,
     slug: 'venice-beach-bungalow',
-    title: 'Venice Beach Bungalow',
+    title: '524 Brooks Ave',
     location: 'Venice, LA',
     price: 1600,
     beds: 2,
@@ -243,7 +243,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 14,
     slug: 'el-segundo-flats',
-    title: 'El Segundo Flats',
+    title: '430 Main St #4',
     location: 'El Segundo, LA',
     price: 1050,
     beds: 2,
@@ -262,7 +262,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 15,
     slug: 'the-inglewood-collective',
-    title: 'The Inglewood Collective',
+    title: '3217 W 78th St',
     location: 'Inglewood, LA',
     price: 900,
     beds: 4,
@@ -279,7 +279,7 @@ export const LISTINGS: Listing[] = [
   {
     id: 16,
     slug: 'slauson-house',
-    title: 'Slauson Creative House',
+    title: '2918 W 84th St',
     location: 'Inglewood, LA',
     price: 850,
     beds: 5,

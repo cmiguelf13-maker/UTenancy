@@ -350,7 +350,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filtered.map((l) => <ListingCard key={l.id} listing={l} />)}
+              {filtered.slice(0, 9).map((l) => <ListingCard key={l.id} listing={l} />)}
             </div>
           )}
 
