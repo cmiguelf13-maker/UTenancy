@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import ListingCard from '@/components/ListingCard'
@@ -10,7 +10,7 @@ import { getDistanceToNearestSchool } from '@/lib/distance'
 
 type SortOption = 'newest' | 'price-asc' | 'price-desc' | 'most-interested'
 
-export default function ListingsPage() {
+function ListingsContent() {
   const searchParams = useSearchParams()
 
   /* ── filter state ── */
@@ -361,5 +361,20 @@ export default function ListingsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function ListingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surf-lo flex items-center justify-center">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-clay text-5xl mb-4 block animate-pulse">search</span>
+          <p className="font-head font-bold text-clay-dark">Loading listings…</p>
+        </div>
+      </div>
+    }>
+      <ListingsContent />
+    </Suspense>
   )
 }
