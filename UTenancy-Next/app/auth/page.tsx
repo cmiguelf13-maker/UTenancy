@@ -487,7 +487,7 @@ export default function AuthPage() {
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">location_city</span>
                     <select name="university" className="auth-input cursor-pointer appearance-none" style={{ paddingLeft: 44 }}>
                       <option value="">Select your university…</option>
-                      {['Loyola Marymount University (LMU)', 'UCLA', 'USC', 'Cal State LA', 'Pepperdine University', 'Other'].map((u) => <option key={u}>{u}</option>)}
+                      {['Loyola Marymount University (LMU)', 'Other'].map((u) => <option key={u}>{u}</option>)}
                     </select>
                   </div>
                 </div>
