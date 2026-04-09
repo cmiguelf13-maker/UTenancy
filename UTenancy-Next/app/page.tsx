@@ -188,7 +188,7 @@ export default function HomePage() {
                     onKeyDown={(e) => { if (e.key === 'Enter') handleHeroSearch() }}
                   />
                   {searchQuery && (
-                    <button onClick={() => { setSearchQuery(''); setActiveSearch('') }} className="text-outline hover:text-muted transition-colors mr-1">
+                    <button onClick={() => setSearchQuery('')} className="text-outline hover:text-muted transition-colors mr-1">
                       <span className="material-symbols-outlined text-lg">close</span>
                     </button>
                   )}
