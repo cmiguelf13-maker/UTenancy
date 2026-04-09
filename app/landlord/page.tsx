@@ -1032,8 +1032,10 @@ export default function LandlordPortal() {
       <header className="sticky top-0 z-50 glass border-b border-out-var/20">
         <div className="max-w-7xl mx-auto px-6 md:px-10 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="UTenancy" className="h-14 w-auto" />
+            <Link href="/">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="UTenancy" className="h-14 w-auto" />
+            </Link>
             <span className="text-[10px] font-head font-bold text-terra uppercase tracking-widest leading-none">Landlord Portal</span>
           </div>
 
@@ -1057,11 +1059,6 @@ export default function LandlordPortal() {
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
               <span className="material-symbols-outlined text-base">manage_accounts</span> Profile
             </Link>
-            <Link href="/"
-              className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
-              <span className="material-symbols-outlined text-base">open_in_new</span> View Site
-            </Link>
-
             {/* Plan badge or Upgrade button */}
             {['starter', 'growth', 'pro'].includes(subscriptionStatus) ? (
               <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-amber-50 text-amber-700 border border-amber-200">
