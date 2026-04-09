@@ -26,9 +26,14 @@ function getSubscriptionStatus(status: string): string {
  * with the Supabase profiles table.
  *
  * Events handled:
- *   - checkout.session.completed       → activates Pro after payment
+ *   - checkout.session.completed       → activates subscription after payment
  *   - customer.subscription.updated    → syncs subscription status changes
  *   - customer.subscription.deleted    → marks subscription as cancelled
+ *
+ * User identification priority:
+ *   1. session.client_reference_id  (set via ?client_reference_id= on payment link URL)
+ *   2. session.metadata.supabase_user_id  (set by create-checkout API route)
+ *   3. stripe_customer_id fallback  (looks up existing profile)
  */
 export async function POST(req: NextRequest) {
   const body      = await req.text()
@@ -58,11 +63,16 @@ export async function POST(req: NextRequest) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session
+      const session    = event.data.object as Stripe.Checkout.Session
       if (session.mode !== 'subscription') break
 
-      const userId     = session.metadata?.supabase_user_id
       const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id
+
+      // Resolve user ID: client_reference_id (payment links) → metadata → customer ID fallback
+      const userId =
+        session.client_reference_id ||
+        session.metadata?.supabase_user_id ||
+        null
 
       if (userId) {
         await admin.from('profiles').update({
@@ -70,7 +80,7 @@ export async function POST(req: NextRequest) {
           stripe_customer_id:  customerId ?? undefined,
         }).eq('id', userId)
       } else if (customerId) {
-        // Fallback: look up by customer ID
+        // Last-resort: match by existing stripe_customer_id
         await admin.from('profiles').update({
           subscription_status: 'pro',
         }).eq('stripe_customer_id', customerId)
@@ -106,7 +116,6 @@ export async function POST(req: NextRequest) {
     }
 
     default:
-      // Unhandled event type — return 200 so Stripe doesn't retry
       break
   }
 
