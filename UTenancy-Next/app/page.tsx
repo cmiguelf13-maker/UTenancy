@@ -168,8 +168,9 @@ export default function HomePage() {
     if (bedsFilter === '3+ Beds' && l.beds < 3) return false
     // Distance filter (only applies when distanceMi is known)
     if (distanceFilter !== 'Any' && l.distanceMi != null) {
-      if (distanceFilter === 'Walking' && l.distanceMi > 0.5) return false
-      if (distanceFilter === 'Bus / Bike' && l.distanceMi > 3) return false
+      if (distanceFilter === 'Walking' && l.distanceMi > 1.5) return false
+      if (distanceFilter === 'Bus / Bike' && (l.distanceMi <= 1.5 || l.distanceMi > 3)) return false
+      if (distanceFilter === 'Drive' && l.distanceMi <= 3) return false
     }
     // Move-in date filter (listing must be available on or before selected date)
     if (moveInDate && l.availableDate) {
@@ -370,7 +371,7 @@ export default function HomePage() {
                 onChange={(e) => setDistanceFilter(e.target.value)}
                 className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
               >
-                {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
+                {['Any', 'Walking', 'Bus / Bike', 'Drive'].map((o) => <option key={o}>{o}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
