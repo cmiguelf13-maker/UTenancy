@@ -229,12 +229,15 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 top-8 bg-surf-lo border border-out-var rounded-2xl p-5 text-center shadow-xl w-52 animate-float-slow">
-              <p className="stat-num text-4xl text-clay-dark mb-1">2,400+</p>
-              <p className="text-xs font-head font-semibold text-muted uppercase tracking-widest">Verified Students</p>
-              <div className="flex justify-center gap-1 mt-3">
-                <span className="w-2 h-2 rounded-full bg-clay animate-pulse-dot" />
-                <span className="text-[10px] font-head font-bold text-clay-dark">Live waitlist</span>
+            <div className="absolute left-1/2 -translate-x-1/2 top-4 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var/30 animate-float-slow">
+              <Image src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=400&q=80" alt="Lincoln Blvd Apartments" width={256} height={144} className="w-full h-36 object-cover" />
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-1">
+                  <p className="font-head font-bold text-clay-dark text-sm">Lincoln Blvd Apts</p>
+                  <span className="badge-open text-[10px] font-head font-bold px-2 py-0.5 rounded-full">Open Room</span>
+                </div>
+                <p className="text-xs text-muted font-body mb-2">Westchester, LA · 5 min walk</p>
+                <p className="font-head font-black text-clay-dark text-base">$975<span className="text-xs font-normal text-muted">/mo per person</span></p>
               </div>
             </div>
           </div>
