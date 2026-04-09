@@ -36,7 +36,7 @@ export default function WaitlistPage() {
       {/* Background glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] rounded-full opacity-10 blur-[180px] pointer-events-none" style={{ background: '#9c7060' }} />
 
-      <div className="relative z-10 w-full max-w-lg text-center">
+      <div className="relative z-10 w-full max-w-lg text-center flex flex-col items-center">
 
         {/* Logo */}
         <Link href="/" className="inline-block mb-12">
