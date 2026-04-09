@@ -20,6 +20,7 @@ function getStripe() {
  */
 export async function POST(req: NextRequest) {
   const stripe = getStripe()
+
   // ── Auth: get session from Supabase cookies ──
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -46,14 +47,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only landlords can subscribe' }, { status: 403 })
   }
 
-  // ── Fetch profile to get or create Stripe customer ──
-  const { createClient } = await import('@supabase/supabase-js')
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-
-  const { data: profile } = await admin
+  // ── Fetch profile using the authenticated user's own session (no service key needed) ──
+  // The user can always read and update their own profile row via RLS.
+  const { data: profile } = await supabase
     .from('profiles')
     .select('stripe_customer_id, subscription_status')
     .eq('id', user.id)
@@ -64,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Already subscribed to Pro' }, { status: 400 })
   }
 
-  let customerId = profile?.stripe_customer_id
+  let customerId: string | null = profile?.stripe_customer_id ?? null
 
   if (!customerId) {
     // Create a new Stripe customer
@@ -75,8 +71,8 @@ export async function POST(req: NextRequest) {
     })
     customerId = customer.id
 
-    // Persist the customer ID immediately
-    await admin
+    // Persist the customer ID using the user's own session
+    await supabase
       .from('profiles')
       .update({ stripe_customer_id: customerId })
       .eq('id', user.id)
