@@ -276,8 +276,6 @@ function ListingCard({
 /* ─── ListingFormFields ─────────────────────────────── */
 function ListingFormFields({
   defaults,
-  listingType,
-  setListingType,
   amenities,
   setAmenities,
   existingImagePreviews,
@@ -290,8 +288,6 @@ function ListingFormFields({
   onAddressParsed,
 }: {
   defaults?: Listing | null
-  listingType: 'open-room' | 'group-formation'
-  setListingType: (t: 'open-room' | 'group-formation') => void
   amenities: string[]
   setAmenities: (a: string[]) => void
   existingImagePreviews?: string[]
@@ -1261,8 +1257,6 @@ export default function LandlordPortal() {
             <div className="overflow-y-auto flex-1 px-8 pb-8">
               <form onSubmit={handleAddListing} className="space-y-4">
                 <ListingFormFields
-                  listingType={addListingType}
-                  setListingType={setAddListingType}
                   amenities={addAmenities}
                   setAmenities={setAddAmenities}
                   newPreviews={addPreviews}
@@ -1303,8 +1297,6 @@ export default function LandlordPortal() {
               <form key={editListing.id} onSubmit={handleEditSave} className="space-y-4">
                 <ListingFormFields
                   defaults={editListing}
-                  listingType={editListingType}
-                  setListingType={setEditListingType}
                   amenities={editAmenities}
                   setAmenities={setEditAmenities}
                   existingImagePreviews={editExistingImgs}

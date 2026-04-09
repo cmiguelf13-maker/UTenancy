@@ -260,10 +260,6 @@ export default function ProfilePage() {
     setProfile((p) => ({ ...p, [key]: val }))
   }
 
-  const initials = profile.firstName && profile.lastName
-    ? (profile.firstName[0] + profile.lastName[0]).toUpperCase()
-    : user?.email?.[0].toUpperCase() ?? '?'
-
   if (loading) return (
     <main className="min-h-screen flex items-center justify-center">
       <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.2)', borderTopColor: '#6b4c3b', width: 32, height: 32 }} />

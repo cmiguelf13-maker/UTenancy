@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import { Profile } from '@/lib/types'
 
 const links = [
   { href: '/#how-it-works', label: 'How It Works' },
@@ -31,7 +30,6 @@ export default function Nav() {
   const isLandlordPortal = path === '/landlord'
 
   const [user, setUser]       = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -40,28 +38,13 @@ export default function Nav() {
   // Detect session on mount + listen for changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      const u = data.session?.user ?? null
-      setUser(u)
-      if (u) {
-        fetchProfile(u.id)
-      }
+      setUser(data.session?.user ?? null)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null
-      setUser(u)
-      if (u) {
-        fetchProfile(u.id)
-      } else {
-        setProfile(null)
-      }
+      setUser(session?.user ?? null)
     })
     return () => subscription.unsubscribe()
   }, [])
-
-  async function fetchProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    if (data) setProfile(data)
-  }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -183,11 +166,18 @@ export default function Nav() {
                         My Portal
                       </Link>
                     ) : (
-                      <Link href="/interested" onClick={() => setMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
-                        <span className="material-symbols-outlined text-clay text-lg">favorite</span>
-                        Interested Properties
-                      </Link>
+                      <>
+                        <Link href="/interested" onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                          <span className="material-symbols-outlined text-clay text-lg">favorite</span>
+                          Interested Properties
+                        </Link>
+                        <Link href="/post-room" onClick={() => setMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
+                          <span className="material-symbols-outlined text-clay text-lg">add_home</span>
+                          Post a Room
+                        </Link>
+                      </>
                     )}
                     <div className="border-t border-out-var/40 my-1.5" />
                     <button onClick={handleLogout}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
@@ -646,9 +646,9 @@ export default function HomePage() {
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="font-body text-white/30 text-xs">© {new Date().getFullYear()} UTenancy, Inc. All rights reserved.</p>
             <div className="flex gap-6">
-              {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map((l) => (
-                <a key={l} href="#" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">{l}</a>
-              ))}
+              <Link href="/legal/privacy" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">Privacy Policy</Link>
+              <Link href="/legal/terms" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">Terms of Service</Link>
+              <Link href="/legal/user-agreement" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">User Agreement</Link>
             </div>
           </div>
         </div>
