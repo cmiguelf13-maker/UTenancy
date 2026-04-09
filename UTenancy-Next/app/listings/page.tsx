@@ -261,7 +261,7 @@ function ListingsContent() {
                   <option value="price-asc">Price: low → high</option>
                   <option value="price-desc">Price: high → low</option>
                   <option value="most-interested">Most interested</option>
-                  <option value="distance">Closest to campus</option>
+                  <option value="distance">Distance</option>
                 </select>
               </div>
             </div>
