@@ -6,35 +6,35 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2026-03-25.dahlia',
 })
 
-
-function getSubscriptionStatus(status: string): string {
-  switch (status) {
-    case 'active':   return 'pro'
-    case 'past_due': return 'past_due'
-    case 'canceled':
-    case 'cancelled':
-    case 'unpaid':
-    case 'incomplete_expired': return 'cancelled'
-    default:         return 'free'
-  }
+/** Map a Stripe price's unit_amount (cents) to a UTenancy plan name */
+function getPlanName(unitAmount: number | null | undefined): string {
+  if (unitAmount === 2900)  return 'starter'
+  if (unitAmount === 5900)  return 'growth'
+  if (unitAmount === 12900) return 'pro'
+  return 'pro' // fallback for any unrecognised paid amount
 }
 
 /**
- * POST /api/stripe/webhook
- *
- * Handles Stripe webhook events to keep subscription status in sync
- * with the Supabase profiles table.
- *
- * Events handled:
- *   - checkout.session.completed       → activates subscription after payment
- *   - customer.subscription.updated    → syncs subscription status changes
- *   - customer.subscription.deleted    → marks subscription as cancelled
- *
- * User identification priority:
- *   1. session.client_reference_id  (set via ?client_reference_id= on payment link URL)
- *   2. session.metadata.supabase_user_id  (set by create-checkout API route)
- *   3. stripe_customer_id fallback  (looks up existing profile)
+ * Derive the subscription_status value to store, combining Stripe subscription
+ * status with the price amount so we know which plan tier was purchased.
  */
+function resolveStatus(stripeStatus: string, unitAmount?: number | null): string {
+  switch (stripeStatus) {
+    case 'active':
+    case 'trialing':
+      return getPlanName(unitAmount)
+    case 'past_due':
+      return 'past_due'
+    case 'canceled':
+    case 'cancelled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      return 'trial'
+    default:
+      return 'trial'
+  }
+}
+
 export async function POST(req: NextRequest) {
   const body      = await req.text()
   const signature = req.headers.get('stripe-signature')
@@ -55,34 +55,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
-  // Service-role client — bypasses RLS for reliable webhook writes
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
   switch (event.type) {
+
     case 'checkout.session.completed': {
-      const session    = event.data.object as Stripe.Checkout.Session
+      const session = event.data.object as Stripe.Checkout.Session
       if (session.mode !== 'subscription') break
 
-      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id
+      const customerId   = typeof session.customer === 'string' ? session.customer : session.customer?.id
+      const userId       = session.client_reference_id || session.metadata?.supabase_user_id || null
 
-      // Resolve user ID: client_reference_id (payment links) → metadata → customer ID fallback
-      const userId =
-        session.client_reference_id ||
-        session.metadata?.supabase_user_id ||
-        null
+      // Retrieve the subscription to determine the plan tier from the price amount
+      let unitAmount: number | null = null
+      if (session.subscription) {
+        try {
+          const sub  = await stripe.subscriptions.retrieve(session.subscription as string)
+          unitAmount = sub.items.data[0]?.price?.unit_amount ?? null
+        } catch { /* non-fatal — falls back to 'pro' */ }
+      }
+
+      const planStatus = getPlanName(unitAmount)
 
       if (userId) {
         await admin.from('profiles').update({
-          subscription_status: 'pro',
+          subscription_status: planStatus,
           stripe_customer_id:  customerId ?? undefined,
         }).eq('id', userId)
       } else if (customerId) {
-        // Last-resort: match by existing stripe_customer_id
         await admin.from('profiles').update({
-          subscription_status: 'pro',
+          subscription_status: planStatus,
         }).eq('stripe_customer_id', customerId)
       }
       break
@@ -92,7 +97,8 @@ export async function POST(req: NextRequest) {
       const sub        = event.data.object as Stripe.Subscription
       const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
       const userId     = sub.metadata?.supabase_user_id
-      const newStatus  = getSubscriptionStatus(sub.status)
+      const unitAmount = sub.items.data[0]?.price?.unit_amount ?? null
+      const newStatus  = resolveStatus(sub.status, unitAmount)
 
       if (userId) {
         await admin.from('profiles').update({ subscription_status: newStatus }).eq('id', userId)
@@ -108,9 +114,9 @@ export async function POST(req: NextRequest) {
       const userId     = sub.metadata?.supabase_user_id
 
       if (userId) {
-        await admin.from('profiles').update({ subscription_status: 'cancelled' }).eq('id', userId)
+        await admin.from('profiles').update({ subscription_status: 'trial' }).eq('id', userId)
       } else {
-        await admin.from('profiles').update({ subscription_status: 'cancelled' }).eq('stripe_customer_id', customerId)
+        await admin.from('profiles').update({ subscription_status: 'trial' }).eq('stripe_customer_id', customerId)
       }
       break
     }
