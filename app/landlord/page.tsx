@@ -584,6 +584,12 @@ function ListingFormFields({
 }
 
 /* ─── Main portal page ──────────────────────────────── */
+const PLAN_LABELS: Record<string, string> = {
+  starter: 'Starter',
+  growth:  'Growth',
+  pro:     'Pro',
+}
+
 export default function LandlordPortal() {
   const router   = useRouter()
   const supabase = createClient()
@@ -601,7 +607,7 @@ export default function LandlordPortal() {
 
 
   /* ── Subscription ── */
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('trial')
   const [showPlanModal,      setShowPlanModal]      = useState(false)
   const [checkoutMsg,        setCheckoutMsg]        = useState<string | null>(null)
 
@@ -659,7 +665,7 @@ export default function LandlordPortal() {
     // Handle redirect back from Stripe Checkout
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
-      setCheckoutMsg('🎉 Welcome to Pro! Your subscription is now active.')
+      setCheckoutMsg('🎉 Your plan is now active!')
       window.history.replaceState({}, '', '/landlord')
     } else if (params.get('checkout') === 'cancelled') {
       setCheckoutMsg('Checkout cancelled — you can upgrade anytime.')
@@ -1056,10 +1062,11 @@ export default function LandlordPortal() {
               <span className="material-symbols-outlined text-base">open_in_new</span> View Site
             </Link>
 
-            {/* Pro badge or Upgrade button */}
-            {subscriptionStatus === 'pro' ? (
+            {/* Plan badge or Upgrade button */}
+            {['starter', 'growth', 'pro'].includes(subscriptionStatus) ? (
               <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                <span className="material-symbols-outlined text-sm">workspace_premium</span> Pro
+                <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                {PLAN_LABELS[subscriptionStatus] ?? subscriptionStatus}
               </span>
             ) : (
               <button
@@ -1356,5 +1363,6 @@ export default function LandlordPortal() {
     </div>
   )
 }
+
 
 
