@@ -3,7 +3,12 @@ import Stripe from 'stripe'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const PRICE_ID = 'price_1TK6y0JF9e2N7acJeKFrzvXj'
+// Price IDs per tier — override via Vercel env vars if needed
+const PRICE_IDS: Record<string, string> = {
+  starter: process.env.STRIPE_PRICE_STARTER ?? 'price_1TKM6aJF9e2N7acJJzJDJqb1',
+  growth:  process.env.STRIPE_PRICE_GROWTH  ?? 'price_1TKM81JF9e2N7acJDS9pf2dX',
+  pro:     process.env.STRIPE_PRICE_PRO     ?? 'price_1TKM93JF9e2N7acJMCD8DOoS',
+}
 
 // Public keys — already embedded in the browser bundle, safe to inline as fallbacks
 // This guards against env var resolution issues in Vercel serverless functions
@@ -30,6 +35,15 @@ function getStripe() {
  */
 export async function POST(req: NextRequest) {
   const stripe = getStripe()
+
+  // ── Parse tier from body (defaults to 'pro' for backwards-compat) ──
+  let tier = 'pro'
+  try {
+    const body = await req.json()
+    if (body?.tier && PRICE_IDS[body.tier]) tier = body.tier
+  } catch { /* no body is fine */ }
+
+  const priceId = PRICE_IDS[tier]
 
   // ── Auth: get session from Supabase cookies ──
   const cookieStore = await cookies()
@@ -65,9 +79,10 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  // Already subscribed — don't create another session
-  if (profile?.subscription_status === 'pro') {
-    return NextResponse.json({ error: 'Already subscribed to Pro' }, { status: 400 })
+  // Already subscribed at this tier or higher — don't create another session
+  const activeTiers = ['starter', 'growth', 'pro']
+  if (profile?.subscription_status && activeTiers.includes(profile.subscription_status)) {
+    return NextResponse.json({ error: 'Already subscribed' }, { status: 400 })
   }
 
   let customerId: string | null = profile?.stripe_customer_id ?? null
@@ -94,12 +109,12 @@ export async function POST(req: NextRequest) {
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
-    line_items: [{ price: PRICE_ID, quantity: 1 }],
-    success_url: `${origin}/landlord?checkout=success`,
+    line_items: [{ price: priceId, quantity: 1 }],
+    success_url: `${origin}/landlord?checkout=success&tier=${tier}`,
     cancel_url:  `${origin}/landlord?checkout=cancelled`,
-    metadata: { supabase_user_id: user.id },
+    metadata: { supabase_user_id: user.id, tier },
     subscription_data: {
-      metadata: { supabase_user_id: user.id },
+      metadata: { supabase_user_id: user.id, tier },
     },
   })
 
