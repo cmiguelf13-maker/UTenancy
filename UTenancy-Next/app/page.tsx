@@ -36,6 +36,41 @@ export default function HomePage() {
   const [moveInDate, setMoveInDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [tryNowLoading, setTryNowLoading] = useState(false)
+
+  // Fetch current auth session
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUser(data.session?.user ?? null)
+    })
+  }, [])
+
+  async function handleTryNow(tier: string) {
+    if (tryNowLoading) return
+    const supabase = createClient()
+    const { data } = await supabase.auth.getSession()
+    const user = data.session?.user ?? null
+    if (!user || user.user_metadata?.role !== 'landlord') {
+      router.push('/auth')
+      return
+    }
+    setTryNowLoading(true)
+    try {
+      const res = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier }),
+      })
+      const json = await res.json()
+      if (json.url) {
+        window.location.href = json.url
+      }
+    } finally {
+      setTryNowLoading(false)
+    }
+  }
 
   // Fetch active DB listings on mount
   useEffect(() => {
@@ -567,7 +602,7 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-                <button className={`w-full font-head font-bold text-sm py-3 rounded-full transition-all ${btnClass}`}>Start Free Pilot</button>
+                <button onClick={() => handleTryNow(key)} disabled={tryNowLoading} className={`w-full font-head font-bold text-sm py-3 rounded-full transition-all disabled:opacity-60 ${btnClass}`}>Try Now</button>
               </div>
             ))}
           </div>
