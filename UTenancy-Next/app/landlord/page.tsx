@@ -597,8 +597,10 @@ export default function LandlordPortal() {
 
   /* ── Subscription ── */
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free')
+  const [subscriptionTier,   setSubscriptionTier]   = useState<string>('free')
   const [checkingOut,        setCheckingOut]        = useState(false)
   const [checkoutMsg,        setCheckoutMsg]        = useState<string | null>(null)
+  const [showTierPicker,     setShowTierPicker]     = useState(false)
 
   /* ── CREATE listing state ── */
   const [showAddModal,    setShowAddModal]    = useState(false)
@@ -630,14 +632,15 @@ export default function LandlordPortal() {
       if (u.user_metadata?.role !== 'landlord') { router.push('/'); return }
       setUser(u)
 
-      // Fetch subscription status from profile
+      // Fetch subscription status + tier from profile
       supabase
         .from('profiles')
-        .select('subscription_status')
+        .select('subscription_status, subscription_tier')
         .eq('id', u.id)
         .single()
         .then(({ data: profile }) => {
           if (profile?.subscription_status) setSubscriptionStatus(profile.subscription_status)
+          if (profile?.subscription_tier)   setSubscriptionTier(profile.subscription_tier)
         })
 
       supabase
@@ -654,7 +657,9 @@ export default function LandlordPortal() {
     // Handle redirect back from Stripe Checkout
     const params = new URLSearchParams(window.location.search)
     if (params.get('checkout') === 'success') {
-      setCheckoutMsg('🎉 Welcome to Pro! Your subscription is now active.')
+      const t = params.get('tier') ?? 'Pro'
+      const tierLabel = t.charAt(0).toUpperCase() + t.slice(1)
+      setCheckoutMsg(`🎉 Welcome to ${tierLabel}! Your subscription is now active.`)
       window.history.replaceState({}, '', '/landlord')
     } else if (params.get('checkout') === 'cancelled') {
       setCheckoutMsg('Checkout cancelled — you can upgrade anytime.')
@@ -662,11 +667,16 @@ export default function LandlordPortal() {
     }
   }, [])
 
-  /* ── Upgrade to Pro ── */
-  async function handleUpgradeToPro() {
+  /* ── Upgrade (pick tier → Stripe Checkout) ── */
+  async function handleUpgrade(tier: 'starter' | 'growth' | 'pro' = 'pro') {
     setCheckingOut(true)
+    setShowTierPicker(false)
     try {
-      const res  = await fetch('/api/stripe/create-checkout', { method: 'POST' })
+      const res  = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier }),
+      })
       const json = await res.json()
       if (json.url) {
         window.location.href = json.url
@@ -1048,19 +1058,53 @@ export default function LandlordPortal() {
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
               <span className="material-symbols-outlined text-base">chat</span> Messages
             </Link>
-            {/* Pro badge or Upgrade button */}
-            {subscriptionStatus === 'pro' ? (
-              <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                <span className="material-symbols-outlined text-sm">workspace_premium</span> Pro
+            {/* Pro-only nav links */}
+            {['growth','pro'].includes(subscriptionTier) && (
+              <Link href="/landlord/analytics"
+                className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
+                <span className="material-symbols-outlined text-base">analytics</span> Analytics
+              </Link>
+            )}
+            {subscriptionTier === 'pro' && (
+              <Link href="/landlord/api-access"
+                className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
+                <span className="material-symbols-outlined text-base">api</span> API
+              </Link>
+            )}
+            {/* Tier badge or Upgrade button */}
+            {['starter','growth','pro'].includes(subscriptionTier) ? (
+              <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold clay-grad text-white shadow-sm">
+                <span className="material-symbols-outlined fill text-sm">workspace_premium</span>
+                {subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)}
               </span>
             ) : (
-              <button
-                onClick={handleUpgradeToPro}
-                disabled={checkingOut}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
-                <span className="material-symbols-outlined text-sm">workspace_premium</span>
-                {checkingOut ? 'Redirecting…' : 'Upgrade'}
-              </button>
+              <div className="relative hidden md:block">
+                <button
+                  onClick={() => setShowTierPicker(p => !p)}
+                  disabled={checkingOut}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
+                  <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                  {checkingOut ? 'Redirecting…' : 'Upgrade'}
+                </button>
+                {showTierPicker && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl border border-out-var shadow-xl z-50 overflow-hidden">
+                    {([
+                      { tier: 'starter' as const, price: '$29/mo', label: 'Starter', sub: 'Up to 3 properties' },
+                      { tier: 'growth'  as const, price: '$59/mo', label: 'Growth',  sub: 'Up to 10 properties' },
+                      { tier: 'pro'     as const, price: '$129/mo', label: 'Pro',    sub: 'Unlimited + API access' },
+                    ]).map(opt => (
+                      <button key={opt.tier} onClick={() => handleUpgrade(opt.tier)}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-linen transition-colors text-left border-b border-out-var last:border-0">
+                        <div>
+                          <p className="text-sm font-head font-bold text-espresso">{opt.label}</p>
+                          <p className="text-xs font-body text-muted">{opt.sub}</p>
+                        </div>
+                        <span className="text-xs font-head font-bold text-clay-dark">{opt.price}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
             <button onClick={() => setShowAddModal(true)}
@@ -1110,13 +1154,91 @@ export default function LandlordPortal() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
-          <StatCard icon="home_work"    value={listings.length} label="Total"     sub="All statuses"       />
-          <StatCard icon="check_circle" value={activeCount}     label="Active"    sub="Visible to students" />
-          <StatCard icon="group"        value={totalApplicants} label="Applicants" sub="Awaiting review"    />
-          <StatCard icon="key"          value={rentedCount}     label="Rented"    sub="Closed out"         />
-          <StatCard icon="archive"      value={archivedCount}   label="Archived"  sub="Hidden from search" />
-        </div>
+        {(() => {
+          const monthlyRevenue = listings.filter(l => l.status === 'rented').reduce((s, l) => s + l.rent, 0)
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <StatCard icon="home_work"    value={listings.length} label="Properties"  sub="In your portfolio"   />
+              <StatCard icon="check_circle" value={activeCount}     label="Active Listings" sub="Visible to students" />
+              <StatCard icon="group"        value={totalApplicants} label="Applicants"  sub="Across all listings" />
+              <StatCard icon="payments"     value={`$${monthlyRevenue.toLocaleString()}`} label="Monthly Revenue" sub="From rented units" />
+            </div>
+          )
+        })()}
+
+        {/* Pro property table */}
+        {['starter','growth','pro'].includes(subscriptionTier) && (
+          <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden mb-8">
+            <div className="px-6 py-4 border-b border-out-var flex items-center justify-between">
+              <div>
+                <h2 className="font-head font-bold text-espresso">Landlord Dashboard</h2>
+                <p className="text-xs font-body text-muted mt-0.5">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                    {listings.length} propert{listings.length !== 1 ? 'ies' : 'y'} · {activeCount} active
+                  </span>
+                </p>
+              </div>
+              {subscriptionTier === 'pro' && (
+                <Link href="/landlord/analytics"
+                  className="flex items-center gap-1.5 text-xs font-head font-semibold text-clay-dark bg-linen hover:bg-clay/10 border border-out-var px-3 py-2 rounded-xl transition-colors">
+                  <span className="material-symbols-outlined text-sm">analytics</span>
+                  Full Analytics
+                </Link>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-surf-lo border-b border-out-var">
+                    {['Property','Beds Avail.','Rent / Person','Applicants','Status'].map(h => (
+                      <th key={h} className="px-5 py-3 text-left text-xs font-head font-bold text-muted uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-out-var">
+                  {listings.slice(0, 8).map(l => {
+                    const ic = Array.isArray(l.interest_count)
+                      ? (l.interest_count[0]?.count ?? 0)
+                      : (l.interest_count ?? 0)
+                    const badgeMap: Record<string, string> = {
+                      active:   'bg-green-50 text-green-700 border border-green-200',
+                      draft:    'bg-stone-100 text-stone-500 border border-stone-200',
+                      rented:   'bg-blue-50 text-blue-700 border border-blue-200',
+                      archived: 'bg-amber-50 text-amber-700 border border-amber-200',
+                    }
+                    const badge   = badgeMap[l.status] ?? badgeMap.draft
+                    const bedAvail = l.status === 'active' ? l.bedrooms : (l.status === 'rented' ? 0 : l.bedrooms)
+                    return (
+                      <tr key={l.id} className="hover:bg-surf-lo transition-colors cursor-pointer"
+                          onClick={() => { setFilter('all'); }}>
+                        <td className="px-5 py-4">
+                          <p className="font-head font-semibold text-espresso">{l.address}{l.unit ? ` #${l.unit}` : ''}</p>
+                          <p className="text-xs font-body text-muted">{l.city}, {l.state}</p>
+                        </td>
+                        <td className="px-5 py-4 font-head font-semibold text-espresso">{bedAvail}</td>
+                        <td className="px-5 py-4 font-head font-semibold text-espresso">${l.rent.toLocaleString()}</td>
+                        <td className="px-5 py-4 text-muted">{Number(ic)}</td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-head font-bold ${badge}`}>
+                            {l.status.charAt(0).toUpperCase() + l.status.slice(1)}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {listings.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-10 text-center text-muted font-body text-sm">
+                        No listings yet — click &quot;Add Listing&quot; to get started.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Section header */}
         <div className="flex items-center justify-between mb-5">
