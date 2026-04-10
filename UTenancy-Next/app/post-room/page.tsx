@@ -37,6 +37,8 @@ export default function PostRoomPage() {
   const [utilities, setUtilities] = useState('Tenant pays')
   const [petsAllowed, setPetsAllowed] = useState('Negotiable')
 
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('free')
+
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +55,15 @@ export default function PostRoomPage() {
       }
       setUser(u)
       setLoading(false)
+      // Fetch subscription tier for limit enforcement
+      supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', u.id)
+        .single()
+        .then(({ data: profile }) => {
+          if (profile?.subscription_tier) setSubscriptionTier(profile.subscription_tier)
+        })
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -126,9 +137,32 @@ export default function PostRoomPage() {
 
     setSaving(true)
     setError(null)
-    setStatus('Creating your listing…')
+    setStatus('Checking your plan…')
 
     try {
+      // Enforce per-plan listing limits before inserting
+      const LISTING_LIMITS: Record<string, number> = { starter: 3, growth: 10 }
+      const tierLimit = LISTING_LIMITS[subscriptionTier]
+      if (tierLimit !== undefined) {
+        const { count } = await supabase
+          .from('listings')
+          .select('id', { count: 'exact', head: true })
+          .eq('landlord_id', user.id)
+          .in('status', ['active', 'draft'])
+        if (count !== null && count >= tierLimit) {
+          const tierLabel = subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)
+          setError(
+            `Your ${tierLabel} plan allows up to ${tierLimit} active listing${tierLimit !== 1 ? 's' : ''}. ` +
+            `Please archive or remove a listing, or upgrade your plan to post more.`
+          )
+          setSaving(false)
+          setStatus(null)
+          return
+        }
+      }
+
+      setStatus('Creating your listing…')
+
       // Insert the open-room listing — RLS allows this since landlord_id = auth.uid()
       const { data: listing, error: insertErr } = await supabase
         .from('listings')
@@ -260,22 +294,22 @@ export default function PostRoomPage() {
           <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
             <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Room Details</h2>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds *</label>
                 <select value={bedrooms} onChange={e => setBedrooms(Number(e.target.value))} required
                   className="w-full px-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white">
                   {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths *</label>
                 <select value={bathrooms} onChange={e => setBathrooms(Number(e.target.value))} required
                   className="w-full px-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white">
                   {[1, 1.5, 2, 2.5, 3].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
-              <div>
+              <div className="min-w-0 col-span-2 sm:col-span-1">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent/mo *</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
@@ -297,8 +331,8 @@ export default function PostRoomPage() {
           <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
             <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Lease Details</h2>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Available From</label>
                 <input
                   type="date"
@@ -307,7 +341,7 @@ export default function PostRoomPage() {
                   className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] bg-white"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Security Deposit</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
@@ -340,8 +374,8 @@ export default function PostRoomPage() {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Utilities</label>
                 <select
                   value={utilities}
@@ -353,7 +387,7 @@ export default function PostRoomPage() {
                   <option>Partially included</option>
                 </select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Pets Allowed</label>
                 <select
                   value={petsAllowed}
