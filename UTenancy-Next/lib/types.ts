@@ -1,3 +1,6 @@
+export type SubscriptionTier = 'free' | 'starter' | 'growth' | 'pro'
+export type SubscriptionStatus = 'free' | 'starter' | 'growth' | 'pro' | 'past_due' | 'cancelled'
+
 export interface Profile {
   id: string
   role: 'student' | 'landlord'
@@ -19,6 +22,60 @@ export interface Profile {
   phone: string | null
   company: string | null
   updated_at: string
+  stripe_customer_id: string | null
+  subscription_status: SubscriptionStatus
+  subscription_tier: SubscriptionTier
+}
+
+// ── Household (post-move-in tenant group) ───────────────
+export interface Household {
+  id: string
+  name: string
+  listing_id: string | null
+  created_by: string
+  invite_code: string | null
+  created_at: string
+  // joined
+  members?: HouseholdMember[]
+  expenses?: HouseholdExpense[]
+}
+
+export interface HouseholdMember {
+  household_id: string
+  user_id: string
+  role: 'admin' | 'member'
+  joined_at: string
+  // joined
+  profile?: Profile
+}
+
+export type ExpenseCategory = 'rent' | 'electricity' | 'internet' | 'groceries' | 'supplies' | 'other'
+
+export interface HouseholdExpense {
+  id: string
+  household_id: string
+  title: string
+  amount: number
+  category: ExpenseCategory
+  paid_by: string
+  split_count: number
+  status: 'pending' | 'settled'
+  due_date: string | null
+  notes: string | null
+  created_at: string
+  // joined
+  payer?: Profile
+}
+
+// ── API Keys (Pro tier) ─────────────────────────────────
+export interface ApiKey {
+  id: string
+  landlord_id: string
+  key_prefix: string
+  name: string
+  is_active: boolean
+  last_used_at: string | null
+  created_at: string
 }
 
 export interface Listing {
