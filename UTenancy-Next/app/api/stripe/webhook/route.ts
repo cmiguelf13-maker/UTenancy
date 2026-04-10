@@ -7,15 +7,33 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 
-function getSubscriptionStatus(status: string): string {
+// Maps a Stripe price ID to a UTenancy tier name
+function tierFromPriceId(priceId: string | null | undefined): string {
+  if (!priceId) return 'pro' // legacy fallback
+  const map: Record<string, string> = {
+    [process.env.STRIPE_PRICE_STARTER ?? '']: 'starter',
+    [process.env.STRIPE_PRICE_GROWTH  ?? '']: 'growth',
+    [process.env.STRIPE_PRICE_PRO     ?? 'price_1TK6y0JF9e2N7acJeKFrzvXj']: 'pro',
+  }
+  return map[priceId] ?? 'pro'
+}
+
+function getSubscriptionUpdate(
+  status: string,
+  tier: string,
+): { subscription_status: string; subscription_tier: string } {
   switch (status) {
-    case 'active':   return 'pro'
-    case 'past_due': return 'past_due'
+    case 'active':
+      return { subscription_status: tier, subscription_tier: tier }
+    case 'past_due':
+      return { subscription_status: 'past_due', subscription_tier: tier }
     case 'canceled':
     case 'cancelled':
     case 'unpaid':
-    case 'incomplete_expired': return 'cancelled'
-    default:         return 'free'
+    case 'incomplete_expired':
+      return { subscription_status: 'cancelled', subscription_tier: 'free' }
+    default:
+      return { subscription_status: 'free', subscription_tier: 'free' }
   }
 }
 
@@ -58,21 +76,24 @@ export async function POST(req: NextRequest) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session
+      const session    = event.data.object as Stripe.Checkout.Session
       if (session.mode !== 'subscription') break
 
       const userId     = session.metadata?.supabase_user_id
       const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id
+      // Tier comes from metadata (set when creating the checkout session)
+      const tier       = session.metadata?.tier ?? 'pro'
 
       if (userId) {
         await admin.from('profiles').update({
-          subscription_status: 'pro',
+          subscription_status: tier,
+          subscription_tier:   tier,
           stripe_customer_id:  customerId ?? undefined,
         }).eq('id', userId)
       } else if (customerId) {
-        // Fallback: look up by customer ID
         await admin.from('profiles').update({
-          subscription_status: 'pro',
+          subscription_status: tier,
+          subscription_tier:   tier,
         }).eq('stripe_customer_id', customerId)
       }
       break
@@ -82,12 +103,15 @@ export async function POST(req: NextRequest) {
       const sub        = event.data.object as Stripe.Subscription
       const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
       const userId     = sub.metadata?.supabase_user_id
-      const newStatus  = getSubscriptionStatus(sub.status)
+      // Resolve tier from the first price item, or fall back to metadata
+      const priceId    = sub.items?.data?.[0]?.price?.id
+      const tier       = sub.metadata?.tier ?? tierFromPriceId(priceId)
+      const update     = getSubscriptionUpdate(sub.status, tier)
 
       if (userId) {
-        await admin.from('profiles').update({ subscription_status: newStatus }).eq('id', userId)
+        await admin.from('profiles').update(update).eq('id', userId)
       } else {
-        await admin.from('profiles').update({ subscription_status: newStatus }).eq('stripe_customer_id', customerId)
+        await admin.from('profiles').update(update).eq('stripe_customer_id', customerId)
       }
       break
     }
@@ -96,11 +120,12 @@ export async function POST(req: NextRequest) {
       const sub        = event.data.object as Stripe.Subscription
       const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id
       const userId     = sub.metadata?.supabase_user_id
+      const cancelled  = { subscription_status: 'cancelled', subscription_tier: 'free' }
 
       if (userId) {
-        await admin.from('profiles').update({ subscription_status: 'cancelled' }).eq('id', userId)
+        await admin.from('profiles').update(cancelled).eq('id', userId)
       } else {
-        await admin.from('profiles').update({ subscription_status: 'cancelled' }).eq('stripe_customer_id', customerId)
+        await admin.from('profiles').update(cancelled).eq('stripe_customer_id', customerId)
       }
       break
     }
