@@ -760,6 +760,18 @@ export default function LandlordPortal() {
       return
     }
 
+    /* ── Enforce per-plan listing limits ── */
+    const LISTING_LIMITS: Record<string, number> = { starter: 3, growth: 10 }
+    const tierLimit = LISTING_LIMITS[subscriptionTier]
+    const activeListings = listings.filter(l => l.status !== 'archived' && l.status !== 'rented')
+    if (tierLimit !== undefined && activeListings.length >= tierLimit) {
+      setAddStatus(
+        `Your ${subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)} plan allows up to ${tierLimit} active listing${tierLimit !== 1 ? 's' : ''}. ` +
+        `Archive or remove a listing, or upgrade your plan to add more.`
+      )
+      return
+    }
+
     const hasRequired = !!(address && city && rent && !isNaN(bedrooms) && !isNaN(bathrooms))
     const isDraft = !hasRequired || addFiles.length === 0
 
