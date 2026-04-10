@@ -327,7 +327,12 @@ export default function HouseholdPage() {
           .select('user_id, role, profile:profiles(first_name, last_name, avatar_url)')
           .eq('household_id', hh.id)
 
-        setMembers((membData ?? []) as typeof members)
+        // Supabase returns joined rows as arrays; normalise profile to a single object
+        const normalised = (membData ?? []).map((m: any) => ({
+          ...m,
+          profile: Array.isArray(m.profile) ? m.profile[0] ?? undefined : m.profile ?? undefined,
+        }))
+        setMembers(normalised as typeof members)
       }
 
       setLoading(false)
