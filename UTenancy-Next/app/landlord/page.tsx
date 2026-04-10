@@ -632,16 +632,22 @@ export default function LandlordPortal() {
       if (u.user_metadata?.role !== 'landlord') { router.push('/'); return }
       setUser(u)
 
-      // Fetch subscription status + tier from profile
-      supabase
-        .from('profiles')
-        .select('subscription_status, subscription_tier')
-        .eq('id', u.id)
-        .single()
-        .then(({ data: profile }) => {
-          if (profile?.subscription_status) setSubscriptionStatus(profile.subscription_status)
-          if (profile?.subscription_tier)   setSubscriptionTier(profile.subscription_tier)
-        })
+      // Admin account always gets full Pro access — no subscription gate
+      if (u.email === 'cfernandez@utenancy.com') {
+        setSubscriptionStatus('pro')
+        setSubscriptionTier('pro')
+      } else {
+        // Fetch subscription status + tier from profile
+        supabase
+          .from('profiles')
+          .select('subscription_status, subscription_tier')
+          .eq('id', u.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile?.subscription_status) setSubscriptionStatus(profile.subscription_status)
+            if (profile?.subscription_tier)   setSubscriptionTier(profile.subscription_tier)
+          })
+      }
 
       supabase
         .from('listings')
