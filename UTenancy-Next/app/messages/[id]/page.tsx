@@ -153,14 +153,18 @@ export default function ConversationPage() {
           filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
+          const newId = (payload.new as any).id
           // payload.new has no sender profile — fetch the complete row
           const { data: fullMsg } = await supabase
             .from('messages')
             .select('*, sender:profiles!messages_sender_profile_fkey(*)')
-            .eq('id', (payload.new as any).id)
+            .eq('id', newId)
             .single()
           if (fullMsg) {
-            setMessages((prev) => [...prev, fullMsg as MessageWithSender])
+            // Deduplicate: skip if already added optimistically after send
+            setMessages((prev) =>
+              prev.some((m) => m.id === newId) ? prev : [...prev, fullMsg as MessageWithSender]
+            )
             // Once a student message arrives, landlords can reply
             setCanReply(true)
           }
@@ -181,11 +185,16 @@ export default function ConversationPage() {
     setSending(true)
     setSendError(null)
 
-    const { error } = await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: currentUser.id,
-      body: messageText.trim(),
-    })
+    // INSERT and immediately SELECT the full row so it appears without waiting for realtime
+    const { data: inserted, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: currentUser.id,
+        body: messageText.trim(),
+      })
+      .select('*, sender:profiles!messages_sender_profile_fkey(*)')
+      .single()
 
     setSending(false)
 
@@ -194,6 +203,9 @@ export default function ConversationPage() {
       return
     }
 
+    if (inserted) {
+      setMessages((prev) => [...prev, inserted as MessageWithSender])
+    }
     setMessageText('')
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
