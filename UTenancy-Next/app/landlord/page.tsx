@@ -1015,7 +1015,7 @@ export default function LandlordPortal() {
     const [{ data: interests }, { data: applications }] = await Promise.all([
       supabase
         .from('listing_interests')
-        .select('profile:profiles(id, first_name, last_name, university, bio)')
+        .select('student_id')
         .eq('listing_id', listing.id),
       supabase
         .from('rent_applications')
@@ -1024,8 +1024,13 @@ export default function LandlordPortal() {
         .order('created_at', { ascending: false }),
     ])
 
-    if (interests) {
-      setApplicants(interests.map((r: any) => r.profile).filter(Boolean))
+    if (interests && interests.length > 0) {
+      const studentIds = interests.map((r: any) => r.student_id).filter(Boolean)
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, university, bio')
+        .in('id', studentIds)
+      setApplicants(profileData || [])
     }
     if (applications) {
       setRentApplications(applications as any)
