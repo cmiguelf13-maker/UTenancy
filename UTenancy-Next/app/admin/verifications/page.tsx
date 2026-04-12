@@ -29,40 +29,48 @@ export default function AdminVerificationsPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setError('You must be signed in as the admin to view this page.')
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          setError('You must be signed in as the admin to view this page.')
+          setLoading(false)
+          return
+        }
+
+        // Fetch all verifications (admin RLS policy allows this)
+        const { data, error: fetchErr } = await supabase
+          .from('landlord_verifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (fetchErr) {
+          setError('Access denied. This page is restricted to the admin account.')
+          setLoading(false)
+          return
+        }
+
+        const rows = data ?? []
+
+        // Only fetch profiles when there are verifications to look up
+        const profileMap: Record<string, Verification['profile']> = {}
+        if (rows.length > 0) {
+          const landlordIds = rows.map((v: Verification) => v.landlord_id)
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, company, phone')
+            .in('id', landlordIds)
+          if (profiles) {
+            profiles.forEach((p: any) => { profileMap[p.id] = p })
+          }
+        }
+
+        setVerifications(rows.map((v: Verification) => ({ ...v, profile: profileMap[v.landlord_id] ?? null })))
         setLoading(false)
-        return
-      }
-
-      // Fetch all verifications (admin RLS policy allows this)
-      const { data, error: fetchErr } = await supabase
-        .from('landlord_verifications')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (fetchErr || !data) {
-        setError('Access denied. This page is restricted to the admin account.')
+      } catch {
+        setError('Something went wrong. Please refresh and try again.')
         setLoading(false)
-        return
       }
-
-      // Fetch landlord profiles for each verification
-      const landlordsIds = data.map((v: Verification) => v.landlord_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, company, phone')
-        .in('id', landlordsIds)
-
-      const profileMap: Record<string, Verification['profile']> = {}
-      if (profiles) {
-        profiles.forEach((p: any) => { profileMap[p.id] = p })
-      }
-
-      setVerifications(data.map((v: Verification) => ({ ...v, profile: profileMap[v.landlord_id] ?? null })))
-      setLoading(false)
     }
     load()
   }, [])
@@ -94,13 +102,23 @@ export default function AdminVerificationsPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-stone">
-      <p className="text-white/40 font-body">Loading…</p>
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-sand/30 border-t-sand rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-white/60 font-body text-sm">Loading verifications…</p>
+      </div>
     </div>
   )
 
   if (error) return (
-    <div className="min-h-screen flex items-center justify-center bg-stone">
-      <p className="text-red-400 font-body text-center max-w-sm">{error}</p>
+    <div className="min-h-screen flex items-center justify-center bg-stone px-6">
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center max-w-sm">
+        <span className="material-symbols-outlined text-red-400 text-4xl mb-3 block">lock</span>
+        <p className="text-white font-head font-bold mb-2">Access Restricted</p>
+        <p className="text-white/50 font-body text-sm">{error}</p>
+        <a href="/auth" className="mt-5 inline-block px-5 py-2 rounded-full text-xs font-head font-bold bg-sand text-stone">
+          Sign In
+        </a>
+      </div>
     </div>
   )
 
@@ -155,7 +173,17 @@ export default function AdminVerificationsPage() {
         {/* Verification cards */}
         {filtered.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-            <p className="text-white/30 font-body text-sm">No {filter === 'all' ? '' : filter} submissions yet.</p>
+            <span className="material-symbols-outlined text-white/20 text-5xl mb-4 block">
+              {verifications.length === 0 ? 'verified_user' : 'done_all'}
+            </span>
+            <p className="text-white/60 font-head font-semibold text-base mb-1">
+              {verifications.length === 0 ? 'No submissions yet' : `No ${filter} submissions`}
+            </p>
+            <p className="text-white/30 font-body text-sm max-w-xs mx-auto">
+              {verifications.length === 0
+                ? 'When landlords sign up and submit their identity documents, they\'ll appear here for your review.'
+                : `There are no ${filter} verifications at this time. Switch the filter above to view others.`}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
