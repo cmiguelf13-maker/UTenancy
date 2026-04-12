@@ -461,7 +461,7 @@ export default function ProfilePage() {
 
           {/* ── SAVE BUTTON ── */}
           <div className="flex items-center justify-between pb-4">
-            <p className="text-xs font-body text-muted">Changes are visible to your matches and roommates.</p>
+            <p className="text-xs font-body text-muted">{role === 'landlord' ? 'Changes are visible to tenants viewing your listings.' : 'Changes are visible to your matches and roommates.'}</p>
             <button type="submit"
               className="clay-grad text-white px-8 py-3 rounded-xl font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
               {saving ? (
