@@ -5,7 +5,7 @@ import { createClient, isEduEmail } from '@/lib/supabase'
 
 /* ─── Types ───────────────────────────────────── */
 type Role  = 'student' | 'landlord'
-type Panel = 'login' | 'signup' | 'otp' | 'forgot' | 'success'
+type Panel = 'login' | 'signup' | 'otp' | 'forgot' | 'verify' | 'success'
 type Tab   = 'login' | 'signup'
 type ToastVariant = 'info' | 'success' | 'error'
 
@@ -102,6 +102,9 @@ export default function AuthPage() {
   const [pendingUniversity, setPendingUniversity]  = useState('')
   const [pendingCompany,    setPendingCompany]     = useState('')
   const [pendingPhone,      setPendingPhone]       = useState('')
+  const [pendingUserId,     setPendingUserId]      = useState('')
+  const [verifyFile,        setVerifyFile]         = useState<File | null>(null)
+  const [verifyLoading,     setVerifyLoading]      = useState(false)
   const [otpTimer, setOtpTimer] = useState(30)
   const timerRef = useRef<ReturnType<typeof setInterval>>()
   const { toast, show: showToast } = useToast()
@@ -289,17 +292,51 @@ export default function AuthPage() {
         updated_at: new Date().toISOString(),
       }
       if (role === 'landlord') {
-        profilePayload.email   = pendingEmail
-        profilePayload.phone   = pendingPhone
-        profilePayload.company = pendingCompany
+        profilePayload.phone              = pendingPhone
+        profilePayload.company            = pendingCompany
+        profilePayload.verification_status = 'pending_upload'
       } else {
         profilePayload.university = pendingUniversity
       }
       await supabase.from('profiles').upsert(profilePayload)
+      setPendingUserId(userId)
     }
 
     showToast('Email verified!', 'success')
-    setTimeout(() => setPanel('success'), 500)
+    setTimeout(() => setPanel(role === 'landlord' ? 'verify' : 'success'), 500)
+  }
+
+  /* ── Landlord verification upload ── */
+  async function handleVerificationUpload(e: React.FormEvent) {
+    e.preventDefault()
+    if (!verifyFile) { showToast('Please select a file to upload.', 'error'); return }
+    if (!pendingUserId) { showToast('Session error — please restart signup.', 'error'); return }
+    setVerifyLoading(true)
+    try {
+      const ext = verifyFile.name.split('.').pop() ?? 'jpg'
+      const path = `${pendingUserId}/${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('landlord-verification-docs')
+        .upload(path, verifyFile, { upsert: true })
+      if (uploadErr) { showToast('Upload failed: ' + uploadErr.message, 'error'); setVerifyLoading(false); return }
+
+      const { data: urlData } = supabase.storage.from('landlord-verification-docs').getPublicUrl(path)
+      const docUrl = urlData?.publicUrl ?? path
+
+      await supabase.from('landlord_verifications').insert({
+        landlord_id:  pendingUserId,
+        document_url: docUrl,
+        status:       'pending',
+      })
+      await supabase.from('profiles').update({ verification_status: 'pending' }).eq('id', pendingUserId)
+
+      showToast('Document submitted!', 'success')
+      setTimeout(() => setPanel('success'), 600)
+    } catch (err: any) {
+      showToast(err?.message ?? 'Something went wrong.', 'error')
+    } finally {
+      setVerifyLoading(false)
+    }
   }
 
   /* ── Resend OTP ── */
@@ -600,6 +637,56 @@ export default function AuthPage() {
           </div>
         )}
 
+        {/* ══ PANEL: VERIFY (landlord identity) ══ */}
+        {panel === 'verify' && (
+          <div className={`auth-card p-8 md:p-10 ${anim}`}>
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-slate-50 border border-out-var rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <span className="material-symbols-outlined text-clay text-3xl">badge</span>
+              </div>
+              <h1 className="font-display text-3xl font-light text-clay-dark mb-2">Verify your <em>identity</em></h1>
+              <p className="text-sm font-body text-muted">
+                Upload a government-issued ID or business license so UTenancy can verify you as a landlord. We review all documents within 24 hours.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerificationUpload} className="space-y-5" noValidate>
+              <div>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
+                  Identity Document
+                </label>
+                <label className={`flex flex-col items-center justify-center gap-3 w-full h-36 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${verifyFile ? 'border-clay bg-surf-lo' : 'border-out-var hover:border-clay/50 bg-surf-lo/50'}`}>
+                  <span className="material-symbols-outlined text-3xl text-clay">{verifyFile ? 'description' : 'upload_file'}</span>
+                  {verifyFile
+                    ? <span className="text-sm font-head font-semibold text-clay-dark text-center px-4 break-all">{verifyFile.name}</span>
+                    : <span className="text-sm font-body text-muted text-center px-4">Click to upload<br /><span className="text-xs">JPG, PNG, PDF — max 10 MB</span></span>}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="sr-only"
+                    onChange={(e) => setVerifyFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                <span className="material-symbols-outlined text-amber-500 text-base mt-0.5 flex-shrink-0">info</span>
+                <p className="text-xs font-body text-amber-800 leading-relaxed">
+                  Accepted documents: driver&apos;s license, passport, or business license. Your information is kept private and only used for verification.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifyLoading || !verifyFile}
+                className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25 disabled:opacity-50"
+              >
+                {verifyLoading ? <span className="spinner" /> : <><span className="material-symbols-outlined text-sm">send</span> Submit for Review</>}
+              </button>
+            </form>
+          </div>
+        )}
+
         {/* ══ PANEL: FORGOT ══ */}
         {panel === 'forgot' && (
           <div className={`auth-card p-8 md:p-10 ${anim}`}>
@@ -642,13 +729,26 @@ export default function AuthPage() {
             </h1>
             <p className="text-sm font-body text-muted mb-8">
               {isLandlord
-                ? 'Your landlord account is verified. Complete your profile to start listing.'
+                ? 'Your document has been submitted. We\'ll review it within 24 hours and notify you by email.'
                 : 'Your .edu is verified. Complete your profile to get started.'}
             </p>
-            <a href="/profile"
-              className="clay-grad block w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 text-center">
-              Complete Your Profile →
-            </a>
+            {isLandlord ? (
+              <div className="space-y-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+                  <span className="material-symbols-outlined text-amber-500 text-base flex-shrink-0">schedule</span>
+                  <p className="text-xs font-body text-amber-800">Your account is <strong>pending verification</strong>. You can browse the platform while we review your document.</p>
+                </div>
+                <a href="/"
+                  className="clay-grad block w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 text-center">
+                  Browse Listings →
+                </a>
+              </div>
+            ) : (
+              <a href="/profile"
+                className="clay-grad block w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 text-center">
+                Complete Your Profile →
+              </a>
+            )}
           </div>
         )}
 
