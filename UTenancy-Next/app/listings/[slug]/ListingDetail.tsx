@@ -37,44 +37,19 @@ async function openConversation(
   userId: string,
   otherUserId: string,
 ): Promise<string | null> {
-  const { data: myConvs } = await supabase
-    .from('conversation_participants')
-    .select('conversation_id')
-    .eq('user_id', userId)
-  const myIds = myConvs?.map((r: any) => r.conversation_id) ?? []
+  // Uses a SECURITY DEFINER RPC to atomically create the conversation +
+  // participants, bypassing RLS mid-flight issues.
+  const { data: convId, error } = await supabase.rpc('open_conversation', {
+    p_listing_id: listingId,
+    p_user_a:     userId,
+    p_user_b:     otherUserId,
+  })
 
-  if (myIds.length > 0) {
-    const { data: shared } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', otherUserId)
-      .in('conversation_id', myIds)
-    if (shared && shared.length > 0) {
-      window.location.href = `/messages/${shared[0].conversation_id}`
-      return null
-    }
+  if (error || !convId) {
+    return error?.message ?? 'Could not create conversation'
   }
 
-  const { data: conv, error: convErr } = await supabase
-    .from('conversations')
-    .insert({ listing_id: listingId })
-    .select()
-    .single()
-
-  if (convErr || !conv) {
-    return convErr?.message ?? 'Could not create conversation'
-  }
-
-  const { error: partErr } = await supabase.from('conversation_participants').insert([
-    { conversation_id: conv.id, user_id: userId },
-    { conversation_id: conv.id, user_id: otherUserId },
-  ])
-
-  if (partErr) {
-    return partErr.message
-  }
-
-  window.location.href = `/messages/${conv.id}`
+  window.location.href = `/messages/${convId}`
   return null
 }
 
