@@ -593,6 +593,7 @@ export default function LandlordPortal() {
   /* Applicant review modal */
   const [reviewListing,     setReviewListing]     = useState<Listing | null>(null)
   const [applicants,         setApplicants]         = useState<Array<{ id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null }>>([])
+  const [rentApplications,   setRentApplications]   = useState<Array<{ id: string; message: string | null; created_at: string; profile: { id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null } | null }>>([])
   const [loadingApplicants,  setLoadingApplicants]  = useState(false)
 
   /* ── Subscription ── */
@@ -1008,13 +1009,26 @@ export default function LandlordPortal() {
   async function handleReview(listing: Listing) {
     setReviewListing(listing)
     setApplicants([])
+    setRentApplications([])
     setLoadingApplicants(true)
-    const { data } = await supabase
-      .from('listing_interests')
-      .select('profile:profiles(id, first_name, last_name, university, bio)')
-      .eq('listing_id', listing.id)
-    if (data) {
-      setApplicants(data.map((r: any) => r.profile).filter(Boolean))
+
+    const [{ data: interests }, { data: applications }] = await Promise.all([
+      supabase
+        .from('listing_interests')
+        .select('profile:profiles(id, first_name, last_name, university, bio)')
+        .eq('listing_id', listing.id),
+      supabase
+        .from('rent_applications')
+        .select('id, message, created_at, profile:profiles!rent_applications_user_id_fkey(id, first_name, last_name, university, bio)')
+        .eq('listing_id', listing.id)
+        .order('created_at', { ascending: false }),
+    ])
+
+    if (interests) {
+      setApplicants(interests.map((r: any) => r.profile).filter(Boolean))
+    }
+    if (applications) {
+      setRentApplications(applications as any)
     }
     setLoadingApplicants(false)
   }
@@ -1315,7 +1329,7 @@ export default function LandlordPortal() {
                 <span className="material-symbols-outlined fill text-white text-xl">group</span>
               </div>
               <div>
-                <h2 className="font-head font-bold text-clay-dark">Interested Students</h2>
+                <h2 className="font-head font-bold text-clay-dark">Applicants &amp; Interested</h2>
                 <p className="text-xs font-body text-muted truncate max-w-[220px]">{reviewListing.address}</p>
               </div>
             </div>
@@ -1324,31 +1338,85 @@ export default function LandlordPortal() {
               <div className="flex justify-center py-10">
                 <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.2)', borderTopColor: '#6b4c3b', width: 28, height: 28 }} />
               </div>
-            ) : applicants.length === 0 ? (
-              <div className="text-center py-10">
-                <span className="material-symbols-outlined text-out-var text-4xl">group_off</span>
-                <p className="text-sm font-body text-muted mt-2">No students have expressed interest yet.</p>
-              </div>
             ) : (
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {applicants.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 p-4 bg-surf-lo rounded-2xl border border-out-var/30">
-                    <div className="w-11 h-11 rounded-full flex-shrink-0 border border-out-var clay-grad flex items-center justify-center">
-                      <span className="text-white font-head font-black text-xs">
-                        {(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}
-                      </span>
+              <div className="space-y-5 max-h-[60vh] overflow-y-auto">
+
+                {/* ── Rent Applications ── */}
+                <div>
+                  <p className="text-xs font-head font-bold text-clay uppercase tracking-wider mb-2">
+                    Formal Applications ({rentApplications.length})
+                  </p>
+                  {rentApplications.length === 0 ? (
+                    <p className="text-xs font-body text-muted py-2">No applications submitted yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {rentApplications.map((app) => {
+                        const p = app.profile
+                        return (
+                          <div key={app.id} className="p-4 bg-linen rounded-2xl border border-out-var/40">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-9 h-9 rounded-full flex-shrink-0 clay-grad flex items-center justify-center">
+                                <span className="text-white font-head font-black text-xs">
+                                  {(p?.first_name?.[0] ?? '') + (p?.last_name?.[0] ?? '')}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-head font-bold text-clay-dark">{p?.first_name} {p?.last_name}</p>
+                                {p?.university && <p className="text-xs font-body text-muted">{p.university}</p>}
+                              </div>
+                              {p?.id && (
+                                <a href={`/profile/${p.id}`}
+                                  className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                                  Profile
+                                </a>
+                              )}
+                            </div>
+                            {app.message && (
+                              <p className="text-xs font-body text-muted bg-white rounded-xl px-3 py-2 border border-out-var/30 italic">
+                                &ldquo;{app.message}&rdquo;
+                              </p>
+                            )}
+                            <p className="text-[10px] font-body text-out-var mt-2">
+                              Applied {new Date(app.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          </div>
+                        )
+                      })}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-head font-bold text-clay-dark">{a.first_name} {a.last_name}</p>
-                      {a.university && <p className="text-xs font-body text-muted">{a.university}</p>}
-                      {a.bio && <p className="text-xs font-body text-muted mt-0.5 truncate">{a.bio}</p>}
+                  )}
+                </div>
+
+                {/* ── Interested Students ── */}
+                <div>
+                  <p className="text-xs font-head font-bold text-clay uppercase tracking-wider mb-2">
+                    Saved / Interested ({applicants.length})
+                  </p>
+                  {applicants.length === 0 ? (
+                    <p className="text-xs font-body text-muted py-2">No students have saved this listing yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {applicants.map((a) => (
+                        <div key={a.id} className="flex items-center gap-3 p-4 bg-surf-lo rounded-2xl border border-out-var/30">
+                          <div className="w-11 h-11 rounded-full flex-shrink-0 border border-out-var clay-grad flex items-center justify-center">
+                            <span className="text-white font-head font-black text-xs">
+                              {(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-head font-bold text-clay-dark">{a.first_name} {a.last_name}</p>
+                            {a.university && <p className="text-xs font-body text-muted">{a.university}</p>}
+                            {a.bio && <p className="text-xs font-body text-muted mt-0.5 truncate">{a.bio}</p>}
+                          </div>
+                          <a href={`/profile/${a.id}`}
+                            className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                            Profile
+                          </a>
+                        </div>
+                      ))}
                     </div>
-                    <a href={`/profile/${a.id}`}
-                      className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
-                      Profile
-                    </a>
-                  </div>
-                ))}
+                  )}
+                </div>
+
               </div>
             )}
 
