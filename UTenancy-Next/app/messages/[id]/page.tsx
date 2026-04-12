@@ -138,11 +138,15 @@ export default function ConversationPage() {
     fetchData()
   }, [conversationId, router, supabase])
 
-  // Subscribe to real-time messages — fetch full row + sender profile on INSERT
+  // Subscribe to real-time messages — fetch full row + sender profile on INSERT.
+  // Note: We intentionally omit a server-side filter here. With RLS enabled,
+  // Supabase realtime will only deliver rows the authenticated user can SELECT.
+  // We then filter client-side by conversation_id for safety.
   useEffect(() => {
     if (!conversationId) return
 
-    const channel = supabase
+    const client = createClient()
+    const channel = client
       .channel(`conv:${conversationId}`)
       .on(
         'postgres_changes',
@@ -150,12 +154,15 @@ export default function ConversationPage() {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
-          const newId = (payload.new as any).id
+          const row = payload.new as any
+          // Client-side filter: only handle messages for this conversation
+          if (row.conversation_id !== conversationId) return
+
+          const newId = row.id
           // payload.new has no sender profile — fetch the complete row
-          const { data: fullMsg } = await supabase
+          const { data: fullMsg } = await client
             .from('messages')
             .select('*, sender:profiles!messages_sender_profile_fkey(*)')
             .eq('id', newId)
@@ -173,9 +180,9 @@ export default function ConversationPage() {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      client.removeChannel(channel)
     }
-  }, [conversationId, supabase])
+  }, [conversationId])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
