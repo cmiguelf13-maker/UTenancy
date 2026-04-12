@@ -219,10 +219,15 @@ function SimilarListingCard({ listing }: { listing: SimilarListing }) {
           <p className="font-head font-bold text-clay-dark text-sm mb-1 truncate">{listing.address}</p>
           <p className="text-xs font-body text-muted mb-3">{listing.city}, {listing.state}</p>
           <div className="flex items-center justify-between">
-            <p className="font-display text-lg text-clay-dark font-light">
-              ${listing.rent.toLocaleString()}
-              <span className="text-xs text-muted font-body">/mo</span>
-            </p>
+            <div>
+              <p className="text-[9px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">
+                {isOpen ? 'Per Person' : 'Total Rent'}
+              </p>
+              <p className="font-display text-lg text-clay-dark font-light">
+                ${listing.rent.toLocaleString()}
+                <span className="text-xs text-muted font-body">/mo</span>
+              </p>
+            </div>
             <div className="flex items-center gap-1.5 text-xs font-body text-muted">
               <span className="material-symbols-outlined text-sm">bed</span>
               <span>{listing.bedrooms}</span>
@@ -1333,13 +1338,17 @@ export default function ListingDetail({
               <div className="clay-grad p-6 text-white">
                 <div className="flex items-end justify-between mb-1">
                   <div>
-                    <p className="text-white/60 text-xs font-head font-bold uppercase tracking-widest mb-1">Total Rent</p>
+                    <p className="text-white/60 text-xs font-head font-bold uppercase tracking-widest mb-1">
+                      {listing.type === 'open' ? 'Per Person' : 'Total Rent'}
+                    </p>
                     <p className="font-display text-4xl font-light">${listing.price.toLocaleString()}<span className="text-lg font-body text-white/60">/mo</span></p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-white/60 text-xs font-body">Per person</p>
-                    <p className="font-head font-black text-xl">${perPerson.toLocaleString()}</p>
-                  </div>
+                  {listing.type !== 'open' && (
+                    <div className="text-right">
+                      <p className="text-white/60 text-xs font-body">Per person</p>
+                      <p className="font-head font-black text-xl">${perPerson.toLocaleString()}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse-dot" />
