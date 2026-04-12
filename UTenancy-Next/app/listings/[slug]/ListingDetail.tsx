@@ -282,19 +282,64 @@ function Lightbox({ index, onClose, photos }: { index: number; onClose: () => vo
   )
 }
 
-/* ── Apply Modal ─────────────────────────────────────────────── */
-function ApplyModal({ listing, user, onClose }: { listing: Listing; user: any; onClose: () => void }) {
+/* ── Application Modal (3-step full form) ────────────────────── */
+function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: any; onClose: () => void }) {
+  const [step, setStep] = useState(1)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [alreadyApplied, setAlreadyApplied] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
-  const [moveIn, setMoveIn] = useState('')
-  const [roomsNeeded, setRoomsNeeded] = useState('')
-  const [message, setMessage] = useState('')
 
+  // Step 1 — About You
+  const [fullName, setFullName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [dob, setDob] = useState('')
+  const [university, setUniversity] = useState('')
+  const [enrollmentStatus, setEnrollmentStatus] = useState('')
+  const [major, setMajor] = useState('')
+  const [gradYear, setGradYear] = useState('')
+
+  // Step 2 — Financial & References
+  const [employmentStatus, setEmploymentStatus] = useState('')
+  const [monthlyIncome, setMonthlyIncome] = useState('')
+  const [hasCosigner, setHasCosigner] = useState(false)
+  const [cosignerName, setCosignerName] = useState('')
+  const [ref1Name, setRef1Name] = useState('')
+  const [ref1Rel, setRef1Rel] = useState('')
+  const [ref1Contact, setRef1Contact] = useState('')
+  const [ref2Name, setRef2Name] = useState('')
+  const [ref2Rel, setRef2Rel] = useState('')
+  const [ref2Contact, setRef2Contact] = useState('')
+
+  // Step 3 — Preferences & Submit
+  const [moveIn, setMoveIn] = useState('')
+  const [leaseTerm, setLeaseTerm] = useState('')
+  const [numOccupants, setNumOccupants] = useState('1')
+  const [hasPets, setHasPets] = useState(false)
+  const [petsDescription, setPetsDescription] = useState('')
+  const [message, setMessage] = useState('')
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+
+  // All hooks before any early returns
   useEffect(() => {
     if (!user) return
     const supabase = createClient()
+    // Pre-fill from profile
+    supabase
+      .from('profiles')
+      .select('first_name, last_name, phone, university, major, grad_year')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!data) return
+        const name = [data.first_name, data.last_name].filter(Boolean).join(' ')
+        if (name) setFullName(name)
+        if (data.phone) setPhone(data.phone)
+        if (data.university) setUniversity(data.university)
+        if (data.major) setMajor(data.major)
+        if (data.grad_year) setGradYear(data.grad_year)
+      })
+    // Check already applied
     supabase
       .from('rent_applications')
       .select('id')
@@ -306,8 +351,7 @@ function ApplyModal({ listing, user, onClose }: { listing: Listing; user: any; o
       })
   }, [user, listing.id])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     if (!user) { window.location.href = '/auth'; return }
     setSubmitting(true)
     setApplyError(null)
@@ -315,101 +359,280 @@ function ApplyModal({ listing, user, onClose }: { listing: Listing; user: any; o
     const { error: insertErr } = await supabase.from('rent_applications').insert({
       listing_id: String(listing.id),
       user_id: user.id,
-      message: message,
-      application_type: 'direct',
+      application_type: listing.beds > 1 ? 'group' : 'direct',
       status: 'pending',
+      full_name: fullName,
+      phone: phone || null,
+      date_of_birth: dob || null,
+      university: university || null,
+      enrollment_status: enrollmentStatus || null,
+      major: major || null,
+      grad_year: gradYear || null,
+      employment_status: employmentStatus || null,
+      monthly_income: monthlyIncome ? Number(monthlyIncome) : null,
+      has_cosigner: hasCosigner,
+      cosigner_name: cosignerName || null,
+      ref1_name: ref1Name || null,
+      ref1_relationship: ref1Rel || null,
+      ref1_contact: ref1Contact || null,
+      ref2_name: ref2Name || null,
+      ref2_relationship: ref2Rel || null,
+      ref2_contact: ref2Contact || null,
+      move_in_date: moveIn || null,
+      lease_term: leaseTerm || null,
+      num_occupants: numOccupants ? Number(numOccupants) : null,
+      has_pets: hasPets,
+      pets_description: petsDescription || null,
+      message: message || null,
+      agreed_to_terms: agreedToTerms,
     })
     setSubmitting(false)
     if (insertErr) {
-      setApplyError('Something went wrong. Please try again.')
+      setApplyError(
+        insertErr.message.includes('unique')
+          ? "You've already submitted an application for this property."
+          : 'Something went wrong. Please try again.'
+      )
     } else {
       setSubmitted(true)
     }
   }
 
+  const STEPS = ['About You', 'Financial & Refs', 'Preferences']
+
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal-box">
-        <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-clay transition-colors">
+      <div className="modal-box" style={{ maxWidth: 540, maxHeight: '92vh', overflowY: 'auto' }}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-clay transition-colors z-10">
           <span className="material-symbols-outlined">close</span>
         </button>
 
         {alreadyApplied ? (
-          <div className="text-center py-6">
+          <div className="text-center py-8">
             <div className="check-circle mx-auto mb-4">
               <span className="material-symbols-outlined text-white text-3xl fill">check</span>
             </div>
             <h3 className="font-display text-2xl font-light text-clay-dark mb-2">Already <em>applied!</em></h3>
-            <p className="text-sm font-body text-muted">You've already submitted an application for this property. The landlord will review it and reach out.</p>
+            <p className="text-sm font-body text-muted">Your application is in. The landlord will review it and reach out within 48 hours.</p>
+            <button onClick={onClose} className="mt-5 clay-grad text-white px-6 py-2.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all">Close</button>
           </div>
         ) : submitted ? (
-          <div className="text-center py-6">
+          <div className="text-center py-8">
             <div className="check-circle mx-auto mb-4">
               <span className="material-symbols-outlined text-white text-3xl fill">check</span>
             </div>
-            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">Application <em>sent!</em></h3>
-            <p className="text-sm font-body text-muted">The landlord will review your profile and reach out within 48 hours.</p>
+            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">Application <em>submitted!</em></h3>
+            <p className="text-sm font-body text-muted">The landlord will review your application and get back to you within 48 hours. Good luck!</p>
+            <button onClick={onClose} className="mt-5 clay-grad text-white px-6 py-2.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all">Done</button>
           </div>
         ) : (
           <>
-            <h3 className="font-display text-2xl font-light text-clay-dark mb-1">Apply to rent</h3>
-            <p className="text-sm font-body text-muted mb-6">{listing.title} — {listing.beds} bed / {listing.baths ?? 1} bath</p>
+            {/* Header */}
+            <div className="mb-5 pr-8">
+              <h3 className="font-display text-2xl font-light text-clay-dark mb-1">Rental Application</h3>
+              <p className="text-sm font-body text-muted">{listing.title} · {listing.beds} bed / {listing.baths ?? 1} bath</p>
+            </div>
+
+            {/* Step indicator */}
+            <div className="flex items-center mb-6">
+              {STEPS.map((label, i) => (
+                <div key={label} className="flex items-center flex-1 min-w-0">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-head font-black flex-shrink-0 transition-all ${step > i + 1 ? 'clay-grad text-white' : step === i + 1 ? 'bg-clay-dark text-white' : 'bg-linen text-muted'}`}>
+                    {step > i + 1 ? <span className="material-symbols-outlined text-xs">check</span> : i + 1}
+                  </div>
+                  <span className={`text-[10px] font-head font-semibold ml-1 truncate ${step === i + 1 ? 'text-clay-dark' : 'text-muted'}`}>{label}</span>
+                  {i < STEPS.length - 1 && <div className={`h-px flex-1 mx-2 ${step > i + 1 ? 'bg-clay/50' : 'bg-out-var'}`} />}
+                </div>
+              ))}
+            </div>
 
             {!user && (
               <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-body text-amber-800">
-                You need to be signed in to apply.{' '}
-                <a href="/auth" className="font-bold underline">Sign in</a>
+                You need to be signed in to apply. <a href="/auth" className="font-bold underline">Sign in</a>
               </div>
             )}
             {applyError && (
               <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-body text-red-700">{applyError}</div>
             )}
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <label className="form-label">Move-in Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  required
-                  value={moveIn}
-                  onChange={(e) => setMoveIn(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label">Rooms Needed</label>
-                <select
-                  className="form-input"
-                  required
-                  value={roomsNeeded}
-                  onChange={(e) => setRoomsNeeded(e.target.value)}
+            {/* ── Step 1: About You ── */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Full Legal Name *</label>
+                    <input type="text" className="form-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Smith" />
+                  </div>
+                  <div>
+                    <label className="form-label">Phone Number</label>
+                    <input type="tel" className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 555-5555" />
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Date of Birth</label>
+                  <input type="date" className="form-input" value={dob} onChange={(e) => setDob(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">University / School</label>
+                    <input type="text" className="form-input" value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="LMU, UCLA…" />
+                  </div>
+                  <div>
+                    <label className="form-label">Enrollment Status</label>
+                    <select className="form-input" value={enrollmentStatus} onChange={(e) => setEnrollmentStatus(e.target.value)}>
+                      <option value="">Select…</option>
+                      <option>Full-time</option>
+                      <option>Part-time</option>
+                      <option>Graduating soon</option>
+                      <option>Graduate / PhD</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Major / Field of Study</label>
+                    <input type="text" className="form-input" value={major} onChange={(e) => setMajor(e.target.value)} placeholder="Computer Science" />
+                  </div>
+                  <div>
+                    <label className="form-label">Expected Graduation</label>
+                    <input type="text" className="form-input" value={gradYear} onChange={(e) => setGradYear(e.target.value)} placeholder="May 2027" />
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!fullName.trim()) { setApplyError('Please enter your full legal name.'); return }
+                    setApplyError(null)
+                    setStep(2)
+                  }}
+                  className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
                 >
-                  <option value="">Select…</option>
-                  <option>1 room (just me)</option>
-                  <option>2 rooms (me + roommate)</option>
-                  <option>Full home ({listing.beds} rooms)</option>
-                </select>
+                  Next <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </button>
               </div>
-              <div>
-                <label className="form-label">Note to Landlord</label>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  placeholder="Tell them a bit about yourself — your schedule, lifestyle, why you'd be a great tenant…"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                />
+            )}
+
+            {/* ── Step 2: Financial & References ── */}
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Employment Status</label>
+                    <select className="form-input" value={employmentStatus} onChange={(e) => setEmploymentStatus(e.target.value)}>
+                      <option value="">Select…</option>
+                      <option>Student only</option>
+                      <option>Part-time employed</option>
+                      <option>Full-time employed</option>
+                      <option>Freelance / self-employed</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Monthly Income ($)</label>
+                    <input type="number" className="form-input" value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} placeholder="0" min="0" />
+                  </div>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" checked={hasCosigner} onChange={(e) => setHasCosigner(e.target.checked)} className="w-4 h-4 accent-clay" />
+                    <span className="text-sm font-body text-clay-dark">I have a co-signer / guarantor</span>
+                  </label>
+                  {hasCosigner && (
+                    <input type="text" className="form-input mt-2" value={cosignerName} onChange={(e) => setCosignerName(e.target.value)} placeholder="Co-signer's full name" />
+                  )}
+                </div>
+                <div className="p-4 bg-surf-lo rounded-2xl border border-out-var/40 space-y-3">
+                  <p className="text-xs font-head font-bold text-clay-dark uppercase tracking-wide">Reference 1</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" className="form-input" value={ref1Name} onChange={(e) => setRef1Name(e.target.value)} placeholder="Full name" />
+                    <input type="text" className="form-input" value={ref1Rel} onChange={(e) => setRef1Rel(e.target.value)} placeholder="Relationship" />
+                  </div>
+                  <input type="text" className="form-input" value={ref1Contact} onChange={(e) => setRef1Contact(e.target.value)} placeholder="Phone or email" />
+                </div>
+                <div className="p-4 bg-surf-lo rounded-2xl border border-out-var/40 space-y-3">
+                  <p className="text-xs font-head font-bold text-clay-dark uppercase tracking-wide">Reference 2</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" className="form-input" value={ref2Name} onChange={(e) => setRef2Name(e.target.value)} placeholder="Full name" />
+                    <input type="text" className="form-input" value={ref2Rel} onChange={(e) => setRef2Rel(e.target.value)} placeholder="Relationship" />
+                  </div>
+                  <input type="text" className="form-input" value={ref2Contact} onChange={(e) => setRef2Contact(e.target.value)} placeholder="Phone or email" />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setApplyError(null); setStep(1) }} className="border border-out-var text-clay-dark py-3 px-5 rounded-xl font-head font-bold text-sm hover:bg-linen transition-all">Back</button>
+                  <button onClick={() => { setApplyError(null); setStep(3) }} className="flex-1 clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                    Next <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                  </button>
+                </div>
               </div>
-              <button
-                type="submit"
-                disabled={submitting || !user}
-                className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {submitting
-                  ? <><span className="spinner" /> Submitting…</>
-                  : <><span className="material-symbols-outlined text-sm">send</span> Submit Application</>}
-              </button>
-            </form>
+            )}
+
+            {/* ── Step 3: Preferences & Submit ── */}
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label">Move-in Date *</label>
+                    <input type="date" className="form-input" value={moveIn} onChange={(e) => setMoveIn(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label">Lease Term</label>
+                    <select className="form-input" value={leaseTerm} onChange={(e) => setLeaseTerm(e.target.value)}>
+                      <option value="">Select…</option>
+                      <option>6 months</option>
+                      <option>12 months</option>
+                      <option>18 months</option>
+                      <option>Flexible</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="form-label">Total Occupants (including you)</label>
+                  <select className="form-input" value={numOccupants} onChange={(e) => setNumOccupants(e.target.value)}>
+                    <option value="1">1 — just me</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5+</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" checked={hasPets} onChange={(e) => setHasPets(e.target.checked)} className="w-4 h-4 accent-clay" />
+                    <span className="text-sm font-body text-clay-dark">I have pets</span>
+                  </label>
+                  {hasPets && (
+                    <input type="text" className="form-input mt-2" value={petsDescription} onChange={(e) => setPetsDescription(e.target.value)} placeholder="Describe your pets (type, size, breed)" />
+                  )}
+                </div>
+                <div>
+                  <label className="form-label">Message to Landlord</label>
+                  <textarea
+                    className="form-input"
+                    rows={3}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Tell them about yourself — your schedule, lifestyle, why you'd be a great tenant…"
+                  />
+                </div>
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-4 h-4 accent-clay mt-0.5 flex-shrink-0" />
+                  <span className="text-xs font-body text-muted leading-relaxed">
+                    I confirm that all information in this application is accurate and complete. I understand this is not a lease agreement and the landlord may request additional documentation.
+                  </span>
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={() => { setApplyError(null); setStep(2) }} className="border border-out-var text-clay-dark py-3 px-5 rounded-xl font-head font-bold text-sm hover:bg-linen transition-all">Back</button>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting || !user || !moveIn || !agreedToTerms}
+                    className="flex-1 clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {submitting
+                      ? <><span className="spinner" /> Submitting…</>
+                      : <><span className="material-symbols-outlined text-sm">send</span> Submit Application</>}
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -1001,55 +1224,91 @@ export default function ListingDetail({
             {/* Group formation — only for group-formation listings */}
             {listing.type !== 'open' && (
               <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
-                    <p className="text-sm font-body text-muted">
-                      {interestCount} of {listing.beds} spots filled — join to fill the house together.
-                    </p>
-                  </div>
-                  <span className="badge-open text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap">Forming Now</span>
-                </div>
-                <div className="progress-track mb-2">
-                  <div className="progress-fill" style={{ width: `${listing.beds > 0 ? Math.round(100 * interestCount / listing.beds) : 0}%` }} />
-                </div>
-                <p className="text-xs text-muted font-body mb-5">{interestCount} of {listing.beds} joined</p>
-                <div className="flex items-center gap-3 mb-6">
-                  {interestedStudents.length > 0 ? (
+                {(() => {
+                  const groupIsFull = interestCount >= listing.beds
+                  return (
                     <>
-                      <div className="flex -space-x-2">
-                        {interestedStudents.slice(0, 4).map((s) => (
-                          <div key={s.id} className="w-9 h-9 rounded-full border-2 border-white clay-grad flex items-center justify-center text-xs font-head font-bold text-cream">
-                            {(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div>
+                          <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
+                          <p className="text-sm font-body text-muted">
+                            {groupIsFull
+                              ? 'Group is complete — time to apply!'
+                              : `${interestCount} of ${listing.beds} spots filled — join to fill the house together.`}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap ${groupIsFull ? 'bg-green-100 text-green-700' : 'badge-open'}`}>
+                          {groupIsFull ? 'Group Full ✓' : 'Forming Now'}
+                        </span>
+                      </div>
+                      <div className="progress-track mb-2">
+                        <div className="progress-fill" style={{ width: `${listing.beds > 0 ? Math.min(100, Math.round(100 * interestCount / listing.beds)) : 0}%` }} />
+                      </div>
+                      <p className="text-xs text-muted font-body mb-5">{interestCount} of {listing.beds} joined</p>
+                      <div className="flex items-center gap-3 mb-6">
+                        {interestedStudents.length > 0 ? (
+                          <>
+                            <div className="flex -space-x-2">
+                              {interestedStudents.slice(0, 4).map((s) => (
+                                <div key={s.id} className="w-9 h-9 rounded-full border-2 border-white clay-grad flex items-center justify-center text-xs font-head font-bold text-cream">
+                                  {(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}
+                                </div>
+                              ))}
+                              {Array.from({ length: Math.max(0, Math.min(listing.beds, 3) - interestedStudents.slice(0, 4).length) }).map((_, i) => (
+                                <div key={`empty-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
+                              ))}
+                            </div>
+                            <span className="text-xs font-body text-muted">
+                              {interestedStudents.length === 1
+                                ? `${interestedStudents[0].first_name ?? 'Someone'} is looking for ${listing.beds - 1} more roommate${listing.beds - 1 !== 1 ? 's' : ''}`
+                                : `${interestedStudents.length} people are forming this group`}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex -space-x-2">
+                              {Array.from({ length: Math.min(listing.beds, 3) }).map((_, i) => (
+                                <div key={`slot-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
+                              ))}
+                            </div>
+                            <span className="text-xs font-body text-muted">Be the first to join this group!</span>
+                          </>
+                        )}
+                      </div>
+                      {/* CTA changes based on group state */}
+                      {groupIsFull ? (
+                        interested ? (
+                          <button
+                            onClick={() => setShowApply(true)}
+                            className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20 flex items-center justify-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-sm">send</span>
+                            Apply to Rent Now
+                          </button>
+                        ) : (
+                          <div className="w-full text-center py-3 rounded-xl font-head font-semibold text-sm bg-linen text-muted border border-out-var/40">
+                            This group is now full
                           </div>
-                        ))}
-                        {Array.from({ length: Math.max(0, Math.min(listing.beds, 3) - interestedStudents.slice(0, 4).length) }).map((_, i) => (
-                          <div key={`empty-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
-                        ))}
-                      </div>
-                      <span className="text-xs font-body text-muted">
-                        {interestedStudents.length === 1
-                          ? `${interestedStudents[0].first_name ?? 'Someone'} is looking for ${listing.beds - 1} more roommate${listing.beds - 1 !== 1 ? 's' : ''}`
-                          : `${interestedStudents.length} people are forming this group`}
-                      </span>
+                        )
+                      ) : (
+                        !interested && (
+                          <button
+                            onClick={() => setShowGroup(true)}
+                            className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20"
+                          >
+                            Join This Group
+                          </button>
+                        )
+                      )}
+                      {!groupIsFull && interested && (
+                        <div className="w-full text-center py-3 rounded-xl font-head font-semibold text-sm bg-green-50 text-green-700 border border-green-200 flex items-center justify-center gap-2">
+                          <span className="material-symbols-outlined text-sm fill">check_circle</span>
+                          You're in the group — apply once all {listing.beds} spots are filled
+                        </div>
+                      )}
                     </>
-                  ) : (
-                    <>
-                      <div className="flex -space-x-2">
-                        {Array.from({ length: Math.min(listing.beds, 3) }).map((_, i) => (
-                          <div key={`slot-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
-                        ))}
-                      </div>
-                      <span className="text-xs font-body text-muted">Be the first to join this group!</span>
-                    </>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowGroup(true)}
-                  className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20"
-                >
-                  Join This Group
-                </button>
+                  )
+                })()}
               </div>
             )}
 
@@ -1100,24 +1359,81 @@ export default function ListingDetail({
                   ) : null
                 ) : (
                   <>
-                    {hasApplied ? (
-                      <div className="w-full bg-green-50 border border-green-200 text-green-700 py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
-                        <span className="material-symbols-outlined text-sm fill">check_circle</span> Application Submitted
-                      </div>
-                    ) : (
+                    {(() => {
+                      const groupIsFull = interestCount >= listing.beds
+                      const isMultiBed = listing.beds > 1
+
+                      if (hasApplied) {
+                        return (
+                          <div className="w-full bg-green-50 border border-green-200 text-green-700 py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-sm fill">check_circle</span> Application Submitted
+                          </div>
+                        )
+                      }
+
+                      if (!isMultiBed) {
+                        // 1-bedroom: always allow direct apply
+                        return (
+                          <button
+                            onClick={() => setShowApply(true)}
+                            className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
+                          </button>
+                        )
+                      }
+
+                      // Multi-bedroom: group-gated apply
+                      if (groupIsFull && interested) {
+                        return (
+                          <button
+                            onClick={() => setShowApply(true)}
+                            className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
+                          </button>
+                        )
+                      }
+
+                      if (groupIsFull && !interested) {
+                        return (
+                          <div className="w-full bg-linen border border-out-var text-muted py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-sm">group_off</span> This group is full
+                          </div>
+                        )
+                      }
+
+                      if (interested) {
+                        // In group, not yet full
+                        return (
+                          <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                            Apply unlocks when full ({interestCount}/{listing.beds} spots)
+                          </div>
+                        )
+                      }
+
+                      // Not in group, not full — prompt to join
+                      return (
+                        <button
+                          onClick={() => setShowGroup(true)}
+                          className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-sm">group_add</span> Join Group to Apply
+                        </button>
+                      )
+                    })()}
+
+                    {/* Secondary: Join Group button (only for 1-bed listings or when already in group) */}
+                    {listing.beds === 1 && (
                       <button
-                        onClick={() => setShowApply(true)}
-                        className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2"
+                        onClick={() => setShowGroup(true)}
+                        className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2"
                       >
-                        <span className="material-symbols-outlined text-sm">send</span> Apply to Rent
+                        <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
                       </button>
                     )}
-                    <button
-                      onClick={() => setShowGroup(true)}
-                      className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
-                    </button>
+
                     {user && user.user_metadata?.role !== 'landlord' ? (
                       <MessageLandlordButton listingId={String(listing.id)} userId={user.id} />
                     ) : !user ? (
@@ -1262,7 +1578,7 @@ export default function ListingDetail({
 
       {/* Overlays */}
       {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} photos={PHOTOS} />}
-      {showApply  && <ApplyModal listing={listing} user={user} onClose={() => { setShowApply(false); if (hasApplied === false) { /* refresh */ } }} />}
+      {showApply  && <ApplicationModal listing={listing} user={user} onClose={() => { setShowApply(false) }} />}
       {showGroup  && <GroupModal listing={listing} user={user} onClose={() => setShowGroup(false)} />}
 
       {/* Action toast */}
