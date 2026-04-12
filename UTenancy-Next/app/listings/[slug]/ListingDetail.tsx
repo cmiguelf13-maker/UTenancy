@@ -14,7 +14,6 @@ type LandlordProfile = {
   last_name: string | null
   company: string | null
   bio: string | null
-  email: string | null
   phone: string | null
 }
 
@@ -32,7 +31,12 @@ type SimilarListing = {
 }
 
 /* ── Shared helper: open or create a 1-on-1 conversation ─────── */
-async function openConversation(supabase: any, listingId: string, userId: string, otherUserId: string) {
+async function openConversation(
+  supabase: any,
+  listingId: string,
+  userId: string,
+  otherUserId: string,
+): Promise<string | null> {
   const { data: myConvs } = await supabase
     .from('conversation_participants')
     .select('conversation_id')
@@ -47,67 +51,88 @@ async function openConversation(supabase: any, listingId: string, userId: string
       .in('conversation_id', myIds)
     if (shared && shared.length > 0) {
       window.location.href = `/messages/${shared[0].conversation_id}`
-      return
+      return null
     }
   }
 
-  const { data: conv } = await supabase
+  const { data: conv, error: convErr } = await supabase
     .from('conversations')
     .insert({ listing_id: listingId })
     .select()
     .single()
-  if (conv) {
-    await supabase.from('conversation_participants').insert([
-      { conversation_id: conv.id, user_id: userId },
-      { conversation_id: conv.id, user_id: otherUserId },
-    ])
-    window.location.href = `/messages/${conv.id}`
+
+  if (convErr || !conv) {
+    return convErr?.message ?? 'Could not create conversation'
   }
+
+  const { error: partErr } = await supabase.from('conversation_participants').insert([
+    { conversation_id: conv.id, user_id: userId },
+    { conversation_id: conv.id, user_id: otherUserId },
+  ])
+
+  if (partErr) {
+    return partErr.message
+  }
+
+  window.location.href = `/messages/${conv.id}`
+  return null
 }
 
 /* ── Message Landlord button (group-formation listings) ─────── */
 function MessageLandlordButton({ listingId, userId }: { listingId: string; userId: string }) {
   const [sending, setSending] = useState(false)
+  const [msgErr, setMsgErr] = useState<string | null>(null)
 
   async function handleClick() {
+    setMsgErr(null)
     setSending(true)
     const supabase = createClient()
     try {
-      const { data: listing } = await supabase.from('listings').select('landlord_id').eq('id', listingId).single()
-      if (!listing) { setSending(false); return }
-      await openConversation(supabase, listingId, userId, listing.landlord_id)
-    } catch (err) { console.error(err) } finally { setSending(false) }
+      const { data: listing, error: lErr } = await supabase.from('listings').select('landlord_id').eq('id', listingId).single()
+      if (lErr || !listing) { setMsgErr('Could not load listing. Please try again.'); setSending(false); return }
+      const err = await openConversation(supabase, listingId, userId, listing.landlord_id)
+      if (err) setMsgErr('Could not open chat: ' + err)
+    } catch (err: any) { setMsgErr(err?.message ?? 'Unexpected error. Please try again.') } finally { setSending(false) }
   }
 
   return (
-    <button onClick={handleClick} disabled={sending}
-      className="w-full bg-surf text-clay-dark font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-      <span className="material-symbols-outlined text-sm">chat_bubble</span>
-      {sending ? 'Opening chat…' : 'Message Landlord'}
-    </button>
+    <div>
+      <button onClick={handleClick} disabled={sending}
+        className="w-full bg-surf text-clay-dark font-head font-semibold text-sm py-3 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+        <span className="material-symbols-outlined text-sm">chat_bubble</span>
+        {sending ? 'Opening chat…' : 'Message Landlord'}
+      </button>
+      {msgErr && <p className="text-xs text-red-500 mt-1.5 text-center font-body">{msgErr}</p>}
+    </div>
   )
 }
 
 /* ── Message Tenant button (open-room listings) ─────────────── */
 function MessageTenantButton({ listingId, userId }: { listingId: string; userId: string }) {
   const [sending, setSending] = useState(false)
+  const [msgErr, setMsgErr] = useState<string | null>(null)
 
   async function handleClick() {
+    setMsgErr(null)
     setSending(true)
     const supabase = createClient()
     try {
-      const { data: listing } = await supabase.from('listings').select('landlord_id').eq('id', listingId).single()
-      if (!listing) { setSending(false); return }
-      await openConversation(supabase, listingId, userId, listing.landlord_id)
-    } catch (err) { console.error(err) } finally { setSending(false) }
+      const { data: listing, error: lErr } = await supabase.from('listings').select('landlord_id').eq('id', listingId).single()
+      if (lErr || !listing) { setMsgErr('Could not load listing. Please try again.'); setSending(false); return }
+      const err = await openConversation(supabase, listingId, userId, listing.landlord_id)
+      if (err) setMsgErr('Could not open chat: ' + err)
+    } catch (err: any) { setMsgErr(err?.message ?? 'Unexpected error. Please try again.') } finally { setSending(false) }
   }
 
   return (
-    <button onClick={handleClick} disabled={sending}
-      className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2 disabled:opacity-60">
-      <span className="material-symbols-outlined text-sm">chat_bubble</span>
-      {sending ? 'Opening chat…' : 'Message Tenant'}
-    </button>
+    <div>
+      <button onClick={handleClick} disabled={sending}
+        className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2 disabled:opacity-60">
+        <span className="material-symbols-outlined text-sm">chat_bubble</span>
+        {sending ? 'Opening chat…' : 'Message Tenant'}
+      </button>
+      {msgErr && <p className="text-xs text-red-500 mt-1.5 text-center font-body">{msgErr}</p>}
+    </div>
   )
 }
 
@@ -129,7 +154,8 @@ function LandlordCard({
     if (!currentUser) { window.location.href = '/auth'; return }
     setMessaging(true)
     const supabase = createClient()
-    await openConversation(supabase, listingId, currentUser.id, profile.id)
+    const err = await openConversation(supabase, listingId, currentUser.id, profile.id)
+    if (err) console.error('[LandlordCard] message error:', err)
     setMessaging(false)
   }
 
@@ -563,6 +589,7 @@ export default function ListingDetail({
   const [messagingStudent, setMessagingStudent] = useState<string | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [copyDone, setCopyDone] = useState(false)
+  const [actionToast, setActionToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [distanceInfo, setDistanceInfo] = useState<{ distanceMi: number; university: string } | null>(
     listing.distanceMi && listing.university
       ? { distanceMi: listing.distanceMi, university: listing.university }
@@ -712,7 +739,7 @@ export default function ListingDetail({
           .insert({ listing_id: String(listing.id), student_id: user.id })
         if (error) {
           console.error('[interest] insert error:', error.message)
-          // Don't update UI — the save failed
+          setActionToast({ msg: 'Could not save interest: ' + error.message, ok: false })
           return
         }
         setInterested(true)
@@ -1002,21 +1029,45 @@ export default function ListingDetail({
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
                     <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
-                    <p className="text-sm font-body text-muted">1 of {listing.beds} spots filled — join to fill the house together.</p>
+                    <p className="text-sm font-body text-muted">
+                      {interestCount} of {listing.beds} spots filled — join to fill the house together.
+                    </p>
                   </div>
                   <span className="badge-open text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap">Forming Now</span>
                 </div>
                 <div className="progress-track mb-2">
-                  <div className="progress-fill" style={{ width: `${Math.round(100 / listing.beds)}%` }} />
+                  <div className="progress-fill" style={{ width: `${listing.beds > 0 ? Math.round(100 * interestCount / listing.beds) : 0}%` }} />
                 </div>
-                <p className="text-xs text-muted font-body mb-5">1 of {listing.beds} joined</p>
+                <p className="text-xs text-muted font-body mb-5">{interestCount} of {listing.beds} joined</p>
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="flex -space-x-2">
-                    {['J', '?', '?'].map((c, i) => (
-                      <div key={i} className={`w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-xs font-head font-bold ${i === 0 ? 'bg-clay text-cream' : 'bg-linen text-muted'}`}>{c}</div>
-                    ))}
-                  </div>
-                  <span className="text-xs font-body text-muted">Jordan M. is looking for {listing.beds - 1} more roommates</span>
+                  {interestedStudents.length > 0 ? (
+                    <>
+                      <div className="flex -space-x-2">
+                        {interestedStudents.slice(0, 4).map((s) => (
+                          <div key={s.id} className="w-9 h-9 rounded-full border-2 border-white clay-grad flex items-center justify-center text-xs font-head font-bold text-cream">
+                            {(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}
+                          </div>
+                        ))}
+                        {Array.from({ length: Math.max(0, Math.min(listing.beds, 3) - interestedStudents.slice(0, 4).length) }).map((_, i) => (
+                          <div key={`empty-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
+                        ))}
+                      </div>
+                      <span className="text-xs font-body text-muted">
+                        {interestedStudents.length === 1
+                          ? `${interestedStudents[0].first_name ?? 'Someone'} is looking for ${listing.beds - 1} more roommate${listing.beds - 1 !== 1 ? 's' : ''}`
+                          : `${interestedStudents.length} people are forming this group`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex -space-x-2">
+                        {Array.from({ length: Math.min(listing.beds, 3) }).map((_, i) => (
+                          <div key={`slot-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
+                        ))}
+                      </div>
+                      <span className="text-xs font-body text-muted">Be the first to join this group!</span>
+                    </>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowGroup(true)}
@@ -1238,6 +1289,14 @@ export default function ListingDetail({
       {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} photos={PHOTOS} />}
       {showApply  && <ApplyModal listing={listing} user={user} onClose={() => { setShowApply(false); if (hasApplied === false) { /* refresh */ } }} />}
       {showGroup  && <GroupModal listing={listing} user={user} onClose={() => setShowGroup(false)} />}
+
+      {/* Action toast */}
+      {actionToast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-xl font-head font-semibold text-sm transition-all ${actionToast.ok ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+          <span className="material-symbols-outlined text-base fill">{actionToast.ok ? 'check_circle' : 'error'}</span>
+          {actionToast.msg}
+        </div>
+      )}
 
       {/* Who's Interested panel */}
       {showInterestedPanel && (
