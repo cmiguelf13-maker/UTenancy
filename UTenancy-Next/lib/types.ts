@@ -105,6 +105,7 @@ export interface Listing {
   // optional joined fields
   landlord?: Profile
   interest_count?: Array<{ count: number }> | number
+  application_count?: Array<{ count: number }> | number
 }
 
 export interface ListingInterest {
