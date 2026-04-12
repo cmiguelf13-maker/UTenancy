@@ -112,7 +112,7 @@ export default function ConversationPage() {
       // Get messages
       const { data: msgs } = await supabase
         .from('messages')
-        .select('*, sender:profiles!messages_sender_id_fkey(*)')
+        .select('*, sender:profiles!messages_sender_profile_fkey(*)')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true })
 
@@ -156,7 +156,7 @@ export default function ConversationPage() {
           // payload.new has no sender profile — fetch the complete row
           const { data: fullMsg } = await supabase
             .from('messages')
-            .select('*, sender:profiles!messages_sender_id_fkey(*)')
+            .select('*, sender:profiles!messages_sender_profile_fkey(*)')
             .eq('id', (payload.new as any).id)
             .single()
           if (fullMsg) {
