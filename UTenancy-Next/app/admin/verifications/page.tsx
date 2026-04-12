@@ -38,6 +38,14 @@ export default function AdminVerificationsPage() {
           return
         }
 
+        // Explicit admin check — RLS silently returns [] for non-admins, so enforce here
+        const ADMIN_ID = '4b2cb860-eac4-4e9c-affd-6bbc810176ce'
+        if (session.user.id !== ADMIN_ID) {
+          setError('Access denied. This page is restricted to the UTenancy admin account.')
+          setLoading(false)
+          return
+        }
+
         // Fetch all verifications (admin RLS policy allows this)
         const { data, error: fetchErr } = await supabase
           .from('landlord_verifications')
