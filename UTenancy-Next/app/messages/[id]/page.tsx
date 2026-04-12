@@ -52,6 +52,7 @@ export default function ConversationPage() {
   const [loading, setLoading] = useState(true)
   const [messageText, setMessageText] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
   const [canReply, setCanReply] = useState(true)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -136,7 +137,7 @@ export default function ConversationPage() {
     fetchData()
   }, [conversationId, router, supabase])
 
-  // Subscribe to real-time messages
+  // Subscribe to real-time messages — fetch full row + sender profile on INSERT
   useEffect(() => {
     if (!conversationId) return
 
@@ -150,8 +151,18 @@ export default function ConversationPage() {
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as MessageWithSender])
+        async (payload) => {
+          // payload.new has no sender profile — fetch the complete row
+          const { data: fullMsg } = await supabase
+            .from('messages')
+            .select('*, sender:profiles!messages_sender_id_fkey(*)')
+            .eq('id', (payload.new as any).id)
+            .single()
+          if (fullMsg) {
+            setMessages((prev) => [...prev, fullMsg as MessageWithSender])
+            // Once a student message arrives, landlords can reply
+            setCanReply(true)
+          }
         }
       )
       .subscribe()
@@ -167,22 +178,24 @@ export default function ConversationPage() {
     if (!messageText.trim() || !currentUser || sending) return
 
     setSending(true)
+    setSendError(null)
 
-    try {
-      await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: currentUser.id,
-        body: messageText.trim(),
-      })
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: currentUser.id,
+      body: messageText.trim(),
+    })
 
-      setMessageText('')
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto'
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-    } finally {
-      setSending(false)
+    setSending(false)
+
+    if (error) {
+      setSendError('Could not send: ' + error.message)
+      return
+    }
+
+    setMessageText('')
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
     }
   }
 
@@ -241,7 +254,11 @@ export default function ConversationPage() {
                 {otherParticipant?.first_name} {otherParticipant?.last_name}
               </h2>
               <p className="text-xs text-muted">
-                {otherParticipant?.role === 'landlord' ? 'Landlord' : 'LMU student'}
+                {otherParticipant?.role === 'landlord'
+                  ? 'Property Owner'
+                  : otherParticipant?.university
+                    ? `${otherParticipant.university} Student`
+                    : 'Student'}
               </p>
             </div>
           </div>
@@ -333,6 +350,9 @@ export default function ConversationPage() {
       {canReply ? (
         <div className="sticky bottom-0 bg-white border-t border-out-var px-4 py-4">
           <div className="max-w-2xl mx-auto">
+            {sendError && (
+              <p className="text-xs text-red-500 font-body mb-2 text-center">{sendError}</p>
+            )}
             <form onSubmit={handleSendMessage} className="flex gap-3">
               <textarea
                 ref={textareaRef}
