@@ -7,62 +7,20 @@ import { createClient } from '@/lib/supabase'
 import { Listing } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 
-/* ── Find-or-create a conversation for a given listing + landlord ── */
+/* ── Find-or-create a conversation via the atomic RPC (handles RLS correctly) ── */
 async function openConversation(
   supabase: ReturnType<typeof createClient>,
   listingId: string,
   userId: string,
   landlordId: string,
 ): Promise<string | null> {
-  // 1. Look for an existing conversation for this specific listing that both users are in
-  const { data: myConvs } = await supabase
-    .from('conversation_participants')
-    .select('conversation_id')
-    .eq('user_id', userId)
-
-  const myIds = myConvs?.map((r: any) => r.conversation_id) ?? []
-
-  if (myIds.length > 0) {
-    // Find conversations shared with the landlord
-    const { data: shared } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', landlordId)
-      .in('conversation_id', myIds)
-
-    if (shared && shared.length > 0) {
-      const sharedIds = shared.map((r: any) => r.conversation_id)
-      // Prefer a conversation tied to this listing
-      const { data: listingConv } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('listing_id', listingId)
-        .in('id', sharedIds)
-        .limit(1)
-        .single()
-
-      if (listingConv) return listingConv.id
-
-      // Fall back to any existing conversation between these two users
-      return shared[0].conversation_id
-    }
-  }
-
-  // 2. No existing conversation — create one
-  const { data: conv } = await supabase
-    .from('conversations')
-    .insert({ listing_id: listingId })
-    .select()
-    .single()
-
-  if (!conv) return null
-
-  await supabase.from('conversation_participants').insert([
-    { conversation_id: conv.id, user_id: userId },
-    { conversation_id: conv.id, user_id: landlordId },
-  ])
-
-  return conv.id
+  const { data: convId, error } = await supabase.rpc('open_conversation', {
+    p_listing_id: listingId,
+    p_user_a:     userId,
+    p_user_b:     landlordId,
+  })
+  if (error || !convId) return null
+  return convId as string
 }
 
 export default function InterestedPage() {
