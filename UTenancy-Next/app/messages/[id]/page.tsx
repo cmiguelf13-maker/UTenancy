@@ -97,14 +97,15 @@ export default function ConversationPage() {
 
       setCurrentUser(userData as Profile)
 
-      // Get participants
+      // Get participants — use explicit FK hint since user_id has two FKs
       const { data: participantData } = await supabase
         .from('conversation_participants')
-        .select('profile:profiles(*)')
+        .select('user_id, profile:profiles!conversation_participants_user_profile_fkey(*)')
         .eq('conversation_id', conversationId)
 
-      const other = (participantData as Array<{ profile: any }> | null)?.find((p) => p.profile.id !== session.user.id)
-      if (other) {
+      const other = (participantData as Array<{ user_id: string; profile: any }> | null)
+        ?.find((p) => p.user_id !== session.user.id)
+      if (other?.profile) {
         setOtherParticipant(other.profile as Profile)
       }
 
