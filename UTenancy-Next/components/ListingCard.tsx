@@ -46,7 +46,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           </p>
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-[9px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">{listing.featured ? 'Total Rent' : 'Per Person'}</p>
+              <p className="text-[9px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">{listing.type === 'group' ? 'Total Rent' : 'Per Person'}</p>
               <p className="font-head font-black text-clay-dark text-lg">${listing.price.toLocaleString()}<span className="text-xs font-normal text-muted">/mo</span></p>
             </div>
             <div className="text-right">
