@@ -166,7 +166,7 @@ function ListingCard({
 }: {
   listing: Listing
   onDelete:     (id: string) => void
-  onReview:     (l: Listing) => void
+  onReview:     (l: Listing, type: 'applicants' | 'interested') => void
   onEdit:       (l: Listing) => void
   onArchive:    (id: string) => void
   onMarkRented: (id: string) => void
@@ -179,6 +179,10 @@ function ListingCard({
   const interestCount = Array.isArray(listing.interest_count)
     ? (listing.interest_count[0]?.count ?? 0)
     : (listing.interest_count ?? 0)
+
+  const appCount = Array.isArray(listing.application_count)
+    ? (listing.application_count[0]?.count ?? 0)
+    : (listing.application_count ?? 0)
 
   return (
     <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -223,18 +227,24 @@ function ListingCard({
           </span>
         </div>
 
-        {/* Applicant count */}
-        <div className="flex items-center gap-1.5 mb-4 bg-surf-lo rounded-xl px-3 py-2">
-          <span className="material-symbols-outlined text-clay text-base">group</span>
-          <span className="text-xs font-head font-semibold text-clay-dark">
-            {interestCount === 0 ? 'No applicants yet' : `${interestCount} applicant${interestCount !== 1 ? 's' : ''}`}
-          </span>
-          {interestCount > 0 && (
-            <button onClick={() => onReview(listing)}
-              className="ml-auto text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors">
-              Review →
-            </button>
-          )}
+        {/* Applicants & Interested buttons */}
+        <div className="flex gap-2 mb-4">
+          <button onClick={() => onReview(listing, 'applicants')}
+            className="flex-1 flex items-center gap-1.5 text-xs font-head font-semibold bg-surf-lo rounded-xl px-3 py-2.5 text-clay-dark hover:bg-linen transition-all border border-out-var/50 hover:border-clay/30">
+            <span className="material-symbols-outlined text-sm text-clay">assignment_turned_in</span>
+            <span>Applicants</span>
+            {appCount > 0 && (
+              <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-clay text-white text-[10px] font-black flex items-center justify-center px-1">{appCount}</span>
+            )}
+          </button>
+          <button onClick={() => onReview(listing, 'interested')}
+            className="flex-1 flex items-center gap-1.5 text-xs font-head font-semibold bg-surf-lo rounded-xl px-3 py-2.5 text-clay-dark hover:bg-linen transition-all border border-out-var/50 hover:border-clay/30">
+            <span className="material-symbols-outlined text-sm text-terra">favorite</span>
+            <span>Interested</span>
+            {interestCount > 0 && (
+              <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-terra text-white text-[10px] font-black flex items-center justify-center px-1">{interestCount}</span>
+            )}
+          </button>
         </div>
 
         {/* Primary actions */}
@@ -595,6 +605,7 @@ export default function LandlordPortal() {
   const [applicants,         setApplicants]         = useState<Array<{ id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null }>>([])
   const [rentApplications,   setRentApplications]   = useState<Array<{ id: string; message: string | null; created_at: string; profile: { id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null } | null }>>([])
   const [loadingApplicants,  setLoadingApplicants]  = useState(false)
+  const [reviewModalType,    setReviewModalType]    = useState<'applicants' | 'interested'>('applicants')
 
   /* ── Subscription ── */
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free')
@@ -646,7 +657,7 @@ export default function LandlordPortal() {
 
       supabase
         .from('listings')
-        .select('*, interest_count:listing_interests(count)')
+        .select('*, interest_count:listing_interests(count), application_count:rent_applications(count)')
         .eq('landlord_id', u.id)
         .order('created_at', { ascending: false })
         .then(({ data: rows }) => {
@@ -1006,8 +1017,9 @@ export default function LandlordPortal() {
   }
 
   /* ── REVIEW applicants ── */
-  async function handleReview(listing: Listing) {
+  async function handleReview(listing: Listing, type: 'applicants' | 'interested') {
     setReviewListing(listing)
+    setReviewModalType(type)
     setApplicants([])
     setRentApplications([])
     setLoadingApplicants(true)
@@ -1329,14 +1341,32 @@ export default function LandlordPortal() {
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
 
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-5">
               <div className="w-11 h-11 clay-grad rounded-xl flex items-center justify-center shadow-md">
-                <span className="material-symbols-outlined fill text-white text-xl">group</span>
+                <span className="material-symbols-outlined fill text-white text-xl">
+                  {reviewModalType === 'applicants' ? 'assignment_turned_in' : 'favorite'}
+                </span>
               </div>
               <div>
-                <h2 className="font-head font-bold text-clay-dark">Applicants &amp; Interested</h2>
+                <h2 className="font-head font-bold text-clay-dark">
+                  {reviewModalType === 'applicants' ? 'Applications' : 'Interested Students'}
+                </h2>
                 <p className="text-xs font-body text-muted truncate max-w-[220px]">{reviewListing.address}</p>
               </div>
+            </div>
+
+            {/* Tab switcher */}
+            <div className="flex gap-1 bg-surf-lo rounded-xl p-1 mb-5">
+              <button
+                onClick={() => setReviewModalType('applicants')}
+                className={`flex-1 text-xs font-head font-bold py-1.5 rounded-lg transition-all ${reviewModalType === 'applicants' ? 'bg-white text-clay-dark shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
+                Applications {!loadingApplicants && `(${rentApplications.length})`}
+              </button>
+              <button
+                onClick={() => setReviewModalType('interested')}
+                className={`flex-1 text-xs font-head font-bold py-1.5 rounded-lg transition-all ${reviewModalType === 'interested' ? 'bg-white text-clay-dark shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
+                Interested {!loadingApplicants && `(${applicants.length})`}
+              </button>
             </div>
 
             {loadingApplicants ? (
@@ -1344,83 +1374,89 @@ export default function LandlordPortal() {
                 <span className="spinner" style={{ borderColor: 'rgba(107,76,59,.2)', borderTopColor: '#6b4c3b', width: 28, height: 28 }} />
               </div>
             ) : (
-              <div className="space-y-5 max-h-[60vh] overflow-y-auto">
+              <div className="max-h-[52vh] overflow-y-auto">
 
                 {/* ── Rent Applications ── */}
-                <div>
-                  <p className="text-xs font-head font-bold text-clay uppercase tracking-wider mb-2">
-                    Formal Applications ({rentApplications.length})
-                  </p>
-                  {rentApplications.length === 0 ? (
-                    <p className="text-xs font-body text-muted py-2">No applications submitted yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {rentApplications.map((app) => {
-                        const p = app.profile
-                        return (
-                          <div key={app.id} className="p-4 bg-linen rounded-2xl border border-out-var/40">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-9 h-9 rounded-full flex-shrink-0 clay-grad flex items-center justify-center">
-                                <span className="text-white font-head font-black text-xs">
-                                  {(p?.first_name?.[0] ?? '') + (p?.last_name?.[0] ?? '')}
-                                </span>
+                {reviewModalType === 'applicants' && (
+                  <div>
+                    {rentApplications.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <span className="material-symbols-outlined text-out-var text-4xl mb-2">assignment</span>
+                        <p className="text-sm font-head font-semibold text-muted">No applications yet</p>
+                        <p className="text-xs font-body text-out-var mt-1">Students can apply directly from the listing page.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {rentApplications.map((app) => {
+                          const p = app.profile
+                          return (
+                            <div key={app.id} className="p-4 bg-linen rounded-2xl border border-out-var/40">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-9 h-9 rounded-full flex-shrink-0 clay-grad flex items-center justify-center">
+                                  <span className="text-white font-head font-black text-xs">
+                                    {(p?.first_name?.[0] ?? '') + (p?.last_name?.[0] ?? '')}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-head font-bold text-clay-dark">{p?.first_name} {p?.last_name}</p>
+                                  {p?.university && <p className="text-xs font-body text-muted">{p.university}</p>}
+                                </div>
+                                {p?.id && (
+                                  <a href={`/profile/${p.id}`}
+                                    className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                                    Profile
+                                  </a>
+                                )}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-head font-bold text-clay-dark">{p?.first_name} {p?.last_name}</p>
-                                {p?.university && <p className="text-xs font-body text-muted">{p.university}</p>}
-                              </div>
-                              {p?.id && (
-                                <a href={`/profile/${p.id}`}
-                                  className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
-                                  Profile
-                                </a>
+                              {app.message && (
+                                <p className="text-xs font-body text-muted bg-white rounded-xl px-3 py-2 border border-out-var/30 italic">
+                                  &ldquo;{app.message}&rdquo;
+                                </p>
                               )}
-                            </div>
-                            {app.message && (
-                              <p className="text-xs font-body text-muted bg-white rounded-xl px-3 py-2 border border-out-var/30 italic">
-                                &ldquo;{app.message}&rdquo;
+                              <p className="text-[10px] font-body text-out-var mt-2">
+                                Applied {new Date(app.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
-                            )}
-                            <p className="text-[10px] font-body text-out-var mt-2">
-                              Applied {new Date(app.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* ── Interested Students ── */}
-                <div>
-                  <p className="text-xs font-head font-bold text-clay uppercase tracking-wider mb-2">
-                    Saved / Interested ({applicants.length})
-                  </p>
-                  {applicants.length === 0 ? (
-                    <p className="text-xs font-body text-muted py-2">No students have saved this listing yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {applicants.map((a) => (
-                        <div key={a.id} className="flex items-center gap-3 p-4 bg-surf-lo rounded-2xl border border-out-var/30">
-                          <div className="w-11 h-11 rounded-full flex-shrink-0 border border-out-var clay-grad flex items-center justify-center">
-                            <span className="text-white font-head font-black text-xs">
-                              {(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}
-                            </span>
+                {reviewModalType === 'interested' && (
+                  <div>
+                    {applicants.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <span className="material-symbols-outlined text-out-var text-4xl mb-2">favorite</span>
+                        <p className="text-sm font-head font-semibold text-muted">No students interested yet</p>
+                        <p className="text-xs font-body text-out-var mt-1">Students who save this listing will appear here.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {applicants.map((a) => (
+                          <div key={a.id} className="flex items-center gap-3 p-4 bg-surf-lo rounded-2xl border border-out-var/30">
+                            <div className="w-11 h-11 rounded-full flex-shrink-0 border border-out-var clay-grad flex items-center justify-center">
+                              <span className="text-white font-head font-black text-xs">
+                                {(a.first_name?.[0] ?? '') + (a.last_name?.[0] ?? '')}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-head font-bold text-clay-dark">{a.first_name} {a.last_name}</p>
+                              {a.university && <p className="text-xs font-body text-muted">{a.university}</p>}
+                              {a.bio && <p className="text-xs font-body text-muted mt-0.5 truncate">{a.bio}</p>}
+                            </div>
+                            <a href={`/profile/${a.id}`}
+                              className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
+                              Profile
+                            </a>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-head font-bold text-clay-dark">{a.first_name} {a.last_name}</p>
-                            {a.university && <p className="text-xs font-body text-muted">{a.university}</p>}
-                            {a.bio && <p className="text-xs font-body text-muted mt-0.5 truncate">{a.bio}</p>}
-                          </div>
-                          <a href={`/profile/${a.id}`}
-                            className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
-                            Profile
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
               </div>
             )}
