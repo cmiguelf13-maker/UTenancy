@@ -677,14 +677,33 @@ export default function HomePage() {
               <p className="font-body text-white/40 text-sm leading-relaxed">Student housing, reimagined. Verified listings, built-in rent tools, and a SaaS layer for landlords.</p>
             </div>
             {[
-              { heading: 'Students', links: ['Find Housing', 'Group Formation', 'How It Works', 'Verify My .edu'] },
-              { heading: 'Landlords', links: ['List a Property', 'Pricing', 'Dashboard Demo', 'Sign Up'] },
-              { heading: 'Company',  links: ['About', 'Blog', 'Careers', 'Contact'] },
+              { heading: 'Students', links: [
+                { label: 'Find Housing',     href: '/#listings' },
+                { label: 'Group Formation',  href: '/tenant/household' },
+                { label: 'How It Works',     href: '/#how-it-works' },
+                { label: 'Verify My .edu',   href: '/auth' },
+              ]},
+              { heading: 'Landlords', links: [
+                { label: 'List a Property',  href: '/landlord' },
+                { label: 'Pricing',          href: '/#pricing' },
+                { label: 'Dashboard Demo',   href: '/landlord' },
+                { label: 'Sign Up',          href: '/auth' },
+              ]},
+              { heading: 'Company', links: [
+                { label: 'About',    href: '/about' },
+                { label: 'Blog',     href: '/blog' },
+                { label: 'Careers',  href: '/careers' },
+                { label: 'Contact',  href: '/contact' },
+              ]},
             ].map(({ heading, links }) => (
               <div key={heading}>
                 <p className="font-head font-bold text-white/30 text-xs uppercase tracking-widest mb-4">{heading}</p>
                 <ul className="space-y-2">
-                  {links.map((l) => <li key={l}><a href="#" className="font-body text-white/60 text-sm hover:text-white transition-colors">{l}</a></li>)}
+                  {links.map((l) => (
+                    <li key={l.label}>
+                      <Link href={l.href} className="font-body text-white/60 text-sm hover:text-white transition-colors">{l.label}</Link>
+                    </li>
+                  ))}
                 </ul>
               </div>
             ))}
