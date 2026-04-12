@@ -79,7 +79,7 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
   const [{ data: landlordProfile }, { data: similarRows }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, first_name, last_name, company, bio, email, phone')
+      .select('id, first_name, last_name, company, bio, phone')
       .eq('id', dbListing.landlord_id)
       .single(),
     supabase
