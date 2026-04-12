@@ -143,8 +143,13 @@ export default function InterestedPage() {
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-sm text-terra">bathtub</span> {listing.bathrooms} bath
                         </span>
-                        <span className="ml-auto font-head font-black text-clay-dark text-sm">
-                          ${listing.rent.toLocaleString()}<span className="font-normal text-muted text-xs">/mo</span>
+                        <span className="ml-auto text-right">
+                          <span className="block text-[9px] font-head font-bold uppercase tracking-widest text-muted leading-none mb-0.5">
+                            {listing.type === 'open-room' ? 'Per Person' : 'Total Rent'}
+                          </span>
+                          <span className="font-head font-black text-clay-dark text-sm">
+                            ${listing.rent.toLocaleString()}<span className="font-normal text-muted text-xs">/mo</span>
+                          </span>
                         </span>
                       </div>
                     </div>
