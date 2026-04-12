@@ -230,20 +230,24 @@ function ListingCard({
         {/* Applicants & Interested buttons */}
         <div className="flex gap-2 mb-4">
           <button onClick={() => onReview(listing, 'applicants')}
-            className="flex-1 flex items-center gap-1.5 text-xs font-head font-semibold bg-surf-lo rounded-xl px-3 py-2.5 text-clay-dark hover:bg-linen transition-all border border-out-var/50 hover:border-clay/30">
-            <span className="material-symbols-outlined text-sm text-clay">assignment_turned_in</span>
-            <span>Applicants</span>
-            {appCount > 0 && (
-              <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-clay text-white text-[10px] font-black flex items-center justify-center px-1">{appCount}</span>
-            )}
+            className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-xs font-head font-semibold bg-surf-lo rounded-xl px-2 py-2 text-clay-dark hover:bg-linen transition-all border border-out-var/50 hover:border-clay/30">
+            <span className="relative inline-flex items-center justify-center">
+              <span className="material-symbols-outlined text-lg text-clay leading-none">assignment_turned_in</span>
+              {appCount > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 rounded-full bg-clay text-white text-[9px] font-black flex items-center justify-center px-1 leading-none">{appCount}</span>
+              )}
+            </span>
+            <span className="leading-none">Applicants</span>
           </button>
           <button onClick={() => onReview(listing, 'interested')}
-            className="flex-1 flex items-center gap-1.5 text-xs font-head font-semibold bg-surf-lo rounded-xl px-3 py-2.5 text-clay-dark hover:bg-linen transition-all border border-out-var/50 hover:border-clay/30">
-            <span className="material-symbols-outlined text-sm text-terra">favorite</span>
-            <span>Interested</span>
-            {interestCount > 0 && (
-              <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-terra text-white text-[10px] font-black flex items-center justify-center px-1">{interestCount}</span>
-            )}
+            className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 text-xs font-head font-semibold bg-surf-lo rounded-xl px-2 py-2 text-clay-dark hover:bg-linen transition-all border border-out-var/50 hover:border-clay/30">
+            <span className="relative inline-flex items-center justify-center">
+              <span className="material-symbols-outlined text-lg text-terra leading-none">favorite</span>
+              {interestCount > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 rounded-full bg-terra text-white text-[9px] font-black flex items-center justify-center px-1 leading-none">{interestCount}</span>
+              )}
+            </span>
+            <span className="leading-none">Interested</span>
           </button>
         </div>
 
@@ -1080,7 +1084,7 @@ export default function LandlordPortal() {
           <div className="flex items-center gap-3">
             <Link href="/">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="UTenancy" className="h-14 w-auto" />
+              <img src="/logo.png" alt="UTenancy" className="h-8 w-auto" />
             </Link>
             <span className="text-[10px] font-head font-bold text-terra uppercase tracking-widest leading-none">Landlord Portal</span>
           </div>
