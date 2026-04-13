@@ -1578,12 +1578,12 @@ export default function LandlordPortal() {
                 className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
-              <div className="text-center mb-6">
-                <div className="w-14 h-14 clay-grad rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-clay/25">
-                  <span className="material-symbols-outlined fill text-white text-2xl">edit_home</span>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined fill text-clay text-2xl flex-shrink-0">edit</span>
+                <div className="min-w-0">
+                  <h2 className="font-display text-3xl font-light text-clay-dark leading-tight">Edit <em>listing</em></h2>
+                  <p className="text-xs font-body text-muted truncate">{editListing.address}</p>
                 </div>
-                <h2 className="font-display text-3xl font-light text-clay-dark mb-1">Edit <em>listing</em></h2>
-                <p className="text-xs font-body text-muted truncate px-4">{editListing.address}</p>
               </div>
             </div>
             {/* Scrollable form body */}
