@@ -617,6 +617,7 @@ export default function LandlordPortal() {
   const [checkingOut,        setCheckingOut]        = useState(false)
   const [checkoutMsg,        setCheckoutMsg]        = useState<string | null>(null)
   const [showTierPicker,     setShowTierPicker]     = useState(false)
+  const [managingBilling,    setManagingBilling]    = useState(false)
 
   /* ── CREATE listing state ── */
   const [showAddModal,    setShowAddModal]    = useState(false)
@@ -680,8 +681,29 @@ export default function LandlordPortal() {
     } else if (params.get('checkout') === 'cancelled') {
       setCheckoutMsg('Checkout cancelled — you can upgrade anytime.')
       window.history.replaceState({}, '', '/landlord')
+    } else if (params.get('billing') === 'returned') {
+      setCheckoutMsg('Billing portal closed. Changes may take a moment to reflect.')
+      window.history.replaceState({}, '', '/landlord')
     }
   }, [])
+
+  /* ── Manage Billing (→ Stripe Customer Portal) ── */
+  async function handleManageBilling() {
+    setManagingBilling(true)
+    try {
+      const res  = await fetch('/api/stripe/portal', { method: 'POST' })
+      const json = await res.json()
+      if (json.url) {
+        window.location.href = json.url
+      } else {
+        setCheckoutMsg(json.error ?? 'Could not open billing portal. Please try again.')
+        setManagingBilling(false)
+      }
+    } catch {
+      setCheckoutMsg('Network error — please try again.')
+      setManagingBilling(false)
+    }
+  }
 
   /* ── Upgrade (pick tier → Stripe Checkout) ── */
   async function handleUpgrade(tier: 'starter' | 'growth' | 'pro' = 'pro') {
@@ -1119,12 +1141,24 @@ export default function LandlordPortal() {
                 <span className="material-symbols-outlined text-base">api</span> API
               </Link>
             )}
-            {/* Tier badge or Upgrade button */}
+            {/* Tier badge / Manage Billing or Upgrade button */}
             {['starter','growth','pro'].includes(subscriptionTier) ? (
-              <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold clay-grad text-white shadow-sm">
+              <button
+                onClick={handleManageBilling}
+                disabled={managingBilling}
+                title="Manage billing"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold clay-grad text-white shadow-sm hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
                 <span className="material-symbols-outlined fill text-sm">workspace_premium</span>
-                {subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)}
-              </span>
+                {managingBilling ? 'Opening…' : subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)}
+              </button>
+            ) : subscriptionStatus === 'past_due' ? (
+              <button
+                onClick={handleManageBilling}
+                disabled={managingBilling}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-bold bg-red-500 text-white shadow-sm hover:opacity-90 transition-all active:scale-95 disabled:opacity-60">
+                <span className="material-symbols-outlined text-sm">warning</span>
+                {managingBilling ? 'Opening…' : 'Payment Issue'}
+              </button>
             ) : (
               <div className="relative hidden md:block">
                 <button
@@ -1170,7 +1204,7 @@ export default function LandlordPortal() {
         </div>
       </header>
 
-      {/* ── Checkout message banner ── */}
+      {/* ── Checkout / billing message banner ── */}
       {checkoutMsg && (
         <div className="max-w-7xl mx-auto px-6 md:px-10 pt-4">
           <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border
@@ -1179,6 +1213,24 @@ export default function LandlordPortal() {
             <button onClick={() => setCheckoutMsg(null)}
               className="flex-shrink-0 text-amber-500 hover:text-amber-700 transition-colors">
               <span className="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Past-due warning banner ── */}
+      {subscriptionStatus === 'past_due' && (
+        <div className="max-w-7xl mx-auto px-6 md:px-10 pt-4">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border bg-red-50 border-red-200 text-red-800">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-red-500">warning</span>
+              <span className="text-sm font-body">Your payment is past due. Update your billing details to keep your listings active.</span>
+            </div>
+            <button
+              onClick={handleManageBilling}
+              disabled={managingBilling}
+              className="flex-shrink-0 text-xs font-head font-bold text-red-600 hover:text-red-800 underline underline-offset-2 transition-colors disabled:opacity-60">
+              {managingBilling ? 'Opening…' : 'Fix now'}
             </button>
           </div>
         </div>
@@ -1527,8 +1579,9 @@ export default function LandlordPortal() {
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
               <div className="text-center mb-6">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.png" alt="UTenancy" className="h-12 w-auto mx-auto mb-3" />
+                <div className="w-14 h-14 clay-grad rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-clay/25">
+                  <span className="material-symbols-outlined fill text-white text-2xl">edit_home</span>
+                </div>
                 <h2 className="font-display text-3xl font-light text-clay-dark mb-1">Edit <em>listing</em></h2>
                 <p className="text-xs font-body text-muted truncate px-4">{editListing.address}</p>
               </div>
