@@ -453,34 +453,37 @@ export default function MessagesPage() {
           /* ── Active conversation ── */
           <>
             {/* Conversation header */}
-            <div className="flex-shrink-0 bg-white border-b border-out-var px-5 py-3.5 flex items-center gap-3">
+            <div className="flex-shrink-0 clay-grad px-5 py-3.5 flex items-center gap-3">
               {/* Mobile: back to list */}
               <button
                 onClick={() => setSelectedConvId(null)}
-                className="md:hidden p-1.5 rounded-lg hover:bg-surf-lo transition-colors -ml-1 mr-0.5"
+                className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition-colors -ml-1 mr-0.5"
               >
-                <span className="material-symbols-outlined text-lg text-clay-dark">arrow_back</span>
+                <span className="material-symbols-outlined text-lg text-white">arrow_back</span>
               </button>
 
               <Avatar profile={otherParticipant} size="md" />
 
               <div className="flex-1 min-w-0">
-                <p className="font-head font-bold text-clay-dark text-sm leading-tight">
+                <p className="font-head font-bold text-white text-sm leading-tight">
                   {otherParticipant?.first_name} {otherParticipant?.last_name}
                 </p>
-                <p className="text-[11px] text-muted leading-tight">
-                  {otherParticipant?.role === 'landlord'
-                    ? 'Property Owner'
-                    : otherParticipant?.university
-                      ? `${otherParticipant.university} Student`
-                      : 'Student'}
-                </p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-300 flex-shrink-0" />
+                  <p className="text-[11px] text-white/70 leading-tight">
+                    {otherParticipant?.role === 'landlord'
+                      ? 'Property Owner'
+                      : otherParticipant?.university
+                        ? `${otherParticipant.university} Student`
+                        : 'Student'}
+                  </p>
+                </div>
               </div>
 
               {otherParticipant && otherParticipant.role !== 'landlord' && (
                 <a
                   href={`/profile/${otherParticipant.id}`}
-                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors px-3 py-1.5 rounded-lg hover:bg-linen"
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
                 >
                   <span className="material-symbols-outlined text-base">person</span>
                   Profile
@@ -489,7 +492,7 @@ export default function MessagesPage() {
             </div>
 
             {/* Messages scroll area */}
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex-1 overflow-y-auto px-6 py-5 bg-surf-lo">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
