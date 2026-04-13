@@ -301,6 +301,15 @@ export default function HomePage() {
                   {f === 'all' ? 'All' : 'Open Room'}
                 </button>
               ))}
+              <div className="relative">
+                <button
+                  disabled
+                  className="text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var/50 bg-linen/60 text-muted/50 cursor-not-allowed opacity-70 min-h-[40px]"
+                >
+                  Group Formation
+                </button>
+                <span className="absolute -top-2 -right-1 bg-clay text-white text-[8px] font-head font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full leading-none">Soon</span>
+              </div>
             </div>
           </div>
 
