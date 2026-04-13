@@ -58,12 +58,18 @@ export default function CareersPage() {
               <div className="p-8 text-center">
                 <span className="material-symbols-outlined text-white/20 text-5xl mb-4 block">work_outline</span>
                 <p className="font-head font-bold text-white/50 text-sm uppercase tracking-widest mb-2">No open roles right now</p>
-                <p className="font-body text-white/40 text-sm max-w-sm mx-auto">
+                <p className="font-body text-white/40 text-sm max-w-sm mx-auto mb-4">
                   We&apos;re a lean team today, but we&apos;re growing. Drop us a line at{' '}
-                  <a href="mailto:careers@utenancy.com" className="text-sand hover:text-sand/80 transition-colors">
-                    careers@utenancy.com
+                  <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:text-sand/80 transition-colors">
+                    cfernandez@utenancy.com
                   </a>{' '}
                   if you&apos;d like to be considered when roles open up.
+                </p>
+                <p className="font-body text-white/30 text-xs max-w-xs mx-auto border-t border-white/10 pt-4">
+                  Have a proposal, partnership idea, or collaboration in mind?{' '}
+                  <a href="mailto:cfernandez@utenancy.com" className="text-sand/70 hover:text-sand transition-colors">
+                    Reach out — we&apos;d love to hear it.
+                  </a>
                 </p>
               </div>
             </div>
