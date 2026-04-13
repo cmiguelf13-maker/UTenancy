@@ -268,11 +268,34 @@ export default function MyListingsPage() {
     setDeletingId(null)
   }
 
-  async function handleToggleStatus(listing: MyListing) {
-    const next: ListingStatus = listing.status === 'active' ? 'archived' : 'active'
-    setTogglingId(listing.id)
-    await supabase.from('listings').update({ status: next }).eq('id', listing.id)
-    setListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: next } : l))
+  async function handleMarkRented(id: string) {
+    setTogglingId(id)
+    const { data: updated } = await supabase
+      .from('listings')
+      .update({ status: 'rented' })
+      .eq('id', id)
+      .select()
+      .single()
+    if (updated) setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'rented' as ListingStatus } : l))
+    setTogglingId(null)
+  }
+
+  async function handleArchive(id: string) {
+    setTogglingId(id)
+    const { data: updated } = await supabase
+      .from('listings')
+      .update({ status: 'archived' })
+      .eq('id', id)
+      .select()
+      .single()
+    if (updated) setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'archived' as ListingStatus } : l))
+    setTogglingId(null)
+  }
+
+  async function handleReactivate(id: string) {
+    setTogglingId(id)
+    await supabase.from('listings').update({ status: 'active' }).eq('id', id)
+    setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'active' as ListingStatus } : l))
     setTogglingId(null)
   }
 
@@ -387,14 +410,32 @@ export default function MyListingsPage() {
                           )}
                           {!isClosedOut && (
                             <button
-                              onClick={() => handleToggleStatus(listing)}
+                              onClick={() => handleMarkRented(listing.id)}
                               disabled={togglingId === listing.id}
-                              className="flex items-center justify-center gap-1 text-xs font-head font-semibold text-clay-dark border border-out-var rounded-lg px-3 py-1.5 hover:border-clay/40 hover:bg-surf-lo transition-all disabled:opacity-50"
+                              className="flex items-center justify-center gap-1 text-xs font-head font-semibold text-blue-600 border border-blue-200 bg-blue-50 rounded-lg px-3 py-1.5 hover:bg-blue-100 transition-all disabled:opacity-50"
                             >
-                              <span className="material-symbols-outlined text-sm">
-                                {listing.status === 'active' ? 'pause_circle' : 'play_circle'}
-                              </span>
-                              {togglingId === listing.id ? '…' : listing.status === 'active' ? 'Archive' : 'Activate'}
+                              <span className="material-symbols-outlined text-sm">check_circle</span>
+                              {togglingId === listing.id ? '…' : 'Mark Rented'}
+                            </button>
+                          )}
+                          {!isClosedOut && (
+                            <button
+                              onClick={() => handleArchive(listing.id)}
+                              disabled={togglingId === listing.id}
+                              className="flex items-center justify-center gap-1 text-xs font-head font-semibold text-amber-600 border border-amber-200 bg-amber-50 rounded-lg px-3 py-1.5 hover:bg-amber-100 transition-all disabled:opacity-50"
+                            >
+                              <span className="material-symbols-outlined text-sm">archive</span>
+                              {togglingId === listing.id ? '…' : 'Archive'}
+                            </button>
+                          )}
+                          {isClosedOut && (
+                            <button
+                              onClick={() => handleReactivate(listing.id)}
+                              disabled={togglingId === listing.id}
+                              className="flex items-center justify-center gap-1 text-xs font-head font-semibold text-green-600 border border-green-200 bg-green-50 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-all disabled:opacity-50"
+                            >
+                              <span className="material-symbols-outlined text-sm">play_circle</span>
+                              {togglingId === listing.id ? '…' : 'Reactivate'}
                             </button>
                           )}
                           <button
@@ -437,9 +478,8 @@ export default function MyListingsPage() {
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-clay/20">
-                  <span className="material-symbols-outlined fill text-white text-xl">edit_home</span>
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon.png" alt="UTenancy" className="h-10 w-auto flex-shrink-0" />
                 <div className="min-w-0">
                   <h2 className="font-display text-2xl font-light text-clay-dark leading-tight">Edit <em>listing</em></h2>
                   <p className="text-xs font-body text-muted truncate">{editListing.address}</p>
