@@ -203,19 +203,19 @@ export default function ProfilePage() {
         {/* Hero section with gradient banner and avatar */}
         <div className="relative mb-8">
           {/* Gradient banner */}
-          <div className="clay-grad rounded-t-3xl h-32 relative" />
+          <div className="clay-grad rounded-t-3xl h-32" />
 
-          {/* Avatar overlapping — initials only */}
-          <div className="flex justify-center -mt-16 mb-6 relative z-10">
-            <div className="w-32 h-32 rounded-full border-4 border-cream clay-grad flex items-center justify-center shadow-lg">
-              <span className="font-display text-5xl text-white font-light">
+          {/* Avatar — absolutely centered on the banner/card junction */}
+          <div className="absolute left-1/2 top-32 -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="w-28 h-28 rounded-full border-4 border-cream clay-grad flex items-center justify-center shadow-lg">
+              <span className="font-display text-4xl text-white font-light">
                 {getInitials(profile)}
               </span>
             </div>
           </div>
 
-          {/* Info card below avatar */}
-          <div className="bg-white rounded-b-3xl px-6 pt-2 pb-6 border border-out-var border-t-0 shadow-md">
+          {/* Info card — flush with banner bottom, padded to clear avatar */}
+          <div className="bg-white rounded-b-3xl px-6 pt-16 pb-6 border border-out-var border-t-0 shadow-md">
             <h1 className="font-display text-2xl text-clay-dark font-light text-center mb-1">
               {getFullName(profile)}
             </h1>
