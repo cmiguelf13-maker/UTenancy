@@ -372,7 +372,8 @@ export default function HouseholdPage() {
   // ── Computed totals ──
   const totalThisMonth = expenses.reduce((s, e) => s + e.amount, 0)
   const memberCount    = members.length || 1
-  const perPersonTotal = totalThisMonth / memberCount
+  // Per-person total uses each expense's own split_count, not the member count
+  const perPersonTotal = expenses.reduce((s, e) => s + e.amount / Math.max(e.split_count, 1), 0)
   const allSettled     = expenses.length > 0 && expenses.every(e => e.status === 'settled')
   const pendingCount   = expenses.filter(e => e.status === 'pending').length
 
