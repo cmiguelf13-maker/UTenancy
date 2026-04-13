@@ -164,12 +164,14 @@ export default function MessagesPage() {
         .single()
 
       if (convRow?.listing_id) {
-        const { data: listingRow } = await supabase
+        const { data: listingRow, error: listingErr } = await supabase
           .from('listings')
           .select('id, type, status, landlord_id')
           .eq('id', convRow.listing_id)
           .single()
         if (listingRow) setListing(listingRow as ListingInfo)
+        else if (listingErr?.code !== 'PGRST116')
+          console.error('Listing fetch error:', listingErr)
       }
 
       /* messages */
@@ -337,24 +339,45 @@ export default function MessagesPage() {
     }
 
     /* 2 & 3. Add both users to household */
-    await supabase.from('household_members').upsert(
+    const { error: err1 } = await supabase.from('household_members').upsert(
       { household_id: householdId, user_id: currentUser.id, role: 'admin' },
       { onConflict: 'household_id,user_id' }
     )
-    await supabase.from('household_members').upsert(
+    if (err1) {
+      setApproveError('Could not add you to household. Please try again.')
+      setApproving(false)
+      return
+    }
+    const { error: err2 } = await supabase.from('household_members').upsert(
       { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
       { onConflict: 'household_id,user_id' }
     )
+    if (err2) {
+      setApproveError('Could not add tenant to household. Please try again.')
+      setApproving(false)
+      return
+    }
 
     /* 4. Mark listing as rented */
-    await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+    const { error: rentErr } = await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+    if (rentErr) {
+      setApproveError('Could not mark listing as rented. Please try again.')
+      setApproving(false)
+      return
+    }
 
     /* 5. Send approval message */
-    const { data: inserted } = await supabase
+    const { data: inserted, error: msgErr } = await supabase
       .from('messages')
       .insert({ conversation_id: selectedConvId, sender_id: currentUser.id, body: APPROVAL_MSG })
       .select('*, sender:profiles!messages_sender_profile_fkey(*)')
       .single()
+
+    if (msgErr) {
+      setApproveError('Could not send approval message. Please try again.')
+      setApproving(false)
+      return
+    }
 
     if (inserted) {
       setMessages((prev) => [...prev, inserted as MessageWithSender])
