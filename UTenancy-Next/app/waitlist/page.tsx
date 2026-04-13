@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 export default function WaitlistPage() {
-  const [waitlistType, setWaitlistType] = useState<'student' | 'landlord'>('student')
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
 
@@ -15,7 +14,7 @@ export default function WaitlistPage() {
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), type: waitlistType }),
+        body: JSON.stringify({ email: email.trim(), type: 'landlord' }),
       })
       if (res.ok) {
         setStatus('success')
@@ -49,37 +48,24 @@ export default function WaitlistPage() {
         {/* Badge */}
         <div className="flex justify-center mb-8">
           <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest">
-            <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Early Access
+            <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Landlord Portal — Coming Soon
           </span>
         </div>
 
         {/* Heading */}
         <h1 className="font-display text-5xl md:text-6xl font-light text-white mb-5 leading-tight">
-          Be first.<br />
+          First in line.<br />
           <em className="text-sand">Join the waitlist.</em>
         </h1>
         <p className="font-body text-white/55 text-lg mb-10 leading-relaxed">
-          Whether you&apos;re a student looking for your first off-campus place, or a landlord ready to simplify — get early access before we go public.
+          We&apos;re building a full property management portal for landlords — verified student applicants, automated rent collection, and a complete dashboard. Be first to know when it goes live.
         </p>
-
-        {/* Type toggle */}
-        <div className="flex justify-center gap-2 mb-8">
-          {(['student', 'landlord'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setWaitlistType(t)}
-              className={`toggle-btn text-xs font-head font-bold px-5 py-2 rounded-full border border-white/20 text-white ${waitlistType === t ? 'active' : ''}`}
-            >
-              {t === 'student' ? '🎓 I\'m a Student' : '🏠 I\'m a Landlord'}
-            </button>
-          ))}
-        </div>
 
         {/* Form */}
         {status === 'success' ? (
           <div className="py-6 px-8 rounded-2xl border border-white/20 bg-white/5">
             <p className="font-head font-bold text-sand text-xl mb-2">You&apos;re on the list! 🎉</p>
-            <p className="font-body text-white/55 text-sm">We&apos;ll reach out when we launch. Stay tuned.</p>
+            <p className="font-body text-white/55 text-sm">We&apos;ll reach out the moment the landlord portal launches.</p>
             <Link href="/" className="inline-block mt-6 text-xs font-head font-bold text-white/40 hover:text-white/70 transition-colors">
               ← Back to home
             </Link>
@@ -90,7 +76,7 @@ export default function WaitlistPage() {
               <input
                 className="waitlist-input flex-1"
                 type="email"
-                placeholder={waitlistType === 'student' ? 'your@edu.edu' : 'your@email.com'}
+                placeholder="your@email.com"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setStatus('idle') }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
@@ -101,7 +87,7 @@ export default function WaitlistPage() {
                 disabled={status === 'loading'}
                 className="clay-grad text-white px-6 py-3.5 rounded-full font-head font-bold text-sm whitespace-nowrap hover:opacity-90 transition-all shadow-xl shadow-clay/30 disabled:opacity-60"
               >
-                {status === 'loading' ? 'Joining…' : 'Join Waitlist'}
+                {status === 'loading' ? 'Joining…' : 'Notify Me'}
               </button>
             </div>
 
@@ -117,12 +103,12 @@ export default function WaitlistPage() {
           </>
         )}
 
-        {/* Perks */}
+        {/* What's coming */}
         <div className="mt-14 grid grid-cols-3 gap-4 text-left">
           {[
-            { icon: 'search', label: 'Find Housing', body: 'Browse verified off-campus listings near your university.' },
-            { icon: 'group', label: 'Find Roommates', body: 'Match with compatible students based on lifestyle.' },
-            { icon: 'home', label: 'List Properties', body: 'Reach student tenants directly with no middleman.' },
+            { icon: 'dashboard',     label: 'Full Dashboard',      body: 'Manage listings, applicants, and payments from one place.' },
+            { icon: 'verified_user', label: 'Verified Tenants',    body: 'Every applicant pre-verified with a .edu email before they reach you.' },
+            { icon: 'payments',      label: 'Automated Rent',      body: 'Direct ACH deposits split and routed automatically each month.' },
           ].map(({ icon, label, body }) => (
             <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <span className="material-symbols-outlined text-sand text-xl mb-2 block">{icon}</span>
@@ -131,6 +117,14 @@ export default function WaitlistPage() {
             </div>
           ))}
         </div>
+
+        {/* Student nudge */}
+        <p className="mt-10 text-white/30 text-xs font-body">
+          Are you a student?{' '}
+          <Link href="/auth" className="text-sand/70 hover:text-sand underline underline-offset-2 transition-colors font-semibold">
+            Sign up free — it&apos;s already live for you.
+          </Link>
+        </p>
 
       </div>
     </main>
