@@ -241,7 +241,7 @@ export default function ConversationPage() {
   })
 
   return (
-    <div className="flex flex-col h-screen bg-linen">
+    <div className="flex flex-col h-dvh bg-linen">
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-white border-b border-out-var px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
