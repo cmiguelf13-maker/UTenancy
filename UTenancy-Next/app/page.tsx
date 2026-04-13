@@ -180,7 +180,7 @@ export default function HomePage() {
 
             {/* Search bar */}
             <div className="f4 max-w-2xl mx-auto mb-6">
-              <div className="bg-white rounded-full shadow-2xl shadow-clay/10 p-2 flex items-center gap-2 border border-out-var/40 focus-within:ring-2 ring-clay/20 transition-all">
+              <div className="bg-white rounded-full shadow-2xl shadow-clay/15 p-2 flex items-center gap-2 border border-sand/70 focus-within:ring-2 ring-clay/20 transition-all">
                 <div className="flex-1 flex items-center pl-4 gap-3">
                   <span className="material-symbols-outlined text-outline text-xl">location_on</span>
                   <input
@@ -209,7 +209,7 @@ export default function HomePage() {
 
           {/* Floating cards */}
           <div className="hidden lg:block relative mt-16 h-72">
-            <div className="absolute left-0 top-4 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var/30 animate-float-a">
+            <div className="absolute left-0 top-4 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var animate-float-a">
               <Image src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80" alt="Heritage Commons" width={256} height={144} className="w-full h-36 object-cover" />
               <div className="p-4">
                 <div className="flex justify-between items-start mb-1">
@@ -221,7 +221,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="absolute right-0 top-0 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var/30 animate-float-b">
+            <div className="absolute right-0 top-0 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var animate-float-b">
               <Image src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&q=80" alt="Venice Beach Lofts" width={256} height={144} className="w-full h-36 object-cover" />
               <div className="p-4">
                 <div className="flex justify-between items-start mb-1">
@@ -233,7 +233,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 top-4 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var/30 animate-float-slow">
+            <div className="absolute left-1/2 -translate-x-1/2 top-4 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var animate-float-slow">
               <Image src="https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=400&q=80" alt="Lincoln Blvd Apartments" width={256} height={144} className="w-full h-36 object-cover" />
               <div className="p-4">
                 <div className="flex justify-between items-start mb-1">
@@ -296,16 +296,16 @@ export default function HomePage() {
               <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">Newest student<br /><em>homes near you.</em></h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              {(['all', 'open', 'group'] as const).map((f) => (
+              {(['all', 'open'] as const).map((f) => (
                 <button key={f} onClick={() => setListingFilter(f)} className={`toggle-btn text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var bg-linen transition-all min-h-[40px] ${listingFilter === f ? 'active' : ''}`}>
-                  {f === 'all' ? 'All' : f === 'open' ? 'Open Room' : 'Group Formation'}
+                  {f === 'all' ? 'All' : 'Open Room'}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Sub-filters */}
-          <div className="reveal bg-white rounded-2xl p-4 md:p-5 mb-8 flex flex-col sm:flex-row flex-wrap gap-4 items-stretch sm:items-center border border-out-var/40">
+          <div className="reveal bg-white rounded-2xl p-4 md:p-5 mb-8 flex flex-col sm:flex-row flex-wrap gap-4 items-stretch sm:items-center border border-out-var shadow-sm">
             <div className="flex items-center gap-3 w-full sm:flex-1 sm:min-w-0">
               <label className="text-xs font-head font-bold text-muted uppercase tracking-widest whitespace-nowrap">Price max</label>
               <input type="range" min={500} max={3000} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} className="flex-1 h-2 accent-clay cursor-pointer" />
@@ -411,7 +411,7 @@ export default function HomePage() {
                   </div>
                 </li>
               </ul>
-              <Link href="/auth" className="inline-flex items-center gap-2 clay-grad text-white font-head font-bold text-sm px-8 py-3.5 rounded-full shadow-lg hover:opacity-90 transition-all">
+              <Link href="/listings?type=open" className="inline-flex items-center gap-2 clay-grad text-white font-head font-bold text-sm px-8 py-3.5 rounded-full shadow-lg hover:opacity-90 transition-all">
                 Find a Room <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </Link>
             </div>
@@ -419,7 +419,7 @@ export default function HomePage() {
             {/* Mock messaging card */}
             <div className="reveal relative" style={{ transitionDelay: '.15s' }}>
               <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 60% 40%, #9c7060 0%, #6b4c3b 60%, transparent 100%)', transform: 'scale(1.15)' }} />
-              <div className="relative bg-white rounded-3xl border border-out-var/60 max-w-sm mx-auto overflow-hidden"
+              <div className="relative bg-white rounded-3xl border border-out-var max-w-sm mx-auto overflow-hidden"
                 style={{ boxShadow: '0 32px 64px rgba(107,76,59,.22), 0 0 0 1px rgba(196,160,144,.18)' }}>
 
                 {/* Chat header */}
