@@ -29,11 +29,13 @@ function fmt(amount: number): string {
 function ExpenseRow({
   expense,
   onSettle,
+  onUnsettle,
   onDelete,
   isOwner,
 }: {
   expense: HouseholdExpense
   onSettle: (id: string) => void
+  onUnsettle: (id: string) => void
   onDelete: (id: string) => void
   isOwner: boolean
 }) {
@@ -77,11 +79,17 @@ function ExpenseRow({
       {/* Actions */}
       {isOwner && (
         <div className="flex items-center gap-1 shrink-0">
-          {!settled && (
+          {!settled ? (
             <button onClick={() => onSettle(expense.id)}
               title="Mark settled"
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-muted hover:text-green-600 transition-colors">
               <span className="material-symbols-outlined text-lg">check_circle</span>
+            </button>
+          ) : (
+            <button onClick={() => onUnsettle(expense.id)}
+              title="Undo — mark as pending"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 text-green-600 hover:text-amber-600 transition-colors">
+              <span className="material-symbols-outlined text-lg">undo</span>
             </button>
           )}
           <button onClick={() => onDelete(expense.id)}
@@ -379,6 +387,16 @@ export default function HouseholdPage() {
     if (data) setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: 'settled' } : e))
   }
 
+  async function handleUnsettle(id: string) {
+    const { data } = await supabase
+      .from('household_expenses')
+      .update({ status: 'pending' })
+      .eq('id', id)
+      .select()
+      .single()
+    if (data) setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: 'pending' } : e))
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('Delete this expense?')) return
     await supabase.from('household_expenses').delete().eq('id', id)
@@ -578,6 +596,7 @@ export default function HouseholdPage() {
                     key={e.id}
                     expense={e}
                     onSettle={handleSettle}
+                    onUnsettle={handleUnsettle}
                     onDelete={handleDelete}
                     isOwner={e.paid_by === userId}
                   />
