@@ -28,7 +28,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <span className="material-symbols-outlined text-out-var text-6xl">home</span>
             </div>
           )}
-          <span className={`${listing.type === 'open' ? 'badge-open' : 'badge-group'} absolute top-4 left-4 text-[10px] font-head font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg`}>
+          <span className={`${listing.type === 'open' ? 'badge-open' : 'badge-group'} absolute top-4 left-4 text-[11px] font-head font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg`}>
             {listing.type === 'open' ? 'Open Room' : 'Group Formation'}
           </span>
           <button
@@ -46,16 +46,16 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           </p>
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-[9px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">{listing.type === 'group' ? 'Total Rent' : 'Per Person'}</p>
+              <p className="text-[11px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">{listing.type === 'group' ? 'Total Rent' : 'Per Person'}</p>
               <p className="font-head font-black text-clay-dark text-lg">${listing.price.toLocaleString()}<span className="text-xs font-normal text-muted">/mo</span></p>
             </div>
             <div className="text-right">
               <p className="text-sm font-head font-bold text-clay">{listing.beds} bed{listing.beds !== 1 ? 's' : ''} avail.</p>
               {listing.baths != null && (
-                <p className="text-[10px] text-muted font-body">{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-muted font-body">{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</p>
               )}
-              <p className="text-[10px] text-muted font-body flex items-center justify-end gap-1">
-                <span className="material-symbols-outlined fill text-[11px]">group</span>{listing.interested} interested
+              <p className="text-xs text-muted font-body flex items-center justify-end gap-1">
+                <span className="material-symbols-outlined fill text-xs">group</span>{listing.interested} interested
               </p>
             </div>
           </div>
