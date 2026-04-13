@@ -241,16 +241,16 @@ export default function ConversationPage() {
   })
 
   return (
-    <div className="flex flex-col h-dvh bg-linen">
+    <div className="flex flex-col h-dvh bg-surf-lo">
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-out-var px-4 py-4">
+      <div className="sticky top-0 z-10 clay-grad px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => router.push('/messages')}
-            className="p-2 hover:bg-linen rounded-lg transition-colors"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
             aria-label="Back to messages"
           >
-            <ArrowLeftIcon className="w-5 h-5 text-clay-dark" />
+            <ArrowLeftIcon className="w-5 h-5 text-white" />
           </button>
 
           <div className="flex items-center gap-3 flex-grow">
@@ -260,7 +260,7 @@ export default function ConversationPage() {
                 alt={`${otherParticipant.first_name} ${otherParticipant.last_name}`}
                 width={36}
                 height={36}
-                className="w-9 h-9 rounded-full object-cover"
+                className="w-9 h-9 rounded-full object-cover border-2 border-white/30"
               />
             ) : (
               <InitialsCircle
@@ -269,17 +269,20 @@ export default function ConversationPage() {
               />
             )}
 
-            <div>
-              <h2 className="font-head font-semibold text-clay-dark">
+            <div className="flex-1 min-w-0">
+              <h2 className="font-head font-bold text-white text-sm leading-tight">
                 {otherParticipant?.first_name} {otherParticipant?.last_name}
               </h2>
-              <p className="text-xs text-muted">
-                {otherParticipant?.role === 'landlord'
-                  ? 'Property Owner'
-                  : otherParticipant?.university
-                    ? `${otherParticipant.university} Student`
-                    : 'Student'}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-300 flex-shrink-0" />
+                <p className="text-xs text-white/70 font-body">
+                  {otherParticipant?.role === 'landlord'
+                    ? 'Property Owner'
+                    : otherParticipant?.university
+                      ? `${otherParticipant.university} Student`
+                      : 'Student'}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -287,7 +290,7 @@ export default function ConversationPage() {
           {otherParticipant && otherParticipant.role !== 'landlord' && (
             <a
               href={`/profile/${otherParticipant.id}`}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors px-3 py-1.5 rounded-lg hover:bg-linen"
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
               aria-label="View profile"
             >
               <span className="material-symbols-outlined text-base">person</span>
@@ -298,7 +301,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages list */}
-      <div className="flex-grow overflow-y-auto p-4">
+      <div className="flex-grow overflow-y-auto p-4 bg-surf-lo">
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center py-20">
@@ -368,12 +371,12 @@ export default function ConversationPage() {
 
       {/* Message input */}
       {canReply ? (
-        <div className="sticky bottom-0 bg-white border-t border-out-var px-4 py-4">
+        <div className="sticky bottom-0 bg-white border-t border-out-var px-4 py-3.5">
           <div className="max-w-2xl mx-auto">
             {sendError && (
               <p className="text-xs text-red-500 font-body mb-2 text-center">{sendError}</p>
             )}
-            <form onSubmit={handleSendMessage} className="flex gap-3">
+            <form onSubmit={handleSendMessage} className="flex gap-2.5 items-end">
               <textarea
                 ref={textareaRef}
                 value={messageText}
@@ -384,16 +387,16 @@ export default function ConversationPage() {
                     handleSendMessage(e as any)
                   }
                 }}
-                placeholder="Type a message..."
-                className="flex-grow px-4 py-2 border border-out-var rounded-lg font-body text-sm focus:outline-none focus:ring-2 focus:ring-clay focus:border-transparent resize-none max-h-30"
+                placeholder="Type a message…"
+                className="flex-grow px-4 py-2.5 bg-surf-lo border border-out-var rounded-2xl font-body text-sm focus:outline-none focus:ring-2 focus:ring-clay/30 focus:border-clay resize-none placeholder:text-[#b8a49a]"
                 rows={1}
               />
               <button
                 type="submit"
                 disabled={!messageText.trim() || sending}
-                className="clay-grad text-white px-6 py-2 rounded-lg font-head font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md transition-shadow"
+                className="clay-grad text-white w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 disabled:opacity-40 hover:opacity-90 transition-all shadow-md shadow-clay/25"
               >
-                {sending ? 'Sending...' : 'Send'}
+                <span className="material-symbols-outlined text-lg">send</span>
               </button>
             </form>
           </div>
