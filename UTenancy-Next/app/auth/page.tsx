@@ -427,7 +427,7 @@ export default function AuthPage() {
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
                   <input name="password" type={showPw ? 'text' : 'password'} className="auth-input has-right"
                     placeholder=" " autoComplete="current-password" required />
-                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors"
+                  <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors w-10 h-10 flex items-center justify-center rounded-lg"
                     onClick={() => setShowPw((v) => !v)}>
                     <span className="material-symbols-outlined text-lg">{showPw ? 'visibility_off' : 'visibility'}</span>
                   </button>
@@ -435,7 +435,7 @@ export default function AuthPage() {
               </div>
               <div className="flex justify-end">
                 <button type="button" onClick={() => setPanel('forgot')}
-                  className="text-xs font-head font-semibold text-clay hover:text-clay-dark transition-colors">
+                  className="text-xs font-head font-semibold text-clay hover:text-clay-dark transition-colors py-2 px-1 min-h-[40px]">
                   Forgot password?
                 </button>
               </div>
@@ -447,7 +447,7 @@ export default function AuthPage() {
 
             <p className="text-center text-xs font-body text-muted mt-6">
               Don&apos;t have an account?{' '}
-              <button onClick={() => switchTab('signup')} className="font-head font-bold text-clay hover:text-clay-dark transition-colors">
+              <button onClick={() => switchTab('signup')} className="font-head font-bold text-clay hover:text-clay-dark transition-colors py-2 px-1 min-h-[40px]">
                 Create one free →
               </button>
             </p>
@@ -502,7 +502,7 @@ export default function AuthPage() {
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
                     <input name="password" type={showNewPw ? 'text' : 'password'} className="auth-input has-right"
                       placeholder=" " value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
-                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors"
+                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors w-10 h-10 flex items-center justify-center rounded-lg"
                       onClick={() => setShowNewPw((v) => !v)}>
                       <span className="material-symbols-outlined text-lg">{showNewPw ? 'visibility_off' : 'visibility'}</span>
                     </button>
@@ -583,7 +583,7 @@ export default function AuthPage() {
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">lock</span>
                     <input name="password" type={showNewPw ? 'text' : 'password'} className="auth-input has-right"
                       placeholder=" " value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
-                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors"
+                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-outline hover:text-clay transition-colors w-10 h-10 flex items-center justify-center rounded-lg"
                       onClick={() => setShowNewPw((v) => !v)}>
                       <span className="material-symbols-outlined text-lg">{showNewPw ? 'visibility_off' : 'visibility'}</span>
                     </button>
