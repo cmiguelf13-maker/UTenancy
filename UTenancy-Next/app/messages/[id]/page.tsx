@@ -242,8 +242,8 @@ export default function ConversationPage() {
 
   return (
     <div className="flex flex-col h-dvh bg-surf-lo">
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 clay-grad px-4 py-4">
+      {/* Header */}
+      <div className="flex-shrink-0 clay-grad px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => router.push('/messages')}
@@ -301,7 +301,7 @@ export default function ConversationPage() {
       </div>
 
       {/* Messages list */}
-      <div className="flex-grow overflow-y-auto p-4 bg-surf-lo">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-surf-lo">
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center py-20">
@@ -371,7 +371,7 @@ export default function ConversationPage() {
 
       {/* Message input */}
       {canReply ? (
-        <div className="sticky bottom-0 bg-white border-t border-out-var px-4 py-3.5">
+        <div className="flex-shrink-0 bg-white border-t border-out-var px-4 py-3.5">
           <div className="max-w-2xl mx-auto">
             {sendError && (
               <p className="text-xs text-red-500 font-body mb-2 text-center">{sendError}</p>
@@ -402,7 +402,7 @@ export default function ConversationPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-linen border-t border-out-var px-4 py-4">
+        <div className="flex-shrink-0 bg-linen border-t border-out-var px-4 py-4">
           <div className="max-w-2xl mx-auto">
             <p className="text-sm text-muted text-center">
               You can only reply to existing messages as a landlord.
