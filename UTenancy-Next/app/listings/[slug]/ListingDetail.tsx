@@ -116,10 +116,12 @@ function LandlordCard({
   profile,
   listingId,
   currentUser,
+  listingType,
 }: {
   profile: LandlordProfile
   listingId: string
   currentUser: any
+  listingType?: string
 }) {
   const [messaging, setMessaging] = useState(false)
   const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Property Owner'
@@ -136,7 +138,9 @@ function LandlordCard({
 
   return (
     <div className="reveal mb-8">
-      <h2 className="font-head text-xl font-bold text-clay-dark mb-4">About the Landlord</h2>
+      <h2 className="font-head text-xl font-bold text-clay-dark mb-4">
+        {listingType === 'open-room' ? 'About the Tenant' : 'About the Landlord'}
+      </h2>
       <div className="bg-surf-lo rounded-2xl border border-out-var p-5">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-14 h-14 clay-grad rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
@@ -1167,6 +1171,7 @@ export default function ListingDetail({
                   profile={landlordProfile}
                   listingId={String(listing.id)}
                   currentUser={user}
+                  listingType={listing.type}
                 />
                 <div className="divider mb-8" />
               </>
