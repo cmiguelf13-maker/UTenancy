@@ -332,7 +332,7 @@ export default function MessagesPage() {
 
   /* ────────────────── RENDER ───────────────────────────────── */
   return (
-    <div className="flex h-dvh overflow-hidden bg-cream">
+    <div className="flex h-[calc(100dvh-70px)] overflow-hidden bg-cream">
 
       {/* ═══ LEFT SIDEBAR ═══════════════════════════════════════ */}
       <div
