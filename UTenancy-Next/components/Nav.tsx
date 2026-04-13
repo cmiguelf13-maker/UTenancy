@@ -29,8 +29,9 @@ export default function Nav() {
   const isAuth  = path === '/auth'
   const isLandlordPortal = path === '/landlord'
 
-  const [user, setUser]       = useState<User | null>(null)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [user, setUser]           = useState<User | null>(null)
+  const [menuOpen, setMenuOpen]   = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -75,10 +76,10 @@ export default function Nav() {
 
   return (
     <nav className="sticky top-0 z-50 glass border-b border-out-var/20">
-      <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-10 py-3.5 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center">
+        <Link href="/" className="flex items-center" onClick={() => setMobileOpen(false)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="UTenancy" className="h-8 w-auto" />
         </Link>
@@ -96,6 +97,18 @@ export default function Nav() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Mobile hamburger — shown only when not on auth page */}
+          {!isAuth && (
+            <button
+              className="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-xl hover:bg-surf-lo transition-colors gap-[5px]"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label="Toggle navigation"
+            >
+              <span className={`block w-5 h-[2px] bg-clay-dark rounded-full transition-all duration-200 origin-center ${mobileOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
+              <span className={`block w-5 h-[2px] bg-clay-dark rounded-full transition-all duration-200 ${mobileOpen ? 'opacity-0 scale-x-0' : ''}`} />
+              <span className={`block w-5 h-[2px] bg-clay-dark rounded-full transition-all duration-200 origin-center ${mobileOpen ? '-rotate-45 -translate-y-[7px]' : ''}`} />
+            </button>
+          )}
           {isAuth ? (
             <>
               <span className="text-sm font-head font-medium text-muted">Need help?</span>
@@ -202,7 +215,7 @@ export default function Nav() {
           ) : (
             /* ── LOGGED-OUT STATE ── */
             <>
-              <Link href="/auth" className="clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all active:scale-95">
+              <Link href="/auth" className="hidden md:inline-flex clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all active:scale-95">
                 Sign In
               </Link>
             </>
@@ -210,6 +223,43 @@ export default function Nav() {
         </div>
 
       </div>
+
+      {/* ── MOBILE NAV PANEL ──────────────────────────────── */}
+      {!isAuth && mobileOpen && (
+        <div className="md:hidden border-t border-out-var/20 bg-white/95 backdrop-blur-md px-4 py-3 space-y-0.5 shadow-lg">
+          {links.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center py-3 px-3 text-sm font-head font-semibold text-clay-dark rounded-xl hover:bg-surf-lo transition-colors"
+            >
+              {label}
+            </Link>
+          ))}
+          {user?.user_metadata?.role === 'landlord' && (
+            <Link
+              href="/landlord"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 py-3 px-3 text-sm font-head font-semibold text-clay rounded-xl hover:bg-surf-lo transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">domain</span>
+              My Portal
+            </Link>
+          )}
+          {!user && (
+            <div className="pt-2 mt-1 border-t border-out-var/20">
+              <Link
+                href="/auth"
+                onClick={() => setMobileOpen(false)}
+                className="clay-grad flex items-center justify-center text-white py-3 rounded-xl font-head font-bold text-sm"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   )
 }
