@@ -112,7 +112,7 @@ export default function Nav() {
           {isAuth ? (
             <>
               <span className="text-sm font-head font-medium text-muted">Need help?</span>
-              <a href="mailto:support@utenancy.com" className="clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all">
+              <a href="https://utenancy.com/contact" className="clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all">
                 Contact Us
               </a>
             </>
