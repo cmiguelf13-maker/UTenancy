@@ -37,7 +37,6 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [tryNowLoading, setTryNowLoading] = useState(false)
 
   // Fetch current auth session
   useEffect(() => {
@@ -46,31 +45,6 @@ export default function HomePage() {
       setCurrentUser(data.session?.user ?? null)
     })
   }, [])
-
-  async function handleTryNow(tier: string) {
-    if (tryNowLoading) return
-    const supabase = createClient()
-    const { data } = await supabase.auth.getSession()
-    const user = data.session?.user ?? null
-    if (!user || user.user_metadata?.role !== 'landlord') {
-      router.push('/auth')
-      return
-    }
-    setTryNowLoading(true)
-    try {
-      const res = await fetch('/api/stripe/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier }),
-      })
-      const json = await res.json()
-      if (json.url) {
-        window.location.href = json.url
-      }
-    } finally {
-      setTryNowLoading(false)
-    }
-  }
 
   // Fetch active DB listings on mount
   useEffect(() => {
@@ -178,12 +152,6 @@ export default function HomePage() {
     }
   }
 
-  const PRICES: Record<string, number> = {
-    starter: 29,
-    growth:  59,
-    pro:     129,
-  }
-
   return (
     <>
       {/* ── HERO ─────────────────────────────────── */}
@@ -196,7 +164,7 @@ export default function HomePage() {
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 bg-white/80 border border-out-var rounded-full px-4 py-1.5 mb-8 f1 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-clay animate-pulse-dot" />
-              <span className="text-xs font-head font-bold text-clay-dark tracking-widest uppercase">Now accepting pilot landlords in LA</span>
+              <span className="text-xs font-head font-bold text-clay-dark tracking-widest uppercase">Now live for students · LA &amp; beyond</span>
             </div>
 
             {/* Headline */}
@@ -207,7 +175,7 @@ export default function HomePage() {
             </h1>
 
             <p className="f3 font-body text-lg text-muted leading-relaxed max-w-xl mx-auto mb-10">
-              UTenancy connects verified university students with real off-campus housing and roommates — and gives landlords a SaaS layer to manage it all.
+              UTenancy connects verified university students with open rooms and future roommates — find your place, meet your people.
             </p>
 
             {/* Search bar */}
@@ -283,7 +251,7 @@ export default function HomePage() {
       {/* ── MARQUEE ──────────────────────────────── */}
       <div className="bg-clay-dark py-5 overflow-hidden">
         <div className="marquee-track gap-16 items-center">
-          {['Verified .edu only', 'Real-time availability', 'Open Room & Group Formation', 'Rent splitting built-in', 'Landlord SaaS dashboard', 'University partnerships', 'Always free for students'].flatMap((t, i) => [
+          {['Verified .edu only', 'Real-time availability', 'Open Room Finder', 'Roommate Messaging', 'Rent splitting built-in', 'University partnerships', 'Always free for students'].flatMap((t, i) => [
             <span key={`a${i}`} className="text-white/50 font-head font-black text-sm uppercase tracking-widest whitespace-nowrap">{t}</span>,
             <span key={`b${i}`} className="text-white/20 mx-4 text-xl">✦</span>,
           ])}
@@ -403,117 +371,114 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── POST-MOVE-IN TOOLS ────────────────────── */}
+      {/* ── STUDENT FEATURES ─────────────────────── */}
       <section className="py-28 px-6 md:px-10 bg-cream overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div className="reveal">
-              <span className="feature-pill mb-6 inline-flex">Post-Move-In Tools</span>
-              <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-6">Moving in is<br /><em>just the beginning.</em></h2>
-              <p className="font-body text-muted leading-relaxed mb-8 text-lg">UTenancy doesn&apos;t disappear after the match. Rent splitting, shared expense tracking, and payment reminders keep your whole household synced.</p>
-              <ul className="space-y-4">
-                {[
-                  { icon: 'payments',             title: 'Automatic rent splitting',  body: "Each roommate pays their share directly. No Venmo math, no awkward reminders." },
-                  { icon: 'receipt_long',          title: 'Shared expense tracker',    body: "Utilities, groceries, subscriptions — log it once, split it fairly." },
-                  { icon: 'notifications_active',  title: 'Payment reminders',        body: "Automated nudges before rent is due — nobody's late, nobody's annoyed." },
-                  { icon: 'security',              title: 'Stripe ACH payments',       body: "Bank-to-bank, no fees for students. Landlords get direct deposit." },
-                ].map(({ icon, title, body }) => (
-                  <li key={icon} className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-sec-con rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="material-symbols-outlined text-clay text-lg">{icon}</span>
-                    </div>
-                    <div>
-                      <p className="font-head font-bold text-clay-dark text-sm">{title}</p>
-                      <p className="font-body text-muted text-sm mt-0.5">{body}</p>
-                    </div>
-                  </li>
-                ))}
+              <span className="feature-pill mb-6 inline-flex">Student Features</span>
+              <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-6">Find your room.<br /><em>Meet your people.</em></h2>
+              <p className="font-body text-muted leading-relaxed mb-8 text-lg">UTenancy is built around how students actually find housing — slip into an existing group or form a new one together.</p>
+              <ul className="space-y-6 mb-10">
+                <li className="flex items-start gap-4">
+                  <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg">
+                    <span className="material-symbols-outlined text-white text-lg">door_open</span>
+                  </div>
+                  <div>
+                    <p className="font-head font-bold text-clay-dark text-sm flex items-center gap-2">
+                      Open Room
+                      <span className="badge-open text-[10px] font-head font-bold px-2 py-0.5 rounded-full">Open Room</span>
+                    </p>
+                    <p className="font-body text-muted text-sm mt-1 leading-relaxed">Browse available rooms in existing student households. See who you&apos;d live with, their lifestyle, and apply with your verified student profile.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg">
+                    <span className="material-symbols-outlined text-white text-lg">chat_bubble</span>
+                  </div>
+                  <div>
+                    <p className="font-head font-bold text-clay-dark text-sm">Roommate Messaging</p>
+                    <p className="font-body text-muted text-sm mt-1 leading-relaxed">Chat directly with potential roommates before committing. Get to know your future housemates and find the right fit — all in the app.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-sec-con rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="material-symbols-outlined text-clay text-lg">group_add</span>
+                  </div>
+                  <div>
+                    <p className="font-head font-bold text-clay-dark text-sm">Group Formation</p>
+                    <p className="font-body text-muted text-sm mt-1 leading-relaxed">Team up with other students to fill a whole unit together. Post your profile, find compatible housemates, and move in as a crew.</p>
+                  </div>
+                </li>
               </ul>
+              <Link href="/auth" className="inline-flex items-center gap-2 clay-grad text-white font-head font-bold text-sm px-8 py-3.5 rounded-full shadow-lg hover:opacity-90 transition-all">
+                Find a Room <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
             </div>
 
-            {/* Mock expense card */}
+            {/* Mock messaging card */}
             <div className="reveal relative" style={{ transitionDelay: '.15s' }}>
-              {/* Glow backdrop */}
               <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 60% 40%, #9c7060 0%, #6b4c3b 60%, transparent 100%)', transform: 'scale(1.15)' }} />
               <div className="relative bg-white rounded-3xl border border-out-var/60 max-w-sm mx-auto overflow-hidden"
                 style={{ boxShadow: '0 32px 64px rgba(107,76,59,.22), 0 0 0 1px rgba(196,160,144,.18)' }}>
 
-                {/* Clay gradient header */}
+                {/* Chat header */}
                 <div className="clay-grad px-6 py-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full border-2 border-white/30 flex items-center justify-center text-sm font-head font-black text-white" style={{ background: '#8b6355' }}>J</div>
                     <div>
-                      <p className="font-head font-bold text-white text-base">October Expenses</p>
-                      <p className="text-xs text-white/70 font-body mt-0.5">The Scholar House · 4 roommates</p>
+                      <p className="font-head font-bold text-white text-sm">Jordan M.</p>
+                      <p className="text-xs text-white/60 font-body">Heritage Commons · Open Room</p>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-head font-bold px-3 py-1.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
-                      All Paid
+                    <span className="ml-auto inline-flex items-center gap-1 bg-white/20 text-white text-[10px] font-head font-bold px-2.5 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-300" />Online
                     </span>
-                  </div>
-                  {/* Roommate avatar row */}
-                  <div className="flex items-center gap-2 mt-4">
-                    <div className="flex -space-x-2">
-                      {['A','J','M','S'].map((initial, i) => (
-                        <div key={i} className="w-7 h-7 rounded-full border-2 border-white/40 flex items-center justify-center text-[10px] font-head font-black text-white"
-                          style={{ background: ['#8b6355','#a07060','#7a5548','#c49080'][i] }}>
-                          {initial}
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-white/70 font-body">4 housemates synced</p>
                   </div>
                 </div>
 
-                <div className="p-6">
-                  {/* Rent progress bar */}
-                  <div className="bg-surf-lo rounded-2xl p-4 mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-clay text-base">home</span>
-                        <span className="text-sm font-head font-bold text-clay-dark">Rent</span>
-                      </div>
-                      <span className="text-sm font-head font-black text-clay-dark">$780 <span className="text-xs font-normal text-muted">/ person</span></span>
+                {/* Chat messages */}
+                <div className="p-5 space-y-3 bg-surf-lo">
+                  <div className="flex gap-2 items-end">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-head font-black text-white flex-shrink-0" style={{ background: '#8b6355' }}>J</div>
+                    <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm border border-out-var/30 max-w-[200px]">
+                      <p className="font-body text-stone text-xs leading-relaxed">Hey! Saw your profile — you&apos;re at LMU too? The room&apos;s available June 1st 🙌</p>
                     </div>
-                    <div className="flex gap-1.5">{[0,1,2,3].map(i => <div key={i} className="flex-1 h-2 rounded-full bg-clay" />)}</div>
-                    <p className="text-[10px] text-muted font-body mt-1.5">4 of 4 paid · $3,120 deposited to landlord</p>
                   </div>
+                  <div className="flex gap-2 items-end justify-end">
+                    <div className="clay-grad rounded-2xl rounded-br-sm px-4 py-2.5 shadow-sm max-w-[200px]">
+                      <p className="font-body text-white text-xs leading-relaxed">Yes! What&apos;s the vibe like? Do you guys study at home mostly?</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-end">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-head font-black text-white flex-shrink-0" style={{ background: '#8b6355' }}>J</div>
+                    <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm border border-out-var/30 max-w-[200px]">
+                      <p className="font-body text-stone text-xs leading-relaxed">Mix of both! Pretty chill house. Come see the place this weekend? 😊</p>
+                    </div>
+                  </div>
+                </div>
 
-                  {/* Expense rows */}
-                  <div className="space-y-1 mb-5">
-                    {[
-                      { icon: 'bolt',                label: 'Electricity',        amt: '$38', status: '✓ Settled', statusColor: 'text-green-600', bg: 'bg-amber-50' },
-                      { icon: 'wifi',                label: 'Internet',           amt: '$25', status: '✓ Settled', statusColor: 'text-green-600', bg: 'bg-sky-50' },
-                      { icon: 'local_grocery_store', label: 'Household supplies', amt: '$18', status: '⏳ 1 pending', statusColor: 'text-amber-500', bg: 'bg-green-50' },
-                    ].map(({ icon, label, amt, status, statusColor, bg }) => (
-                      <div key={icon} className="flex items-center justify-between py-2.5 border-b border-out-var/30 last:border-0">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center`}>
-                            <span className="material-symbols-outlined text-clay text-sm">{icon}</span>
-                          </div>
-                          <span className="text-sm font-body text-stone">{label}</span>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-head font-bold text-stone">{amt} <span className="text-xs font-normal text-muted">each</span></p>
-                          <p className={`text-[10px] font-body ${statusColor}`}>{status}</p>
-                        </div>
-                      </div>
-                    ))}
+                {/* Listing preview strip */}
+                <div className="px-5 py-4 bg-white border-t border-out-var/40">
+                  <p className="text-[10px] font-head font-bold text-muted uppercase tracking-widest mb-3">Listing</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-linen">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=100&q=80" alt="listing" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-head font-bold text-clay-dark text-xs truncate">Heritage Commons</p>
+                      <p className="text-[10px] text-muted font-body">Playa Vista · $850/mo per person</p>
+                      <span className="badge-open text-[9px] font-head font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block">Open Room</span>
+                    </div>
                   </div>
+                </div>
 
-                  {/* Total footer */}
-                  <div className="bg-clay-dark rounded-2xl p-4 flex justify-between items-center">
-                    <div>
-                      <p className="text-white/60 text-[10px] font-body uppercase tracking-wider">Total this month</p>
-                      <p className="font-head font-black text-white text-2xl mt-0.5">$861 <span className="text-sm font-normal opacity-50">/ person</span></p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white/50 text-[10px] font-body mb-1">Powered by</p>
-                      <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2.5 py-1">
-                        <span className="material-symbols-outlined text-white text-sm">bolt</span>
-                        <span className="text-white text-xs font-head font-bold">Stripe</span>
-                      </div>
-                    </div>
-                  </div>
+                {/* Input bar */}
+                <div className="px-5 py-4 bg-white border-t border-out-var/40 flex items-center gap-2">
+                  <div className="flex-1 bg-surf-lo rounded-full px-4 py-2.5 text-xs font-body text-muted">Message Jordan…</div>
+                  <button className="w-8 h-8 clay-grad rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-white text-sm">send</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -521,135 +486,75 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── LANDLORD (DARK) ───────────────────────── */}
+      {/* ── LANDLORD COMING SOON ─────────────────── */}
       <section id="landlords" className="dark-surface py-28 px-6 md:px-10 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-10 blur-[120px] pointer-events-none" style={{ background: '#9c7060', transform: 'translate(30%,-30%)' }} />
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20 reveal">
-            <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-6">For Landlords</span>
-            <h2 className="font-display text-5xl md:text-6xl font-light text-white mt-2 mb-4">Stop managing chaos.<br /><em className="text-sand">Start running a business.</em></h2>
-            <p className="font-body text-white/60 text-lg max-w-xl mx-auto">UTenancy gives independent landlords a full SaaS property management layer — built specifically for student housing.</p>
-          </div>
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="reveal">
+            <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-6">
+              <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />
+              Coming Soon
+            </span>
+            <h2 className="font-display text-5xl md:text-6xl font-light text-white mt-2 mb-4">For Landlords.<br /><em className="text-sand">A full SaaS portal — coming soon.</em></h2>
+            <p className="font-body text-white/60 text-lg max-w-xl mx-auto mb-14">We&apos;re building a dedicated property management portal — verified student applicants, automated rent collection, and a full dashboard. Be first in line when we launch.</p>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-16">
-            {/* Pain points */}
-            <div className="reveal">
-              <p className="text-xs font-head font-bold text-white/40 uppercase tracking-widest mb-6">The Old Way</p>
-              <div className="space-y-4">
-                {['Posting on Craigslist, Facebook, and Zillow separately — flooded with unqualified leads','Chasing down rent from 4 different students via Venmo, Cash App, and checks','No way to verify tenants are actually enrolled students before handing over the keys','Managing 3 properties means 3 spreadsheets and 12 separate tenant relationships'].map((txt) => (
-                  <div key={txt} className="dark-card rounded-2xl p-5 flex items-start gap-4 opacity-60">
-                    <span className="material-symbols-outlined text-red-400 flex-shrink-0">close</span>
-                    <p className="font-body text-white/70 text-sm leading-relaxed">{txt}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* UTenancy way */}
-            <div className="reveal" style={{ transitionDelay: '.1s' }}>
-              <p className="text-xs font-head font-bold text-sand/80 uppercase tracking-widest mb-6">The UTenancy Way</p>
-              <div className="space-y-4">
-                {['One dashboard — applicants come pre-verified with .edu credentials','Direct ACH rent deposits. Every tenant, every month, automatically split and routed','Student verification built in — see enrollment status, major, and graduation year','Manage unlimited properties from one login. Vacancy tracking, applicant pipeline, analytics'].map((txt) => (
-                  <div key={txt} className="dark-card rounded-2xl p-5 flex items-start gap-4" style={{ borderColor: 'rgba(201,160,144,.2)' }}>
-                    <span className="material-symbols-outlined text-sand flex-shrink-0">check</span>
-                    <p className="font-body text-white/90 text-sm leading-relaxed">{txt}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Mock dashboard */}
-          <div className="reveal bg-espresso rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
-            <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 clay-grad rounded-lg flex items-center justify-center">
-                  <span className="text-white font-head font-black text-xs">U</span>
-                </div>
-                <span className="font-head font-bold text-white/90 text-sm">Landlord Dashboard</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-dot" />
-                <span className="text-xs text-white/50 font-body">3 properties · All active</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 border-b border-white/10">
-              {[{ label: 'Properties', val: '3', color: 'text-white' }, { label: 'Active Listings', val: '2', color: 'text-white' }, { label: 'Applicants', val: '14', color: 'text-sand' }, { label: 'Monthly Revenue', val: '$7,200', color: 'text-white' }].map(({ label, val, color }) => (
-                <div key={label} className="p-6 border-r border-white/10 last:border-0">
-                  <p className="text-xs text-white/40 font-head font-bold uppercase tracking-widest mb-2">{label}</p>
-                  <p className={`stat-num text-3xl ${color}`}>{val}</p>
+            <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-12">
+              {[
+                { icon: 'dashboard',     title: 'Landlord Dashboard', body: 'Manage all your listings, applicants, and payments from one place.' },
+                { icon: 'verified_user', title: 'Verified Tenants',   body: 'Every applicant pre-verified with a .edu email before they reach you.' },
+                { icon: 'payments',      title: 'Automated Rent',     body: 'Direct ACH deposits. Every tenant, every month, automatically split and routed.' },
+              ].map(({ icon, title, body }) => (
+                <div key={icon} className="dark-card rounded-2xl p-6 text-left" style={{ borderColor: 'rgba(201,160,144,.15)' }}>
+                  <span className="material-symbols-outlined text-sand/70 text-2xl mb-4 block">{icon}</span>
+                  <p className="font-head font-bold text-white/80 text-sm mb-2">{title}</p>
+                  <p className="font-body text-white/40 text-xs leading-relaxed">{body}</p>
                 </div>
               ))}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    {['Property', 'Beds Avail.', 'Rent / Person', 'Applicants', 'Status'].map((h) => (
-                      <th key={h} className="text-left px-6 py-3 text-xs font-head font-bold text-white/40 uppercase tracking-widest">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { addr: '8821 Gulana Ave, Playa Vista',       beds: 2, rent: '$850', apps: '7',  badge: 'Active',    badgeClass: 'bg-green-900/40 text-green-400' },
-                    { addr: '5543 W 79th St, Westchester',        beds: 4, rent: '$720', apps: '5',  badge: 'Reviewing', badgeClass: 'bg-amber-900/40 text-amber-400' },
-                    { addr: '12200 Millennium Dr, Playa Vista',   beds: 0, rent: '$950', apps: '—',  badge: 'Occupied',  badgeClass: 'bg-white/10 text-white/50' },
-                  ].map(({ addr, beds, rent, apps, badge, badgeClass }) => (
-                    <tr key={addr} className="border-b border-white/5 last:border-0 hover:bg-white/[.03] transition-colors">
-                      <td className="px-6 py-4 text-white/90 font-body">{addr}</td>
-                      <td className="px-6 py-4 text-white/70 font-body">{beds}</td>
-                      <td className="px-6 py-4 text-white/90 font-head font-bold">{rent}</td>
-                      <td className="px-6 py-4 font-head font-bold text-sand">{apps}</td>
-                      <td className="px-6 py-4"><span className={`${badgeClass} text-xs font-head font-bold px-3 py-1 rounded-full`}>{badge}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+            <a href="#waitlist" className="inline-flex items-center gap-2 border border-white/20 text-white/80 font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-white/10 transition-all">
+              Join Landlord Waitlist <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </a>
           </div>
         </div>
       </section>
 
-      {/* ── PRICING ───────────────────────────────── */}
+      {/* ── PRICING COMING SOON ───────────────────── */}
       <section id="pricing" className="py-28 px-6 md:px-10 bg-cream">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 reveal">
+          <div className="text-center mb-12 reveal">
             <span className="feature-pill mb-4 inline-flex">Pricing</span>
-            <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-3">Simple pricing<br /><em>for landlords.</em></h2>
-            <p className="font-body text-muted text-lg">Students always use UTenancy for free. Landlords pay a flat monthly subscription.</p>
+            <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-3">Landlord plans<br /><em>coming soon.</em></h2>
+            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy is always <strong className="text-clay-dark">free for students</strong> — forever. Landlord subscription plans are launching soon.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {[
-              { key: 'starter', name: 'Starter',  sub: 'Up to 3 properties', nameColor: 'text-muted',   bg: 'bg-white border border-out-var',      btnClass: 'border-2 border-clay text-clay-dark hover:bg-clay hover:text-white', pop: false,
-                features: ['3 active listings','Applicant inbox','Student verification','Basic rent collection'], missing: ['Tenant screening','Analytics dashboard'] },
-              { key: 'growth',  name: 'Growth',   sub: 'Up to 10 properties', nameColor: 'text-sand/80', bg: 'bg-clay-dark shadow-2xl shadow-clay/25', btnClass: 'bg-white text-clay-dark hover:bg-cream', pop: true,
-                features: ['10 active listings','Applicant inbox + screening','Student verification','Full rent collection','Expense tracking','Analytics dashboard'], missing: [] },
-              { key: 'pro',     name: 'Pro',      sub: 'Unlimited properties', nameColor: 'text-muted',  bg: 'bg-white border border-out-var',      btnClass: 'border-2 border-clay text-clay-dark hover:bg-clay hover:text-white', pop: false,
-                features: ['Unlimited listings','Priority applicant review','API access','Dedicated account manager','White-label portal'], missing: [] },
-            ].map(({ key, name, sub, nameColor, bg, btnClass, pop, features, missing }, i) => (
-              <div key={key} className={`reveal card-lift ${bg} rounded-3xl p-8 ${pop ? 'pricing-pop' : ''}`} style={{ transitionDelay: `${i * 0.1}s` }}>
-                <p className={`font-head font-bold text-sm mb-2 uppercase tracking-widest ${nameColor}`}>{name}</p>
-                <p className={`font-display font-light text-5xl mb-1 ${pop ? 'text-white' : 'text-clay-dark'}`}>
-                  ${PRICES[key]}<span className={`text-lg font-body ${pop ? 'text-sand/60' : 'text-muted'}`}>/mo</span>
-                </p>
-                <p className={`text-xs font-body mb-6 ${pop ? 'text-sand/60' : 'text-muted'}`}>{sub}</p>
-                <div className="divider mb-6" />
-                <ul className="space-y-3 mb-8">
-                  {features.map((f) => (
-                    <li key={f} className={`flex items-center gap-2 text-sm font-body ${pop ? 'text-white/90' : 'text-stone'}`}>
-                      <span className={`material-symbols-outlined fill text-base ${pop ? 'text-sand' : 'text-clay'}`}>check</span>{f}
-                    </li>
-                  ))}
-                  {missing.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm font-body text-muted/50">
-                      <span className="material-symbols-outlined text-out-var text-base">close</span>{f}
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => handleTryNow(key)} disabled={tryNowLoading} className={`w-full font-head font-bold text-sm py-3 rounded-full transition-all disabled:opacity-60 ${btnClass}`}>Try Now</button>
+          <div className="relative max-w-5xl mx-auto reveal" style={{ transitionDelay: '.1s' }}>
+            {/* Blurred pricing cards (decorative) */}
+            <div className="grid md:grid-cols-3 gap-6 opacity-25 blur-[3px] pointer-events-none select-none" aria-hidden="true">
+              {[
+                { name: 'Starter',  price: '$29',  sub: 'Up to 3 properties',  pop: false },
+                { name: 'Growth',   price: '$59',  sub: 'Up to 10 properties', pop: true  },
+                { name: 'Pro',      price: '$129', sub: 'Unlimited properties', pop: false },
+              ].map(({ name, price, sub, pop }) => (
+                <div key={name} className={`${pop ? 'bg-clay-dark' : 'bg-white border border-out-var'} rounded-3xl p-8`}>
+                  <p className="font-head font-bold text-sm mb-2 uppercase tracking-widest text-muted">{name}</p>
+                  <p className={`font-display font-light text-5xl mb-1 ${pop ? 'text-white' : 'text-clay-dark'}`}>{price}<span className="text-lg font-body text-muted">/mo</span></p>
+                  <p className="text-xs font-body text-muted mb-8">{sub}</p>
+                  <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-4 bg-out-var/40 rounded-full" />)}</div>
+                </div>
+              ))}
+            </div>
+            {/* Coming soon overlay */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="bg-white border border-out-var rounded-2xl px-10 py-7 shadow-xl text-center">
+                <span className="material-symbols-outlined text-clay text-4xl mb-3 block">lock_clock</span>
+                <p className="font-head font-bold text-clay-dark text-lg mb-1">Landlord Pricing</p>
+                <p className="font-body text-muted text-sm mb-4">Launching soon — join the waitlist to be notified first.</p>
+                <a href="#waitlist" className="clay-grad text-white font-head font-bold text-xs px-6 py-2.5 rounded-full shadow-md inline-flex items-center gap-1.5 hover:opacity-90 transition-all">
+                  <span className="material-symbols-outlined text-sm">notifications</span>Notify Me
+                </a>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
@@ -661,14 +566,14 @@ export default function HomePage() {
           <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-8">
             <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Early Access
           </span>
-          <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Be first.<br /><em className="text-sand">Join the waitlist.</em></h2>
-          <p className="font-body text-white/60 text-lg mb-10">Whether you&apos;re a student looking for your first off-campus place, or a landlord ready to simplify — get early access before we go public.</p>
+          <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Ready to find<br /><em className="text-sand">your perfect room?</em></h2>
+          <p className="font-body text-white/60 text-lg mb-10">Create your free student account and start browsing open rooms, messaging potential roommates, and finding your next place — all in one app. Landlords, sign up to be first notified when we launch.</p>
 
           {/* Type toggle */}
           <div className="flex justify-center gap-2 mb-8">
             {(['student', 'landlord'] as const).map((t) => (
               <button key={t} onClick={() => setWaitlistType(t)} className={`toggle-btn text-xs font-head font-bold px-5 py-2 rounded-full border border-white/20 text-white ${waitlistType === t ? 'active' : ''}`}>
-                {t === 'student' ? '🎓 I\'m a Student' : '🏠 I\'m a Landlord'}
+                {t === 'student' ? '🎓 I\'m a Student' : '🏠 Landlord (Coming Soon)'}
               </button>
             ))}
           </div>
@@ -729,10 +634,9 @@ export default function HomePage() {
                 { label: 'Verify My .edu',   href: '/auth' },
               ]},
               { heading: 'Landlords', links: [
-                { label: 'List a Property',  href: '/landlord' },
-                { label: 'Pricing',          href: '/#pricing' },
-                { label: 'Dashboard Demo',   href: '/landlord' },
-                { label: 'Sign Up',          href: '/auth' },
+                { label: 'Coming Soon',      href: '/#landlords' },
+                { label: 'Join Waitlist',    href: '/#waitlist' },
+                { label: 'Pricing Preview',  href: '/#pricing' },
               ]},
               { heading: 'Company', links: [
                 { label: 'About',    href: '/about' },
