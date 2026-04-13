@@ -200,7 +200,7 @@ export default function HomePage() {
             </div>
 
             {/* Headline */}
-            <h1 className="f2 font-display text-6xl md:text-8xl font-light text-clay-dark leading-[.95] mb-6 tracking-tight">
+            <h1 className="f2 font-display text-5xl sm:text-6xl md:text-8xl font-light text-clay-dark leading-[.95] mb-6 tracking-tight">
               Your home<br />
               <em className="clay-grad-text font-medium">away from</em><br />
               campus.
@@ -230,8 +230,9 @@ export default function HomePage() {
                 </div>
                 <button
                   onClick={handleHeroSearch}
-                  className="clay-grad text-white px-7 py-3.5 rounded-full font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all">
-                  <span className="material-symbols-outlined text-sm">search</span> Search
+                  className="clay-grad text-white px-4 sm:px-7 py-3.5 rounded-full font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all flex-shrink-0">
+                  <span className="material-symbols-outlined text-sm">search</span>
+                  <span className="hidden sm:inline">Search</span>
                 </button>
               </div>
             </div>
@@ -328,7 +329,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {(['all', 'open', 'group'] as const).map((f) => (
-                <button key={f} onClick={() => setListingFilter(f)} className={`toggle-btn text-xs font-head font-bold px-4 py-2 rounded-full border border-out-var bg-linen transition-all ${listingFilter === f ? 'active' : ''}`}>
+                <button key={f} onClick={() => setListingFilter(f)} className={`toggle-btn text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var bg-linen transition-all min-h-[40px] ${listingFilter === f ? 'active' : ''}`}>
                   {f === 'all' ? 'All' : f === 'open' ? 'Open Room' : 'Group Formation'}
                 </button>
               ))}
@@ -336,47 +337,49 @@ export default function HomePage() {
           </div>
 
           {/* Sub-filters */}
-          <div className="reveal bg-white rounded-2xl p-5 mb-8 flex flex-wrap gap-5 items-center border border-out-var/40">
-            <div className="flex items-center gap-3 flex-1 min-w-48">
+          <div className="reveal bg-white rounded-2xl p-4 md:p-5 mb-8 flex flex-col sm:flex-row flex-wrap gap-4 items-stretch sm:items-center border border-out-var/40">
+            <div className="flex items-center gap-3 w-full sm:flex-1 sm:min-w-0">
               <label className="text-xs font-head font-bold text-muted uppercase tracking-widest whitespace-nowrap">Price max</label>
-              <input type="range" min={500} max={3000} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} />
+              <input type="range" min={500} max={3000} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} className="flex-1 h-2 accent-clay cursor-pointer" />
               <span className="text-xs font-head font-bold text-clay whitespace-nowrap">${priceMax.toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Distance</label>
-              <select
-                value={distanceFilter}
-                onChange={(e) => setDistanceFilter(e.target.value)}
-                className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
+            <div className="flex gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Distance</label>
+                <select
+                  value={distanceFilter}
+                  onChange={(e) => setDistanceFilter(e.target.value)}
+                  className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2.5 text-clay-dark outline-none cursor-pointer"
+                >
+                  {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Beds</label>
+                <select
+                  value={bedsFilter}
+                  onChange={(e) => setBedsFilter(e.target.value)}
+                  className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2.5 text-clay-dark outline-none cursor-pointer"
+                >
+                  {['Any', '1 Bed', '2 Beds', '3+ Beds'].map((o) => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Move-in</label>
+                <input
+                  type="date"
+                  value={moveInDate}
+                  onChange={(e) => setMoveInDate(e.target.value)}
+                  className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2.5 text-clay-dark outline-none"
+                />
+              </div>
+              <button
+                onClick={clearFilters}
+                className="clay-grad text-white text-xs font-head font-bold px-5 py-2.5 rounded-full shadow-md sm:ml-auto"
               >
-                {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
-              </select>
+                Clear Filters
+              </button>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Beds</label>
-              <select
-                value={bedsFilter}
-                onChange={(e) => setBedsFilter(e.target.value)}
-                className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
-              >
-                {['Any', '1 Bed', '2 Beds', '3+ Beds'].map((o) => <option key={o}>{o}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-head font-bold text-muted uppercase tracking-widest">Move-in</label>
-              <input
-                type="date"
-                value={moveInDate}
-                onChange={(e) => setMoveInDate(e.target.value)}
-                className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2 text-clay-dark outline-none"
-              />
-            </div>
-            <button
-              onClick={clearFilters}
-              className="clay-grad text-white text-xs font-head font-bold px-5 py-2 rounded-full shadow-md ml-auto"
-            >
-              Clear Filters
-            </button>
           </div>
 
           {filtered.length === 0 ? (
