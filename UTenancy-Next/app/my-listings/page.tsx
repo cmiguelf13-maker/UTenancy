@@ -62,6 +62,7 @@ export default function MyListingsPage() {
   const [loading,     setLoading]     = useState(true)
   const [deletingId,  setDeletingId]  = useState<string | null>(null)
   const [togglingId,  setTogglingId]  = useState<string | null>(null)
+  const [activeTab,   setActiveTab]   = useState<'active' | 'inactive'>('active')
 
   /* ── Edit state ── */
   const [editListing, setEditListing] = useState<MyListing | null>(null)
@@ -322,27 +323,71 @@ export default function MyListingsPage() {
             </Link>
           </div>
 
+          {/* Tabs */}
+          {!loading && (
+            <div className="flex gap-1 p-1 bg-white border border-out-var rounded-2xl mb-6 shadow-sm">
+              {([
+                { key: 'active',   label: 'Active',   icon: 'home',        count: listings.filter(l => l.status === 'active' || l.status === 'draft').length },
+                { key: 'inactive', label: 'Inactive', icon: 'inventory_2', count: listings.filter(l => l.status === 'rented' || l.status === 'archived').length },
+              ] as const).map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-head font-bold transition-all
+                    ${activeTab === tab.key
+                      ? 'clay-grad text-white shadow-md shadow-clay/20'
+                      : 'text-muted hover:text-clay-dark hover:bg-surf-lo'}`}
+                >
+                  <span className="material-symbols-outlined text-base">{tab.icon}</span>
+                  {tab.label}
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full
+                    ${activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-linen text-clay-dark'}`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Content */}
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="w-8 h-8 rounded-full border-2 border-clay/30 border-t-clay animate-spin" />
             </div>
-          ) : listings.length === 0 ? (
-            <div className="text-center py-24 border border-out-var rounded-2xl bg-white">
-              <span className="material-symbols-outlined text-out-var text-6xl mb-4 block">home_work</span>
-              <p className="font-head font-bold text-clay-dark text-lg mb-1">No listings yet</p>
-              <p className="font-body text-muted text-sm mb-6">Post your first open room to get started.</p>
-              <Link
-                href="/post-room"
-                className="inline-flex items-center gap-1.5 clay-grad text-white px-5 py-2.5 rounded-full font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20"
-              >
-                <span className="material-symbols-outlined text-base">add</span>
-                Post a Room
-              </Link>
-            </div>
-          ) : (
+          ) : (() => {
+            const filtered = listings.filter(l =>
+              activeTab === 'active'
+                ? (l.status === 'active' || l.status === 'draft')
+                : (l.status === 'rented' || l.status === 'archived')
+            )
+
+            if (filtered.length === 0) {
+              return activeTab === 'active' ? (
+                <div className="text-center py-24 border border-out-var rounded-2xl bg-white">
+                  <span className="material-symbols-outlined text-out-var text-6xl mb-4 block">home_work</span>
+                  <p className="font-head font-bold text-clay-dark text-lg mb-1">No listings yet</p>
+                  <p className="font-body text-muted text-sm mb-6">Post your first open room to get started.</p>
+                  <Link
+                    href="/post-room"
+                    className="inline-flex items-center gap-1.5 clay-grad text-white px-5 py-2.5 rounded-full font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                    Post a Room
+                  </Link>
+                </div>
+              ) : (
+                <div className="text-center py-24 border border-out-var rounded-2xl bg-white">
+                  <span className="material-symbols-outlined text-out-var text-6xl mb-4 block">inventory_2</span>
+                  <p className="font-head font-bold text-clay-dark text-lg mb-1">No inactive listings</p>
+                  <p className="font-body text-muted text-sm">Listings you mark as rented or archived will appear here.</p>
+                </div>
+              )
+            }
+
+            return (
             <div className="space-y-4">
-              {listings.map((listing) => {
+              {filtered.map((listing) => {
+
                 const status = safeStatus(listing.status)
                 const cfg    = STATUS_CONFIG[status]
                 const isClosedOut = status === 'rented' || status === 'archived'
@@ -453,7 +498,8 @@ export default function MyListingsPage() {
                 )
               })}
             </div>
-          )}
+          )
+          })()}
 
         </div>
       </main>
