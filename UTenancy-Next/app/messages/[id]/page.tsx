@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { Message, Profile } from '@/lib/types'
 
@@ -135,12 +134,14 @@ export default function ConversationPage() {
         .single()
 
       if (convRow?.listing_id) {
-        const { data: listingRow } = await supabase
+        const { data: listingRow, error: listingErr } = await supabase
           .from('listings')
           .select('id, type, status, landlord_id')
           .eq('id', convRow.listing_id)
           .single()
         if (listingRow) setListing(listingRow as ListingInfo)
+        else if (listingErr?.code !== 'PGRST116')
+          console.error('Listing fetch error:', listingErr)
       }
 
       // Messages
@@ -242,22 +243,37 @@ export default function ConversationPage() {
     }
 
     // 2. Add self as admin member
-    await supabase.from('household_members').upsert(
+    const { error: err1 } = await supabase.from('household_members').upsert(
       { household_id: householdId, user_id: currentUser.id, role: 'admin' },
       { onConflict: 'household_id,user_id' }
     )
+    if (err1) {
+      setApproveError('Could not add you to household. Please try again.')
+      setApproving(false)
+      return
+    }
 
     // 3. Add approved student as member
-    await supabase.from('household_members').upsert(
+    const { error: err2 } = await supabase.from('household_members').upsert(
       { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
       { onConflict: 'household_id,user_id' }
     )
+    if (err2) {
+      setApproveError('Could not add tenant to household. Please try again.')
+      setApproving(false)
+      return
+    }
 
     // 4. Mark listing as rented
-    await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+    const { error: rentErr } = await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+    if (rentErr) {
+      setApproveError('Could not mark listing as rented. Please try again.')
+      setApproving(false)
+      return
+    }
 
     // 5. Send approval message in conversation
-    const { data: inserted } = await supabase
+    const { data: inserted, error: msgErr } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -266,6 +282,12 @@ export default function ConversationPage() {
       })
       .select('*, sender:profiles!messages_sender_profile_fkey(*)')
       .single()
+
+    if (msgErr) {
+      setApproveError('Could not send approval message. Please try again.')
+      setApproving(false)
+      return
+    }
 
     if (inserted) {
       setMessages((prev) => [...prev, inserted as MessageWithSender])
@@ -355,11 +377,10 @@ export default function ConversationPage() {
 
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {otherParticipant?.avatar_url ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={otherParticipant.avatar_url}
                 alt={`${otherParticipant.first_name} ${otherParticipant.last_name}`}
-                width={36}
-                height={36}
                 className="w-9 h-9 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
               />
             ) : (
@@ -446,11 +467,10 @@ export default function ConversationPage() {
                     {!isCurrentUser && groupIdx === 0 && (
                       <div className="flex-shrink-0 w-8 h-8">
                         {group.sender.avatar_url ? (
-                          <Image
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
                             src={group.sender.avatar_url}
                             alt={group.sender.first_name ?? ''}
-                            width={32}
-                            height={32}
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
