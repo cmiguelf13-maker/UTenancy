@@ -429,46 +429,88 @@ export default function HomePage() {
             </div>
 
             {/* Mock expense card */}
-            <div className="reveal" style={{ transitionDelay: '.15s' }}>
-              <div className="bg-white rounded-3xl shadow-2xl shadow-clay/10 border border-out-var/40 p-8 max-w-sm mx-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="font-head font-bold text-clay-dark">October Expenses</p>
-                    <p className="text-xs text-muted font-body mt-0.5">The Scholar House · 4 roommates</p>
+            <div className="reveal relative" style={{ transitionDelay: '.15s' }}>
+              {/* Glow backdrop */}
+              <div className="absolute inset-0 rounded-3xl blur-3xl opacity-30 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 60% 40%, #9c7060 0%, #6b4c3b 60%, transparent 100%)', transform: 'scale(1.15)' }} />
+              <div className="relative bg-white rounded-3xl border border-out-var/60 max-w-sm mx-auto overflow-hidden"
+                style={{ boxShadow: '0 32px 64px rgba(107,76,59,.22), 0 0 0 1px rgba(196,160,144,.18)' }}>
+
+                {/* Clay gradient header */}
+                <div className="clay-grad px-6 py-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-head font-bold text-white text-base">October Expenses</p>
+                      <p className="text-xs text-white/70 font-body mt-0.5">The Scholar House · 4 roommates</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-head font-bold px-3 py-1.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-300 animate-pulse" />
+                      All Paid
+                    </span>
                   </div>
-                  <span className="feature-pill text-[10px]">All Paid ✓</span>
-                </div>
-                <div className="bg-surf-lo rounded-2xl p-4 mb-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-head font-bold text-clay-dark">Rent</span>
-                    <span className="text-sm font-head font-black text-clay-dark">$780 <span className="text-xs font-normal text-muted">/ person</span></span>
-                  </div>
-                  <div className="flex gap-1.5">{[0,1,2,3].map(i => <div key={i} className="flex-1 h-1.5 rounded-full bg-clay" />)}</div>
-                  <p className="text-[10px] text-muted font-body mt-1.5">4 of 4 paid · $3,120 total</p>
-                </div>
-                <div className="space-y-2 mb-5">
-                  {[
-                    { icon: 'bolt',                 label: 'Electricity',         amt: '$38', status: '✓ Settled', statusColor: 'text-green-600' },
-                    { icon: 'wifi',                 label: 'Internet',            amt: '$25', status: '✓ Settled', statusColor: 'text-green-600' },
-                    { icon: 'local_grocery_store',  label: 'Household supplies',  amt: '$18', status: '⏳ 1 pending', statusColor: 'text-amber-500' },
-                  ].map(({ icon, label, amt, status, statusColor }) => (
-                    <div key={icon} className="flex items-center justify-between py-2.5 border-b border-out-var/40 last:border-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-sec-con rounded-full flex items-center justify-center">
-                          <span className="material-symbols-outlined text-clay text-sm">{icon}</span>
+                  {/* Roommate avatar row */}
+                  <div className="flex items-center gap-2 mt-4">
+                    <div className="flex -space-x-2">
+                      {['A','J','M','S'].map((initial, i) => (
+                        <div key={i} className="w-7 h-7 rounded-full border-2 border-white/40 flex items-center justify-center text-[10px] font-head font-black text-white"
+                          style={{ background: ['#8b6355','#a07060','#7a5548','#c49080'][i] }}>
+                          {initial}
                         </div>
-                        <span className="text-sm font-body text-stone">{label}</span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-white/70 font-body">4 housemates synced</p>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {/* Rent progress bar */}
+                  <div className="bg-surf-lo rounded-2xl p-4 mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-clay text-base">home</span>
+                        <span className="text-sm font-head font-bold text-clay-dark">Rent</span>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-head font-bold text-stone">{amt} <span className="text-xs font-normal text-muted">each</span></p>
-                        <p className={`text-[10px] font-body ${statusColor}`}>{status}</p>
+                      <span className="text-sm font-head font-black text-clay-dark">$780 <span className="text-xs font-normal text-muted">/ person</span></span>
+                    </div>
+                    <div className="flex gap-1.5">{[0,1,2,3].map(i => <div key={i} className="flex-1 h-2 rounded-full bg-clay" />)}</div>
+                    <p className="text-[10px] text-muted font-body mt-1.5">4 of 4 paid · $3,120 deposited to landlord</p>
+                  </div>
+
+                  {/* Expense rows */}
+                  <div className="space-y-1 mb-5">
+                    {[
+                      { icon: 'bolt',                label: 'Electricity',        amt: '$38', status: '✓ Settled', statusColor: 'text-green-600', bg: 'bg-amber-50' },
+                      { icon: 'wifi',                label: 'Internet',           amt: '$25', status: '✓ Settled', statusColor: 'text-green-600', bg: 'bg-sky-50' },
+                      { icon: 'local_grocery_store', label: 'Household supplies', amt: '$18', status: '⏳ 1 pending', statusColor: 'text-amber-500', bg: 'bg-green-50' },
+                    ].map(({ icon, label, amt, status, statusColor, bg }) => (
+                      <div key={icon} className="flex items-center justify-between py-2.5 border-b border-out-var/30 last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center`}>
+                            <span className="material-symbols-outlined text-clay text-sm">{icon}</span>
+                          </div>
+                          <span className="text-sm font-body text-stone">{label}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-head font-bold text-stone">{amt} <span className="text-xs font-normal text-muted">each</span></p>
+                          <p className={`text-[10px] font-body ${statusColor}`}>{status}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Total footer */}
+                  <div className="bg-clay-dark rounded-2xl p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-white/60 text-[10px] font-body uppercase tracking-wider">Total this month</p>
+                      <p className="font-head font-black text-white text-2xl mt-0.5">$861 <span className="text-sm font-normal opacity-50">/ person</span></p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white/50 text-[10px] font-body mb-1">Powered by</p>
+                      <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2.5 py-1">
+                        <span className="material-symbols-outlined text-white text-sm">bolt</span>
+                        <span className="text-white text-xs font-head font-bold">Stripe</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <div className="bg-clay-dark rounded-2xl p-4 flex justify-between items-center">
-                  <p className="text-white/70 text-xs font-body">Total this month</p>
-                  <p className="font-head font-black text-white text-xl">$861 <span className="text-sm font-normal opacity-60">/ person</span></p>
+                  </div>
                 </div>
               </div>
             </div>
