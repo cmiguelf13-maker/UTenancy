@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { Message, Profile } from '@/lib/types'
+
 const ArrowLeftIcon = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
@@ -13,6 +14,13 @@ const ArrowLeftIcon = ({ className }: { className?: string }) => (
 
 interface MessageWithSender extends Message {
   sender: Profile
+}
+
+interface ListingInfo {
+  id: string
+  type: string
+  status: string
+  landlord_id: string
 }
 
 const getTimeAgo = (dateString: string): string => {
@@ -40,6 +48,14 @@ const InitialsCircle = ({ firstName, lastName }: { firstName: string; lastName: 
   )
 }
 
+const APPROVAL_MSG =
+  '\u2713 You\u2019ve been approved as a roommate for this listing!\n\n' +
+  'You\u2019ve both been added to the household on UTenancy \u2014 here\u2019s how to get started:\n\n' +
+  '\u2022 Open the menu and go to My Household to see all members\n' +
+  '\u2022 In the Expenses tab, add shared bills (rent, utilities, internet) \u2014 splits are calculated automatically\n' +
+  '\u2022 Everyone can view balances and mark payments as settled anytime\n\n' +
+  'Welcome home \ud83c\udfe0'
+
 export default function ConversationPage() {
   const router = useRouter()
   const params = useParams()
@@ -54,6 +70,9 @@ export default function ConversationPage() {
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const [canReply, setCanReply] = useState(true)
+  const [listing, setListing] = useState<ListingInfo | null>(null)
+  const [approving, setApproving] = useState(false)
+  const [approveError, setApproveError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -78,7 +97,6 @@ export default function ConversationPage() {
   // Load conversation data
   useEffect(() => {
     const fetchData = async () => {
-      // Get session
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -88,7 +106,7 @@ export default function ConversationPage() {
         return
       }
 
-      // Get current user profile
+      // Current user profile
       const { data: userData } = await supabase
         .from('profiles')
         .select('*')
@@ -97,7 +115,7 @@ export default function ConversationPage() {
 
       setCurrentUser(userData as Profile)
 
-      // Get participants — use explicit FK hint since user_id has two FKs
+      // Participants
       const { data: participantData } = await supabase
         .from('conversation_participants')
         .select('user_id, profile:profiles!conversation_participants_user_profile_fkey(*)')
@@ -109,7 +127,23 @@ export default function ConversationPage() {
         setOtherParticipant(other.profile as Profile)
       }
 
-      // Get messages
+      // Listing linked to this conversation
+      const { data: convRow } = await supabase
+        .from('conversations')
+        .select('listing_id')
+        .eq('id', conversationId)
+        .single()
+
+      if (convRow?.listing_id) {
+        const { data: listingRow } = await supabase
+          .from('listings')
+          .select('id, type, status, landlord_id')
+          .eq('id', convRow.listing_id)
+          .single()
+        if (listingRow) setListing(listingRow as ListingInfo)
+      }
+
+      // Messages
       const { data: msgs } = await supabase
         .from('messages')
         .select('*, sender:profiles!messages_sender_profile_fkey(*)')
@@ -118,7 +152,7 @@ export default function ConversationPage() {
 
       setMessages(msgs || [])
 
-      // Mark messages as read
+      // Mark read
       await supabase
         .from('messages')
         .update({ read_at: new Date().toISOString() })
@@ -126,7 +160,7 @@ export default function ConversationPage() {
         .neq('sender_id', session.user.id)
         .is('read_at', null)
 
-      // Landlords can only reply — not initiate. If there are no prior student messages, block input.
+      // Landlords can only reply — not initiate
       if (userData?.role === 'landlord') {
         const hasStudentMessage = msgs?.some((m: any) => m.sender_id !== session.user.id)
         if (!hasStudentMessage) setCanReply(false)
@@ -138,10 +172,7 @@ export default function ConversationPage() {
     fetchData()
   }, [conversationId, router, supabase])
 
-  // Subscribe to real-time messages — fetch full row + sender profile on INSERT.
-  // Note: We intentionally omit a server-side filter here. With RLS enabled,
-  // Supabase realtime will only deliver rows the authenticated user can SELECT.
-  // We then filter client-side by conversation_id for safety.
+  // Real-time subscription
   useEffect(() => {
     if (!conversationId) return
 
@@ -150,29 +181,19 @@ export default function ConversationPage() {
       .channel(`conv:${conversationId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         async (payload) => {
           const row = payload.new as any
-          // Client-side filter: only handle messages for this conversation
           if (row.conversation_id !== conversationId) return
-
-          const newId = row.id
-          // payload.new has no sender profile — fetch the complete row
           const { data: fullMsg } = await client
             .from('messages')
             .select('*, sender:profiles!messages_sender_profile_fkey(*)')
-            .eq('id', newId)
+            .eq('id', row.id)
             .single()
           if (fullMsg) {
-            // Deduplicate: skip if already added optimistically after send
             setMessages((prev) =>
-              prev.some((m) => m.id === newId) ? prev : [...prev, fullMsg as MessageWithSender]
+              prev.some((m) => m.id === row.id) ? prev : [...prev, fullMsg as MessageWithSender]
             )
-            // Once a student message arrives, landlords can reply
             setCanReply(true)
           }
         }
@@ -184,15 +205,84 @@ export default function ConversationPage() {
     }
   }, [conversationId])
 
+  // ── Approve tenant ───────────────────────────────────────────
+  async function handleApprove() {
+    if (!listing || !otherParticipant || !currentUser || approving) return
+    setApproving(true)
+    setApproveError(null)
+
+    // 1. Find or create household for this listing
+    const { data: existingHousehold } = await supabase
+      .from('households')
+      .select('id')
+      .eq('listing_id', listing.id)
+      .maybeSingle()
+
+    let householdId: string
+
+    if (existingHousehold) {
+      householdId = existingHousehold.id
+    } else {
+      const { data: newHousehold, error: hErr } = await supabase
+        .from('households')
+        .insert({
+          name: 'My Household',
+          listing_id: listing.id,
+          created_by: currentUser.id,
+        })
+        .select('id')
+        .single()
+
+      if (hErr || !newHousehold) {
+        setApproveError('Could not create household. Please try again.')
+        setApproving(false)
+        return
+      }
+      householdId = newHousehold.id
+    }
+
+    // 2. Add self as admin member
+    await supabase.from('household_members').upsert(
+      { household_id: householdId, user_id: currentUser.id, role: 'admin' },
+      { onConflict: 'household_id,user_id' }
+    )
+
+    // 3. Add approved student as member
+    await supabase.from('household_members').upsert(
+      { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
+      { onConflict: 'household_id,user_id' }
+    )
+
+    // 4. Mark listing as rented
+    await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+
+    // 5. Send approval message in conversation
+    const { data: inserted } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: currentUser.id,
+        body: APPROVAL_MSG,
+      })
+      .select('*, sender:profiles!messages_sender_profile_fkey(*)')
+      .single()
+
+    if (inserted) {
+      setMessages((prev) => [...prev, inserted as MessageWithSender])
+    }
+
+    // 6. Reflect rented status locally
+    setListing((prev) => (prev ? { ...prev, status: 'rented' } : null))
+    setApproving(false)
+  }
+
+  // ── Send message ─────────────────────────────────────────────
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!messageText.trim() || !currentUser || sending) return
-
     setSending(true)
     setSendError(null)
 
-    // INSERT and immediately SELECT the full row so it appears without waiting for realtime
     const { data: inserted, error } = await supabase
       .from('messages')
       .insert({
@@ -227,10 +317,9 @@ export default function ConversationPage() {
     )
   }
 
-  // Group messages by sender and time
+  // Group messages by sender
   const messageGroups: Array<{ sender: Profile; messages: MessageWithSender[] }> = []
   let currentGroup: { sender: Profile; messages: MessageWithSender[] } | null = null
-
   messages.forEach((msg) => {
     if (!currentGroup || currentGroup.sender.id !== msg.sender.id) {
       currentGroup = { sender: msg.sender, messages: [msg] }
@@ -240,27 +329,38 @@ export default function ConversationPage() {
     }
   })
 
+  const showApproveButton =
+    listing !== null &&
+    listing.landlord_id === currentUser?.id &&
+    listing.type === 'open' &&
+    listing.status !== 'rented'
+
+  const showApprovedBadge =
+    listing !== null &&
+    listing.landlord_id === currentUser?.id &&
+    listing.status === 'rented'
+
   return (
     <div className="flex flex-col h-[calc(100dvh-70px)] bg-surf-lo">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex-shrink-0 clay-grad px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => router.push('/messages')}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
             aria-label="Back to messages"
           >
             <ArrowLeftIcon className="w-5 h-5 text-white" />
           </button>
 
-          <div className="flex items-center gap-3 flex-grow">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {otherParticipant?.avatar_url ? (
               <Image
                 src={otherParticipant.avatar_url}
                 alt={`${otherParticipant.first_name} ${otherParticipant.last_name}`}
                 width={36}
                 height={36}
-                className="w-9 h-9 rounded-full object-cover border-2 border-white/30"
+                className="w-9 h-9 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
               />
             ) : (
               <InitialsCircle
@@ -270,12 +370,12 @@ export default function ConversationPage() {
             )}
 
             <div className="flex-1 min-w-0">
-              <h2 className="font-head font-bold text-white text-sm leading-tight">
+              <h2 className="font-head font-bold text-white text-sm leading-tight truncate">
                 {otherParticipant?.first_name} {otherParticipant?.last_name}
               </h2>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-300 flex-shrink-0" />
-                <p className="text-xs text-white/70 font-body">
+                <p className="text-xs text-white/70 font-body truncate">
                   {otherParticipant?.role === 'landlord'
                     ? 'Property Owner'
                     : otherParticipant?.university
@@ -286,8 +386,28 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          {/* View profile — students only */}
-          {otherParticipant && otherParticipant.role !== 'landlord' && (
+          {/* Approve button — shown to listing poster for open listings not yet rented */}
+          {showApproveButton && (
+            <button
+              onClick={handleApprove}
+              disabled={approving}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-base leading-none">how_to_reg</span>
+              {approving ? 'Approving…' : 'Approve'}
+            </button>
+          )}
+
+          {/* Approved badge — listing already rented */}
+          {showApprovedBadge && (
+            <div className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-green-300 px-1">
+              <span className="material-symbols-outlined text-base leading-none">verified</span>
+              Approved
+            </div>
+          )}
+
+          {/* View profile — other user is a student */}
+          {otherParticipant && otherParticipant.role !== 'landlord' && !showApproveButton && !showApprovedBadge && (
             <a
               href={`/profile/${otherParticipant.id}`}
               className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
@@ -298,9 +418,16 @@ export default function ConversationPage() {
             </a>
           )}
         </div>
+
+        {/* Approve error */}
+        {approveError && (
+          <div className="max-w-2xl mx-auto mt-2">
+            <p className="text-xs text-red-200 text-center font-body">{approveError}</p>
+          </div>
+        )}
       </div>
 
-      {/* Messages list */}
+      {/* ── Messages list ── */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-surf-lo">
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.length === 0 ? (
@@ -316,7 +443,6 @@ export default function ConversationPage() {
               return (
                 <div key={groupIdx} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
                   <div className={`flex gap-2 max-w-xs ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                    {/* Avatar (only for other user's first message in group) */}
                     {!isCurrentUser && groupIdx === 0 && (
                       <div className="flex-shrink-0 w-8 h-8">
                         {group.sender.avatar_url ? (
@@ -328,15 +454,16 @@ export default function ConversationPage() {
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <InitialsCircle firstName={group.sender.first_name ?? ''} lastName={group.sender.last_name ?? ''} />
+                          <InitialsCircle
+                            firstName={group.sender.first_name ?? ''}
+                            lastName={group.sender.last_name ?? ''}
+                          />
                         )}
                       </div>
                     )}
                     {!isCurrentUser && groupIdx > 0 && <div className="w-8 h-8 flex-shrink-0"></div>}
 
-                    {/* Messages */}
                     <div className={`flex flex-col gap-1 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-                      {/* Sender name (only for other user's first message) */}
                       {!isCurrentUser && groupIdx === 0 && (
                         <span className="text-xs text-muted px-3 pt-1">
                           {group.sender.first_name} {group.sender.last_name}
@@ -352,7 +479,7 @@ export default function ConversationPage() {
                                 : 'bg-white text-clay-dark border border-out-var rounded-bl-none'
                             }`}
                           >
-                            <p className="break-words text-sm">{msg.body}</p>
+                            <p className="break-words text-sm whitespace-pre-line">{msg.body}</p>
                           </div>
                           <span className={`text-xs text-muted mt-1 block ${isCurrentUser ? 'text-right' : ''}`}>
                             {getTimeAgo(msg.created_at)}
@@ -369,7 +496,7 @@ export default function ConversationPage() {
         </div>
       </div>
 
-      {/* Message input */}
+      {/* ── Message input ── */}
       {canReply ? (
         <div className="flex-shrink-0 bg-white border-t border-out-var px-4 py-3.5">
           <div className="max-w-2xl mx-auto">
