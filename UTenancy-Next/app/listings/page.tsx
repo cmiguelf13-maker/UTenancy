@@ -15,7 +15,7 @@ function ListingsContent() {
 
   /* ── filter state ── */
   const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
-  const [typeFilter, setTypeFilter] = useState<'all' | ListingType>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | ListingType>(() => (searchParams.get('type') as ListingType) ?? 'all')
   const [priceMax, setPriceMax] = useState(3000)
   const [bedsFilter, setBedsFilter] = useState('Any')
   const [distanceFilter, setDistanceFilter] = useState('Any')
@@ -136,7 +136,7 @@ function ListingsContent() {
   return (
     <div className="min-h-screen bg-surf-lo">
       {/* ── Page header ── */}
-      <div className="bg-white border-b border-out-var/40 sticky top-[64px] z-30">
+      <div className="bg-white border-b border-out-var sticky top-[64px] z-30">
         <div className="max-w-7xl mx-auto px-6 md:px-10 py-4 flex flex-col gap-4">
           {/* Top row: breadcrumb + title + toggle filters */}
           <div className="flex items-center justify-between gap-4">
@@ -173,7 +173,7 @@ function ListingsContent() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or neighbourhood…"
-                className="w-full pl-10 pr-4 py-2.5 bg-linen border border-out-var/40 rounded-full text-sm font-body text-clay-dark placeholder:text-outline focus:outline-none focus:ring-2 ring-clay/20 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-linen border border-out-var rounded-full text-sm font-body text-clay-dark placeholder:text-outline focus:outline-none focus:ring-2 ring-clay/20 transition-all"
               />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-clay-dark transition-colors">
@@ -184,13 +184,13 @@ function ListingsContent() {
 
             {/* Type tabs */}
             <div className="flex gap-2 flex-shrink-0">
-              {(['all', 'open', 'group'] as const).map((f) => (
+              {(['all', 'open'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setTypeFilter(f)}
                   className={`toggle-btn text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var bg-linen transition-all ${typeFilter === f ? 'active' : ''}`}
                 >
-                  {f === 'all' ? 'All' : f === 'open' ? 'Open Room' : 'Group Formation'}
+                  {f === 'all' ? 'All' : 'Open Room'}
                 </button>
               ))}
             </div>
@@ -198,7 +198,7 @@ function ListingsContent() {
 
           {/* Expandable sub-filters */}
           {showFilters && (
-            <div className="flex flex-wrap gap-5 items-center pt-1 pb-1 border-t border-out-var/30">
+            <div className="flex flex-wrap gap-5 items-center pt-1 pb-1 border-t border-out-var/60">
               {/* Price max */}
               <div className="flex items-center gap-3 flex-1 min-w-52">
                 <label className="text-xs font-head font-bold text-muted uppercase tracking-widest whitespace-nowrap">Price max</label>
@@ -220,7 +220,7 @@ function ListingsContent() {
                 <select
                   value={distanceFilter}
                   onChange={(e) => setDistanceFilter(e.target.value)}
-                  className="text-xs font-head font-bold bg-linen border border-out-var/40 rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
+                  className="text-xs font-head font-bold bg-linen border border-out-var rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
                 >
                   {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
                 </select>
@@ -232,7 +232,7 @@ function ListingsContent() {
                 <select
                   value={bedsFilter}
                   onChange={(e) => setBedsFilter(e.target.value)}
-                  className="text-xs font-head font-bold bg-linen border border-out-var/40 rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
+                  className="text-xs font-head font-bold bg-linen border border-out-var rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
                 >
                   {['Any', '1 Bed', '2 Beds', '3+ Beds'].map((o) => <option key={o}>{o}</option>)}
                 </select>
@@ -245,7 +245,7 @@ function ListingsContent() {
                   type="date"
                   value={moveInDate}
                   onChange={(e) => setMoveInDate(e.target.value)}
-                  className="text-xs font-head font-bold bg-linen border border-out-var/40 rounded-full px-3 py-2 text-clay-dark outline-none"
+                  className="text-xs font-head font-bold bg-linen border border-out-var rounded-full px-3 py-2 text-clay-dark outline-none"
                 />
               </div>
 
@@ -255,7 +255,7 @@ function ListingsContent() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="text-xs font-head font-bold bg-linen border border-out-var/40 rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
+                  className="text-xs font-head font-bold bg-linen border border-out-var rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
                 >
                   <option value="newest">Newest first</option>
                   <option value="price-asc">Price: low → high</option>
@@ -326,7 +326,7 @@ function ListingsContent() {
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-white rounded-3xl overflow-hidden border border-out-var/40 animate-pulse">
+              <div key={i} className="bg-white rounded-3xl overflow-hidden border border-out-var animate-pulse">
                 <div className="h-52 bg-linen" />
                 <div className="p-5 space-y-3">
                   <div className="h-4 bg-linen rounded-full w-3/4" />
@@ -360,7 +360,7 @@ function ListingsContent() {
 
         {/* Bottom CTA */}
         {!loading && (
-          <div className="mt-16 text-center bg-white rounded-3xl border border-out-var/40 py-12 px-6">
+          <div className="mt-16 text-center bg-white rounded-3xl border border-out-var py-12 px-6">
             <span className="material-symbols-outlined text-clay text-4xl mb-3 block">home_work</span>
             <p className="font-head font-bold text-clay-dark text-lg mb-2">Don&apos;t see the perfect place?</p>
             <p className="font-body text-muted text-sm mb-6 max-w-sm mx-auto">More listings are added every week as we expand to new universities. Join the waitlist to be first to know.</p>
