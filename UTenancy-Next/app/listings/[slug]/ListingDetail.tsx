@@ -137,7 +137,7 @@ function LandlordCard({
   return (
     <div className="reveal mb-8">
       <h2 className="font-head text-xl font-bold text-clay-dark mb-4">About the Landlord</h2>
-      <div className="bg-surf-lo rounded-2xl border border-out-var/30 p-5">
+      <div className="bg-surf-lo rounded-2xl border border-out-var p-5">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-14 h-14 clay-grad rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
             <span className="text-white font-head font-black text-base">{initials}</span>
@@ -198,7 +198,7 @@ function SimilarListingCard({ listing }: { listing: SimilarListing }) {
 
   return (
     <a href={href} className="group block flex-shrink-0 w-72 lg:w-auto">
-      <div className="bg-white rounded-2xl border border-out-var/40 overflow-hidden hover:shadow-lg hover:border-clay/20 transition-all duration-300">
+      <div className="bg-white rounded-2xl border border-out-var overflow-hidden hover:shadow-lg hover:border-clay/20 transition-all duration-300">
         <div className="relative h-44 overflow-hidden bg-linen">
           {listing.img ? (
             <img
@@ -999,10 +999,10 @@ export default function ListingDetail({
   return (
     <>
       {/* Breadcrumb */}
-      <div className="bg-linen/50 border-b border-out-var/20 py-2.5 px-6 md:px-10">
+      <div className="bg-linen/50 border-b border-out-var/60 py-2.5 px-6 md:px-10">
         <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs font-head font-semibold text-muted">
-          <Link href="/#listings" className="hover:text-clay transition-colors flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">arrow_back</span> Find Housing
+          <Link href="/listings" className="hover:text-clay transition-colors flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">arrow_back</span> Browse Listings
           </Link>
           <span className="text-out-var">›</span>
           <span>{listing.location}</span>
@@ -1011,20 +1011,32 @@ export default function ListingDetail({
         </div>
       </div>
 
+      {/* Sample listing banner */}
+      {!isDbListing && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 md:px-10 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <span className="material-symbols-outlined text-amber-600 text-base flex-shrink-0">info</span>
+            <p className="text-xs font-head font-bold text-amber-800">
+              Sample listing — this is a demo property used to showcase the platform. Real listings from verified landlords are coming soon.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Gallery */}
       <section className="max-w-7xl mx-auto px-6 md:px-10 mt-6 relative">
         {/* Gallery action buttons */}
         <div className="absolute top-4 right-10 md:right-16 z-10 flex items-center gap-2">
           <button
             onClick={handleShare}
-            className="bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var/40 flex items-center gap-2 hover:bg-cream transition-all"
+            className="bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var flex items-center gap-2 hover:bg-cream transition-all"
           >
             <span className="material-symbols-outlined text-sm">{copyDone ? 'check' : 'ios_share'}</span>
             {copyDone ? 'Copied!' : 'Share'}
           </button>
           <button
             onClick={() => setLightboxIndex(0)}
-            className="bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var/40 flex items-center gap-2 hover:bg-cream transition-all"
+            className="bg-white text-clay-dark font-head font-bold text-xs px-4 py-2.5 rounded-full shadow-xl border border-out-var flex items-center gap-2 hover:bg-cream transition-all"
           >
             <span className="material-symbols-outlined text-sm">photo_camera</span>
             All Photos ({PHOTOS.length})
