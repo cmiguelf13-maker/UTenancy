@@ -954,54 +954,13 @@ export default function ListingDetail({
           .single()
         if (myProfile) setInterestedStudents((prev) => [...prev, myProfile])
 
-        // For open-room listings: open a message thread with the tenant
+        // For open-room listings: open a message thread with the tenant via RPC
         if (listing.type === 'open') {
-          const { data: listingData } = await supabase
-            .from('listings')
-            .select('landlord_id')
-            .eq('id', String(listing.id))
-            .single()
-
-          if (listingData?.landlord_id) {
-            const tenantId = listingData.landlord_id
-            const { data: myConvs } = await supabase
-              .from('conversation_participants')
-              .select('conversation_id')
-              .eq('user_id', user.id)
-            const myIds = (myConvs ?? []).map((r: any) => r.conversation_id)
-
-            let convId: string | null = null
-
-            if (myIds.length > 0) {
-              const { data: shared } = await supabase
-                .from('conversation_participants')
-                .select('conversation_id')
-                .eq('user_id', tenantId)
-                .in('conversation_id', myIds)
-              if (shared && shared.length > 0) {
-                convId = shared[0].conversation_id
-              }
-            }
-
-            if (!convId) {
-              const { data: conv } = await supabase
-                .from('conversations')
-                .insert({ listing_id: String(listing.id) })
-                .select()
-                .single()
-              if (conv) {
-                await supabase.from('conversation_participants').insert([
-                  { conversation_id: conv.id, user_id: user.id },
-                  { conversation_id: conv.id, user_id: tenantId },
-                ])
-                convId = conv.id
-              }
-            }
-
-            if (convId) {
-              window.location.href = `/messages/${convId}`
-              return
-            }
+          const tenantId = (listing as any).landlord_id as string | undefined
+          // Don't open a self-conversation if the current user IS the listing owner
+          if (tenantId && tenantId !== user.id) {
+            await openConversation(supabase, String(listing.id), user.id, tenantId)
+            return
           }
         }
       }
@@ -1359,7 +1318,7 @@ export default function ListingDetail({
               {/* CTAs */}
               <div className="p-6 space-y-3">
                 {listing.type === 'open' ? (
-                  user && user.user_metadata?.role !== 'landlord' ? (
+                  user && user.user_metadata?.role !== 'landlord' && user.id !== (listing as any).landlord_id ? (
                     <MessageTenantButton listingId={String(listing.id)} userId={user.id} />
                   ) : !user ? (
                     <a href="/auth" className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2">
