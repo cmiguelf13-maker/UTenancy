@@ -35,8 +35,8 @@ export default function ContactPage() {
           </h1>
           <p className="font-body text-white/60 text-lg leading-relaxed">
             Questions, feedback, partnership inquiries — we read everything. You can also reach us directly at{' '}
-            <a href="mailto:hello@utenancy.com" className="text-sand hover:text-sand/80 transition-colors">
-              hello@utenancy.com
+            <a href="mailto:cfernandez@utenancy.com" className="text-sand hover:text-sand/80 transition-colors">
+              cfernandez@utenancy.com
             </a>.
           </p>
         </div>
@@ -125,7 +125,7 @@ export default function ContactPage() {
         {/* Alternative contact channels */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { icon: 'mail', label: 'General', value: 'hello@utenancy.com', href: 'mailto:hello@utenancy.com' },
+            { icon: 'mail', label: 'General', value: 'cfernandez@utenancy.com', href: 'mailto:cfernandez@utenancy.com' },
             { icon: 'support_agent', label: 'Support', value: 'support@utenancy.com', href: 'mailto:support@utenancy.com' },
           ].map(({ icon, label, value, href }) => (
             <a
