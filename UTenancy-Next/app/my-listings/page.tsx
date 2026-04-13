@@ -478,8 +478,9 @@ export default function MyListingsPage() {
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
               <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icon.png" alt="UTenancy" className="h-10 w-auto flex-shrink-0" />
+                <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                  <span className="material-symbols-outlined fill text-white text-xl">edit_home</span>
+                </div>
                 <div className="min-w-0">
                   <h2 className="font-display text-2xl font-light text-clay-dark leading-tight">Edit <em>listing</em></h2>
                   <p className="text-xs font-body text-muted truncate">{editListing.address}</p>
