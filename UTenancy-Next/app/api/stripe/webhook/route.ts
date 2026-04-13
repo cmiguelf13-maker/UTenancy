@@ -130,6 +130,24 @@ export async function POST(req: NextRequest) {
       break
     }
 
+    // ── Stripe Connect: sync landlord payout account status ──
+    case 'account.updated': {
+      const account = event.data.object as Stripe.Account
+      const userId  = account.metadata?.supabase_user_id
+
+      if (userId) {
+        await admin.from('profiles').update({
+          stripe_connect_enabled: account.charges_enabled && account.payouts_enabled,
+        }).eq('id', userId)
+      } else {
+        // fall back to matching by connect ID
+        await admin.from('profiles').update({
+          stripe_connect_enabled: account.charges_enabled && account.payouts_enabled,
+        }).eq('stripe_connect_id', account.id)
+      }
+      break
+    }
+
     default:
       // Unhandled event type — return 200 so Stripe doesn't retry
       break
