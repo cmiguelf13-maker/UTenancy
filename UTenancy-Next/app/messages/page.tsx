@@ -6,6 +6,13 @@ import { createClient } from '@/lib/supabase'
 import { Message, Profile } from '@/lib/types'
 
 /* ── Types ──────────────────────────────────────────────────── */
+interface ListingInfo {
+  id: string
+  type: string
+  status: string
+  landlord_id: string
+}
+
 interface ConversationWithData {
   id: string
   listing_id: string | null
@@ -88,6 +95,9 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const [canReply, setCanReply] = useState(true)
+  const [listing, setListing] = useState<ListingInfo | null>(null)
+  const [approving, setApproving] = useState(false)
+  const [approveError, setApproveError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -131,6 +141,8 @@ export default function MessagesPage() {
     setMessages([])
     setOtherParticipant(null)
     setSendError(null)
+    setListing(null)
+    setApproveError(null)
 
     const load = async () => {
       /* participants */
@@ -143,6 +155,22 @@ export default function MessagesPage() {
         (p) => p.user_id !== currentUser.id
       )
       if (other?.profile) setOtherParticipant(other.profile as Profile)
+
+      /* listing linked to this conversation */
+      const { data: convRow } = await supabase
+        .from('conversations')
+        .select('listing_id')
+        .eq('id', selectedConvId)
+        .single()
+
+      if (convRow?.listing_id) {
+        const { data: listingRow } = await supabase
+          .from('listings')
+          .select('id, type, status, landlord_id')
+          .eq('id', convRow.listing_id)
+          .single()
+        if (listingRow) setListing(listingRow as ListingInfo)
+      }
 
       /* messages */
       const { data: msgs } = await supabase
@@ -267,6 +295,93 @@ export default function MessagesPage() {
       .slice()
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     return getTimeAgo(sorted[sorted.length - 1].created_at)
+  }
+
+  /* ── Approve tenant ────────────────────────────────────────── */
+  const APPROVAL_MSG =
+    '\u2713 You\u2019ve been approved as a roommate for this listing!\n\n' +
+    'You\u2019ve both been added to the household on UTenancy \u2014 here\u2019s how to get started:\n\n' +
+    '\u2022 Open the menu and go to My Household to see all members\n' +
+    '\u2022 In the Expenses tab, add shared bills (rent, utilities, internet) \u2014 splits are calculated automatically\n' +
+    '\u2022 Everyone can view balances and mark payments as settled anytime\n\n' +
+    'Welcome home \ud83c\udfe0'
+
+  async function handleApprove() {
+    if (!listing || !otherParticipant || !currentUser || !selectedConvId || approving) return
+    setApproving(true)
+    setApproveError(null)
+
+    /* 1. Find or create household */
+    const { data: existingHousehold } = await supabase
+      .from('households')
+      .select('id')
+      .eq('listing_id', listing.id)
+      .maybeSingle()
+
+    let householdId: string
+
+    if (existingHousehold) {
+      householdId = existingHousehold.id
+    } else {
+      const { data: newHousehold, error: hErr } = await supabase
+        .from('households')
+        .insert({ name: 'My Household', listing_id: listing.id, created_by: currentUser.id })
+        .select('id')
+        .single()
+      if (hErr || !newHousehold) {
+        setApproveError('Could not create household. Please try again.')
+        setApproving(false)
+        return
+      }
+      householdId = newHousehold.id
+    }
+
+    /* 2 & 3. Add both users to household */
+    await supabase.from('household_members').upsert(
+      { household_id: householdId, user_id: currentUser.id, role: 'admin' },
+      { onConflict: 'household_id,user_id' }
+    )
+    await supabase.from('household_members').upsert(
+      { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
+      { onConflict: 'household_id,user_id' }
+    )
+
+    /* 4. Mark listing as rented */
+    await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+
+    /* 5. Send approval message */
+    const { data: inserted } = await supabase
+      .from('messages')
+      .insert({ conversation_id: selectedConvId, sender_id: currentUser.id, body: APPROVAL_MSG })
+      .select('*, sender:profiles!messages_sender_profile_fkey(*)')
+      .single()
+
+    if (inserted) {
+      setMessages((prev) => [...prev, inserted as MessageWithSender])
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === selectedConvId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  {
+                    id: (inserted as any).id,
+                    body: (inserted as any).body,
+                    created_at: (inserted as any).created_at,
+                    sender_id: currentUser.id,
+                    read_at: null,
+                  },
+                ],
+              }
+            : c
+        )
+      )
+    }
+
+    /* 6. Reflect rented status locally */
+    setListing((prev) => (prev ? { ...prev, status: 'rented' } : null))
+    setApproving(false)
   }
 
   /* ── Send message ─────────────────────────────────────────── */
@@ -480,7 +595,29 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              {otherParticipant && otherParticipant.role !== 'landlord' && (
+              {/* Approve button — listing poster, open room, not yet rented */}
+              {listing && listing.landlord_id === currentUser?.id && listing.type === 'open' && listing.status !== 'rented' && (
+                <button
+                  onClick={handleApprove}
+                  disabled={approving}
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-base leading-none">how_to_reg</span>
+                  {approving ? 'Approving…' : 'Approve'}
+                </button>
+              )}
+
+              {/* Approved badge — already rented */}
+              {listing && listing.landlord_id === currentUser?.id && listing.status === 'rented' && (
+                <div className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-green-300 px-1">
+                  <span className="material-symbols-outlined text-base leading-none">verified</span>
+                  Approved
+                </div>
+              )}
+
+              {/* Profile link — only when approve button isn't shown */}
+              {otherParticipant && otherParticipant.role !== 'landlord' &&
+                !(listing && listing.landlord_id === currentUser?.id && listing.type === 'open') && (
                 <a
                   href={`/profile/${otherParticipant.id}`}
                   className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
@@ -488,6 +625,11 @@ export default function MessagesPage() {
                   <span className="material-symbols-outlined text-base">person</span>
                   Profile
                 </a>
+              )}
+
+              {/* Approve error */}
+              {approveError && (
+                <p className="text-xs text-red-200 font-body">{approveError}</p>
               )}
             </div>
 
@@ -550,7 +692,7 @@ export default function MessagesPage() {
                                         ${group.messages.length === 1 ? 'rounded-2xl rounded-bl-md' : ''}`
                                     }`}
                                 >
-                                  {msg.body}
+                                  <span className="whitespace-pre-line">{msg.body}</span>
                                 </div>
                                 {isLast && (
                                   <span
