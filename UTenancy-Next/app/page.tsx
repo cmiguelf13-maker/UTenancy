@@ -27,7 +27,7 @@ export default function HomePage() {
   const router = useRouter()
 
   const [listingFilter, setListingFilter] = useState<'all' | ListingType>('all')
-  const [waitlistType, setWaitlistType] = useState<'student' | 'landlord'>('student')
+  const [waitlistType] = useState<'student' | 'landlord'>('landlord')
   const [waitlistEmail, setWaitlistEmail] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
   const [priceMax, setPriceMax] = useState(3000)
@@ -573,31 +573,22 @@ export default function HomePage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-10 blur-[160px] pointer-events-none" style={{ background: '#9c7060' }} />
         <div className="max-w-2xl mx-auto text-center relative z-10 reveal">
           <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-8">
-            <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Early Access
+            <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Landlords — Coming Soon
           </span>
-          <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Ready to find<br /><em className="text-sand">your perfect room?</em></h2>
-          <p className="font-body text-white/60 text-lg mb-10">Create your free student account and start browsing open rooms, messaging potential roommates, and finding your next place — all in one app. Landlords, sign up to be first notified when we launch.</p>
-
-          {/* Type toggle */}
-          <div className="flex justify-center gap-2 mb-8">
-            {(['student', 'landlord'] as const).map((t) => (
-              <button key={t} onClick={() => setWaitlistType(t)} className={`toggle-btn text-xs font-head font-bold px-5 py-2 rounded-full border border-white/20 text-white ${waitlistType === t ? 'active' : ''}`}>
-                {t === 'student' ? '🎓 I\'m a Student' : '🏠 Landlord (Coming Soon)'}
-              </button>
-            ))}
-          </div>
+          <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Be first to<br /><em className="text-sand">list your property.</em></h2>
+          <p className="font-body text-white/60 text-lg mb-10">We&apos;re building a full landlord portal — verified student applicants, automated rent collection, and a complete dashboard. Join the waitlist and we&apos;ll notify you the moment it goes live.</p>
 
           {waitlistStatus === 'success' ? (
             <div className="max-w-md mx-auto py-4 px-6 rounded-2xl border border-white/20 bg-white/5 text-white text-center">
               <p className="font-head font-bold text-sand text-lg mb-1">You&apos;re on the list! 🎉</p>
-              <p className="font-body text-white/60 text-sm">We&apos;ll reach out when we launch. Stay tuned.</p>
+              <p className="font-body text-white/60 text-sm">We&apos;ll reach out as soon as the landlord portal launches.</p>
             </div>
           ) : (
             <>
               <div className="flex gap-3 max-w-md mx-auto">
                 <input
                   className="waitlist-input flex-1"
-                  placeholder={waitlistType === 'student' ? 'your@edu.edu' : 'your@email.com'}
+                  placeholder="your@email.com"
                   type="email"
                   value={waitlistEmail}
                   onChange={(e) => { setWaitlistEmail(e.target.value); setWaitlistStatus('idle') }}
@@ -609,7 +600,7 @@ export default function HomePage() {
                   disabled={waitlistStatus === 'loading'}
                   className="clay-grad text-white px-6 py-3.5 rounded-full font-head font-bold text-sm whitespace-nowrap hover:opacity-90 transition-all shadow-xl shadow-clay/30 disabled:opacity-60"
                 >
-                  {waitlistStatus === 'loading' ? 'Joining…' : 'Join Waitlist'}
+                  {waitlistStatus === 'loading' ? 'Joining…' : 'Notify Me'}
                 </button>
               </div>
               {waitlistStatus === 'duplicate' && (
@@ -623,6 +614,14 @@ export default function HomePage() {
               )}
             </>
           )}
+
+          {/* Student nudge */}
+          <p className="mt-10 text-white/30 text-xs font-body">
+            Are you a student?{' '}
+            <Link href="/auth" className="text-sand/70 hover:text-sand underline underline-offset-2 transition-colors font-semibold">
+              Sign up free — it&apos;s already live for you.
+            </Link>
+          </p>
         </div>
       </section>
 
