@@ -49,7 +49,7 @@ export default function PostRoomPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
-      if (!u || u.user_metadata?.role === 'landlord') {
+      if (!u) {
         router.push('/')
         return
       }
