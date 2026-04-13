@@ -215,7 +215,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Info card below avatar */}
-          <div className="bg-white rounded-b-3xl px-6 pt-2 pb-6 border border-out-var/20 border-t-0">
+          <div className="bg-white rounded-b-3xl px-6 pt-2 pb-6 border border-out-var border-t-0 shadow-md">
             <h1 className="font-display text-2xl text-clay-dark font-light text-center mb-1">
               {getFullName(profile)}
             </h1>
@@ -253,7 +253,7 @@ export default function ProfilePage() {
           const v = profile[key]
           return typeof v === 'boolean' ? true : !!v
         }) && (
-          <div className="bg-white rounded-3xl border border-out-var/20 p-6 mb-8">
+          <div className="bg-white rounded-3xl border border-out-var p-6 mb-8 shadow-md">
             <h2 className="font-head text-lg font-bold text-clay-dark mb-4">Lifestyle Preferences</h2>
             <div className="flex flex-wrap gap-2">
               {LIFESTYLE_CATEGORIES.map((cat) => {
@@ -273,7 +273,7 @@ export default function ProfilePage() {
                 return (
                   <div
                     key={cat.key}
-                    className="px-3.5 py-2 bg-surf-lo rounded-full border border-out-var/30 flex items-center gap-2"
+                    className="px-3.5 py-2 bg-linen rounded-full border border-out-var flex items-center gap-2"
                   >
                     <span className="text-xs font-head font-bold text-clay-dark">{cat.label}:</span>
                     <span className="text-xs font-body text-muted">{value}</span>
@@ -306,13 +306,13 @@ export default function ProfilePage() {
         )}
 
         {isOwnProfile && (
-          <div className="bg-surf-lo rounded-3xl border border-out-var/20 p-6 text-center">
+          <div className="bg-linen rounded-3xl border border-out-var p-6 text-center shadow-sm">
             <p className="text-sm font-body text-muted">This is your profile</p>
           </div>
         )}
 
         {currentUser && currentUser.user_metadata?.role === 'landlord' && !isOwnProfile && (
-          <div className="bg-surf-lo rounded-3xl border border-out-var/20 p-6 text-center">
+          <div className="bg-linen rounded-3xl border border-out-var p-6 text-center shadow-sm">
             <p className="text-sm font-body text-muted">Landlords can't message students directly</p>
           </div>
         )}
