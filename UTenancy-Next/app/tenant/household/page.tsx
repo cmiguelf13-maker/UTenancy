@@ -275,6 +275,8 @@ export default function HouseholdPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [activeTab, setActiveTab]   = useState<'expenses' | 'members' | 'reminders'>('expenses')
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [connectingBank, setConnectingBank] = useState(false)
+  const [paymentMsg, setPaymentMsg] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -338,7 +340,34 @@ export default function HouseholdPage() {
       setLoading(false)
     }
     load()
+
+    // Handle return from Stripe Checkout (bank account setup)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'saved') {
+      setPaymentMsg('✓ Payment method saved! Your bank account is connected.')
+      window.history.replaceState({}, '', '/tenant/household')
+    } else if (params.get('payment') === 'cancelled') {
+      setPaymentMsg('Setup cancelled — you can connect your bank account any time.')
+      window.history.replaceState({}, '', '/tenant/household')
+    }
   }, [router])
+
+  async function handleConnectBank() {
+    setConnectingBank(true)
+    try {
+      const res  = await fetch('/api/stripe/student/setup-payment', { method: 'POST' })
+      const json = await res.json()
+      if (json.url) {
+        window.location.href = json.url
+      } else {
+        setPaymentMsg(json.error ?? 'Something went wrong. Please try again.')
+        setConnectingBank(false)
+      }
+    } catch {
+      setPaymentMsg('Network error — please try again.')
+      setConnectingBank(false)
+    }
+  }
 
   async function handleSettle(id: string) {
     const { data } = await supabase
@@ -430,6 +459,21 @@ export default function HouseholdPage() {
           </button>
         </div>
       </div>
+
+      {/* Payment message banner */}
+      {paymentMsg && (
+        <div className="max-w-3xl mx-auto px-4 pt-4">
+          <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border text-sm font-body
+            ${paymentMsg.startsWith('✓')
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <span>{paymentMsg}</span>
+            <button onClick={() => setPaymentMsg(null)} className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+              <span className="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
 
@@ -654,8 +698,12 @@ export default function HouseholdPage() {
                 Connect your bank account to pay your share directly through UTenancy.
                 Landlords receive direct deposits automatically — no Venmo math, no awkward reminders.
               </p>
-              <button className="mt-4 w-full clay-grad text-white font-head font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm">
-                Connect Bank Account
+              <button
+                onClick={handleConnectBank}
+                disabled={connectingBank}
+                className="mt-4 w-full clay-grad text-white font-head font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                <span className="material-symbols-outlined text-base">account_balance</span>
+                {connectingBank ? 'Redirecting to Stripe…' : 'Connect Bank Account'}
               </button>
             </div>
           </div>
