@@ -1082,9 +1082,10 @@ export default function LandlordPortal() {
       <header className="sticky top-0 z-50 glass border-b border-out-var/20">
         <div className="max-w-7xl mx-auto px-6 md:px-10 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/">
+            <Link href="/" className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="UTenancy" className="h-8 w-auto" />
+              <img src="/icon.png" alt="UTenancy" className="h-8 w-auto" />
+              <span className="font-head font-bold text-espresso text-base tracking-tight">UTenancy</span>
             </Link>
             <span className="text-[10px] font-head font-bold text-terra uppercase tracking-widest leading-none">Landlord Portal</span>
           </div>
@@ -1526,9 +1527,8 @@ export default function LandlordPortal() {
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
               <div className="text-center mb-6">
-                <div className="w-14 h-14 clay-grad rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-clay/25">
-                  <span className="material-symbols-outlined fill text-white text-2xl">edit_home</span>
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icon.png" alt="UTenancy" className="h-12 w-auto mx-auto mb-3" />
                 <h2 className="font-display text-3xl font-light text-clay-dark mb-1">Edit <em>listing</em></h2>
                 <p className="text-xs font-body text-muted truncate px-4">{editListing.address}</p>
               </div>
