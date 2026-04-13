@@ -241,7 +241,7 @@ export default function ConversationPage() {
   })
 
   return (
-    <div className="flex flex-col h-dvh bg-surf-lo">
+    <div className="flex flex-col h-[calc(100dvh-70px)] bg-surf-lo">
       {/* Header */}
       <div className="flex-shrink-0 clay-grad px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
