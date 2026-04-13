@@ -8,7 +8,7 @@ import type { Listing } from '@/lib/listings'
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [saved, setSaved] = useState(false)
   return (
-    <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var/40'}`}>
+    <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var'}`}>
       {listing.featured && (
         <div className="absolute top-0 left-0 right-0 z-10 flex justify-center">
           <span className="clay-grad text-white text-[10px] font-head font-bold uppercase tracking-widest px-4 py-1.5 rounded-b-full shadow-md">⭐ Featured Listing</span>
@@ -60,7 +60,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </div>
           </div>
           {(listing.featured || listing.distanceMi) && (
-            <div className="mt-4 pt-4 border-t border-out-var/30 flex items-center justify-between">
+            <div className="mt-4 pt-4 border-t border-out-var/60 flex items-center justify-between">
               <span className="font-head font-bold text-clay text-xs flex items-center gap-1">
                 View Listing <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </span>
@@ -70,7 +70,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </div>
           )}
           {!listing.featured && !listing.distanceMi && listing.availableDate && (
-            <div className="mt-4 pt-4 border-t border-out-var/30 flex items-center justify-between">
+            <div className="mt-4 pt-4 border-t border-out-var/60 flex items-center justify-between">
               <span className="font-head font-bold text-clay text-xs flex items-center gap-1">
                 View Listing <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </span>
