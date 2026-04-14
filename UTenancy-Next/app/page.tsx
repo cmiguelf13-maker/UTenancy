@@ -95,7 +95,7 @@ export default function HomePage() {
   const filtered = allListings.filter((l) => {
     // Type filter
     if (listingFilter !== 'all' && l.type !== listingFilter) return false
-    // Price filter (priceMax >= 10000 means no cap)
+    // Price filter — priceMax >= 10000 means Unlimited (no cap)
     if (priceMax < 10000 && l.price > priceMax) return false
     // Beds filter
     if (bedsFilter === '1 Bed' && l.beds !== 1) return false
@@ -119,7 +119,7 @@ export default function HomePage() {
 
   function clearFilters() {
     setListingFilter('all')
-    setPriceMax(3000)
+    setPriceMax(10000)
     setBedsFilter('Any')
     setDistanceFilter('Any')
     setMoveInDate('')

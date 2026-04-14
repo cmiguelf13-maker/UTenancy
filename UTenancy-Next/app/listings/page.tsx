@@ -98,6 +98,7 @@ function ListingsContent() {
         if (!searchableText.includes(q)) return false
       }
       if (typeFilter !== 'all' && l.type !== typeFilter) return false
+      // priceMax >= 10000 means Unlimited (no cap)
       if (priceMax < 10000 && l.price > priceMax) return false
       if (bedsFilter === '1 Bed' && l.beds !== 1) return false
       if (bedsFilter === '2 Beds' && l.beds !== 2) return false

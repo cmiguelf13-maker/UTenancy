@@ -365,16 +365,12 @@ export default function ConversationPage() {
     }
   })
 
+  // Approve button shows whenever the current user is the listing poster for an open-room listing.
+  // No status check — allows approving additional people for remaining rooms.
   const showApproveButton =
     listing !== null &&
     listing.landlord_id === currentUser?.id &&
-    listing.type === 'open-room' &&
-    listing.status !== 'filled'
-
-  const showApprovedBadge =
-    listing !== null &&
-    listing.landlord_id === currentUser?.id &&
-    listing.status === 'filled'
+    listing.type === 'open-room'
 
   return (
     <div className="flex flex-col h-[calc(100dvh-70px)] bg-surf-lo">
@@ -445,13 +441,6 @@ export default function ConversationPage() {
             </button>
           )}
 
-          {/* Approved badge — listing already filled */}
-          {showApprovedBadge && (
-            <div className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-green-300 px-1">
-              <span className="material-symbols-outlined text-base leading-none">verified</span>
-              Approved
-            </div>
-          )}
         </div>
 
         {/* Approve error */}
