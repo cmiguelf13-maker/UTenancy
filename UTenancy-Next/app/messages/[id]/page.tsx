@@ -423,8 +423,8 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          {/* View profile — always shown when other user is a student (icon-only to keep approve button visible) */}
-          {otherParticipant && otherParticipant.role !== 'landlord' && (
+          {/* View profile — always shown when other participant exists */}
+          {otherParticipant && (
             <a
               href={`/profile/${otherParticipant.id}`}
               title="View profile"
