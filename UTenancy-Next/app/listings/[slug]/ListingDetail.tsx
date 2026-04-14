@@ -794,8 +794,6 @@ export default function ListingDetail({
   const [interestedStudents, setInterestedStudents] = useState<Array<{ id: string; first_name: string; last_name: string; university: string | null }>>([])
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
   const [messagingStudent, setMessagingStudent] = useState<string | null>(null)
-  const [approvingStudent, setApprovingStudent] = useState<string | null>(null)
-  const [approvedStudents, setApprovedStudents] = useState<Record<string, boolean>>({})
   const [hasApplied, setHasApplied] = useState(false)
   const [copyDone, setCopyDone] = useState(false)
   const [actionToast, setActionToast] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -921,19 +919,6 @@ export default function ListingDetail({
         if (apps && apps.length > 0) setHasApplied(true)
       }
 
-      // For open-room listings: load which students the tenant has already approved
-      if (u && listing.type === 'open' && u.id === (listing as any).landlord_id) {
-        const { data: approvedApps } = await supabase
-          .from('rent_applications')
-          .select('user_id')
-          .eq('listing_id', String(listing.id))
-          .eq('status', 'approved')
-        if (approvedApps) {
-          const approved: Record<string, boolean> = {}
-          approvedApps.forEach((app: any) => { approved[app.user_id] = true })
-          setApprovedStudents(approved)
-        }
-      }
     }
     loadSession()
   }, [])
@@ -999,29 +984,6 @@ export default function ListingDetail({
       console.error('[interested panel] message student error:', err)
     } finally {
       setMessagingStudent(null)
-    }
-  }
-
-  async function handleApproveStudent(studentId: string) {
-    if (!user) return
-    setApprovingStudent(studentId)
-    const supabase = createClient()
-    try {
-      const { error } = await supabase.from('rent_applications').upsert({
-        listing_id: String(listing.id),
-        user_id: studentId,
-        application_type: 'direct',
-        status: 'approved',
-      }, { onConflict: 'listing_id,user_id' })
-      if (error) {
-        setActionToast({ msg: 'Could not approve student: ' + error.message, ok: false })
-      } else {
-        setApprovedStudents((prev) => ({ ...prev, [studentId]: true }))
-        setActionToast({ msg: 'Student approved and added to your household!', ok: true })
-        setTimeout(() => setActionToast(null), 3000)
-      }
-    } finally {
-      setApprovingStudent(null)
     }
   }
 
@@ -1659,7 +1621,7 @@ export default function ListingDetail({
                       <span className="flex-shrink-0 text-[10px] font-body text-muted italic">You</span>
                     )}
                     {/* Student → message another student to form a group */}
-                    {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && user.id !== (listing as any).landlord_id && (
+                    {user && user.user_metadata?.role !== 'landlord' && user.id !== s.id && (
                       <button
                         onClick={() => handleMessageStudent(s.id)}
                         disabled={messagingStudent === s.id}
@@ -1670,7 +1632,7 @@ export default function ListingDetail({
                       </button>
                     )}
                     {/* Landlord → view student profile */}
-                    {user && user.user_metadata?.role === 'landlord' && user.id !== s.id && listing.type !== 'open' && (
+                    {user && user.user_metadata?.role === 'landlord' && user.id !== s.id && (
                       <a
                         href={`/profile/${s.id}`}
                         className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2"
@@ -1678,33 +1640,17 @@ export default function ListingDetail({
                         View
                       </a>
                     )}
-                    {/* Open-room tenant (listing owner) → approve a prospective roommate */}
-                    {user && user.id === (listing as any).landlord_id && listing.type === 'open' && user.id !== s.id && (
-                      <button
-                        onClick={() => handleApproveStudent(s.id)}
-                        disabled={approvingStudent === s.id || approvedStudents[s.id]}
-                        className={`flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold transition-colors disabled:opacity-60 ${approvedStudents[s.id] ? 'text-green-600' : 'text-clay hover:text-clay-dark'}`}
-                      >
-                        <span className="material-symbols-outlined text-sm">{approvedStudents[s.id] ? 'check_circle' : 'how_to_reg'}</span>
-                        {approvingStudent === s.id ? '…' : approvedStudents[s.id] ? 'Approved' : 'Approve'}
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
             )}
 
-            {user && user.id === (listing as any).landlord_id && listing.type === 'open' && (
-              <p className="text-[11px] font-body text-muted text-center mt-4">
-                Approve a student to add them to your household.
-              </p>
-            )}
-            {user && user.user_metadata?.role !== 'landlord' && user.id !== (listing as any).landlord_id && (
+            {user && user.user_metadata?.role !== 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
                 Message other interested students to form a group together.
               </p>
             )}
-            {user && user.user_metadata?.role === 'landlord' && listing.type !== 'open' && (
+            {user && user.user_metadata?.role === 'landlord' && (
               <p className="text-[11px] font-body text-muted text-center mt-4">
                 Click &quot;View&quot; to see a student&apos;s profile.
               </p>
