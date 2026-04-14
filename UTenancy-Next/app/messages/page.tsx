@@ -304,35 +304,29 @@ export default function MessagesPage() {
   }
 
   /* ── Approve tenant ────────────────────────────────────────── */
-  const APPROVAL_MSG =
-    '\u2713 You\u2019ve been approved as a roommate for this listing!\n\n' +
-    'You\u2019ve both been added to the household on UTenancy \u2014 here\u2019s how to get started:\n\n' +
-    '\u2022 Open the menu and go to My Household to see all members\n' +
-    '\u2022 In the Expenses tab, add shared bills (rent, utilities, internet) \u2014 splits are calculated automatically\n' +
-    '\u2022 Everyone can view balances and mark payments as settled anytime\n\n' +
-    'Welcome home \ud83c\udfe0'
-
   async function handleApprove() {
     if (!listing || !otherParticipant || !currentUser || !selectedConvId || approving) return
     setApproving(true)
     setApproveError(null)
 
-    /* 1. Find or create household */
+    /* 1. Find or create household for this listing */
+    let householdId: string
+    let inviteCode: string
+
     const { data: existingHousehold } = await supabase
       .from('households')
-      .select('id')
+      .select('id, invite_code')
       .eq('listing_id', listing.id)
       .maybeSingle()
 
-    let householdId: string
-
     if (existingHousehold) {
       householdId = existingHousehold.id
+      inviteCode = existingHousehold.invite_code
     } else {
       const { data: newHousehold, error: hErr } = await supabase
         .from('households')
         .insert({ name: 'My Household', listing_id: listing.id, created_by: currentUser.id })
-        .select('id')
+        .select('id, invite_code')
         .single()
       if (hErr || !newHousehold) {
         setApproveError('Could not create household. Please try again.')
@@ -340,40 +334,34 @@ export default function MessagesPage() {
         return
       }
       householdId = newHousehold.id
+      inviteCode = newHousehold.invite_code
     }
 
-    /* 2 & 3. Add both users to household */
-    const { error: err1 } = await supabase.from('household_members').upsert(
+    /* 2. Add current user to household as admin (ignore if already a member) */
+    await supabase.from('household_members').upsert(
       { household_id: householdId, user_id: currentUser.id, role: 'admin' },
-      { onConflict: 'household_id,user_id' }
+      { onConflict: 'household_id,user_id', ignoreDuplicates: true }
     )
-    if (err1) {
-      setApproveError('Could not add you to household. Please try again.')
-      setApproving(false)
-      return
-    }
-    const { error: err2 } = await supabase.from('household_members').upsert(
-      { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
-      { onConflict: 'household_id,user_id' }
-    )
-    if (err2) {
-      setApproveError('Could not add tenant to household. Please try again.')
-      setApproving(false)
-      return
-    }
 
-    /* 4. Mark listing as rented */
-    const { error: rentErr } = await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
+    /* 3. Mark listing as filled */
+    const { error: rentErr } = await supabase.from('listings').update({ status: 'filled' }).eq('id', listing.id)
     if (rentErr) {
-      setApproveError('Could not mark listing as rented. Please try again.')
+      setApproveError('Could not mark listing as filled. Please try again.')
       setApproving(false)
       return
     }
 
-    /* 5. Send approval message */
+    /* 4. Send invite link message so tenant can join the household themselves */
+    const inviteLink = `${window.location.origin}/tenant/household/join?code=${inviteCode}`
+    const inviteMsg =
+      '\u2713 You\u2019ve been approved as a roommate for this listing!\n\n' +
+      'Click the link below to join the household on UTenancy \u2014 you\u2019ll be able to track shared expenses, view balances, and settle payments with your new roommates:\n\n' +
+      inviteLink + '\n\n' +
+      'Welcome home \ud83c\udfe0'
+
     const { data: inserted, error: msgErr } = await supabase
       .from('messages')
-      .insert({ conversation_id: selectedConvId, sender_id: currentUser.id, body: APPROVAL_MSG })
+      .insert({ conversation_id: selectedConvId, sender_id: currentUser.id, body: inviteMsg })
       .select('*, sender:profiles!messages_sender_profile_fkey(*)')
       .single()
 
@@ -406,8 +394,8 @@ export default function MessagesPage() {
       )
     }
 
-    /* 6. Reflect rented status locally */
-    setListing((prev) => (prev ? { ...prev, status: 'rented' } : null))
+    /* 5. Reflect filled status locally */
+    setListing((prev) => (prev ? { ...prev, status: 'filled' } : null))
     setApproving(false)
   }
 
@@ -622,8 +610,8 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              {/* Approve button — listing poster, open room, not yet rented */}
-              {listing && listing.landlord_id === currentUser?.id && listing.type === 'open-room' && listing.status !== 'rented' && (
+              {/* Approve button — listing poster, open room, not yet filled */}
+              {listing && listing.landlord_id === currentUser?.id && listing.type === 'open-room' && listing.status !== 'filled' && (
                 <button
                   onClick={handleApprove}
                   disabled={approving}
@@ -634,8 +622,8 @@ export default function MessagesPage() {
                 </button>
               )}
 
-              {/* Approved badge — already rented */}
-              {listing && listing.landlord_id === currentUser?.id && listing.status === 'rented' && (
+              {/* Approved badge — already filled */}
+              {listing && listing.landlord_id === currentUser?.id && listing.status === 'filled' && (
                 <div className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-green-300 px-1">
                   <span className="material-symbols-outlined text-base leading-none">verified</span>
                   Approved
