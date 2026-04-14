@@ -24,6 +24,7 @@ interface ListingInfo {
   city: string
   rent: number
   images: string[]
+  bedrooms: number
 }
 
 const getTimeAgo = (dateString: string): string => {
@@ -140,7 +141,7 @@ export default function ConversationPage() {
       if (convRow?.listing_id) {
         const { data: listingRow, error: listingErr } = await supabase
           .from('listings')
-          .select('id, type, status, landlord_id, address, city, rent, images')
+          .select('id, type, status, landlord_id, address, city, rent, images, bedrooms')
           .eq('id', convRow.listing_id)
           .single()
         if (listingRow) setListing(listingRow as ListingInfo)
@@ -268,12 +269,23 @@ export default function ConversationPage() {
       return
     }
 
-    // 4. Mark listing as rented
-    const { error: rentErr } = await supabase.from('listings').update({ status: 'rented' }).eq('id', listing.id)
-    if (rentErr) {
-      setApproveError('Could not mark listing as rented. Please try again.')
-      setApproving(false)
-      return
+    // 4. Check if all rooms are now filled and update listing status accordingly
+    const { count: studentMemberCount } = await supabase
+      .from('household_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('household_id', householdId)
+      .eq('role', 'member')
+
+    // Only mark as filled when the number of approved students equals the number of open rooms.
+    // The admin/creator occupies their existing room and doesn't count against available spots.
+    const allRoomsFilled = (studentMemberCount ?? 0) >= (listing.bedrooms ?? 1)
+    if (allRoomsFilled) {
+      const { error: rentErr } = await supabase.from('listings').update({ status: 'filled' }).eq('id', listing.id)
+      if (rentErr) {
+        console.error('Could not mark listing as filled:', rentErr.message)
+      } else {
+        setListing((prev) => (prev ? { ...prev, status: 'filled' } : null))
+      }
     }
 
     // 5. Send approval message in conversation
@@ -297,8 +309,6 @@ export default function ConversationPage() {
       setMessages((prev) => [...prev, inserted as MessageWithSender])
     }
 
-    // 6. Reflect rented status locally
-    setListing((prev) => (prev ? { ...prev, status: 'rented' } : null))
     setApproving(false)
   }
 
@@ -359,12 +369,12 @@ export default function ConversationPage() {
     listing !== null &&
     listing.landlord_id === currentUser?.id &&
     listing.type === 'open-room' &&
-    listing.status !== 'rented'
+    listing.status !== 'filled'
 
   const showApprovedBadge =
     listing !== null &&
     listing.landlord_id === currentUser?.id &&
-    listing.status === 'rented'
+    listing.status === 'filled'
 
   return (
     <div className="flex flex-col h-[calc(100dvh-70px)] bg-surf-lo">
@@ -411,7 +421,19 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          {/* Approve button — shown to listing poster for open listings not yet rented */}
+          {/* View profile — always shown when other user is a student */}
+          {otherParticipant && otherParticipant.role !== 'landlord' && (
+            <a
+              href={`/profile/${otherParticipant.id}`}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+              aria-label="View profile"
+            >
+              <span className="material-symbols-outlined text-base">person</span>
+              Profile
+            </a>
+          )}
+
+          {/* Approve button — shown to listing poster for open listings not yet filled */}
           {showApproveButton && (
             <button
               onClick={handleApprove}
@@ -423,24 +445,12 @@ export default function ConversationPage() {
             </button>
           )}
 
-          {/* Approved badge — listing already rented */}
+          {/* Approved badge — listing already filled */}
           {showApprovedBadge && (
             <div className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-green-300 px-1">
               <span className="material-symbols-outlined text-base leading-none">verified</span>
               Approved
             </div>
-          )}
-
-          {/* View profile — other user is a student */}
-          {otherParticipant && otherParticipant.role !== 'landlord' && !showApproveButton && !showApprovedBadge && (
-            <a
-              href={`/profile/${otherParticipant.id}`}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
-              aria-label="View profile"
-            >
-              <span className="material-symbols-outlined text-base">person</span>
-              Profile
-            </a>
           )}
         </div>
 
