@@ -264,7 +264,7 @@ export default function HomePage() {
           <div className="text-center mb-20 reveal">
             <span className="feature-pill mb-4 inline-flex">For Students</span>
             <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-4">Finding a place<br /><em>shouldn&apos;t be this hard.</em></h2>
-            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy makes it three steps. No Craigslist strangers. No expired listings. No guessing who you&apos;ll live with.</p>
+            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy makes it three steps. No sketchy strangers. No expired listings. No guessing who you&apos;ll live with.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
