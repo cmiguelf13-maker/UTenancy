@@ -310,7 +310,7 @@ export default function PostRoomPage() {
                 </select>
               </div>
               <div className="min-w-0 col-span-2 sm:col-span-1">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent/mo *</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo · per person *</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
                   <input type="number" min="1" value={rent} onChange={e => setRent(e.target.value)} placeholder="1200" required
