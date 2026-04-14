@@ -377,16 +377,48 @@ export default function HouseholdPage() {
   async function handleRenameHousehold() {
     if (!renamingId || !renameVal.trim() || renameSaving) return
     setRenameSaving(true)
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('households')
       .update({ name: renameVal.trim() })
       .eq('id', renamingId)
-    if (!error) {
-      setHouseholds(prev => prev.map(h => h.id === renamingId ? { ...h, name: renameVal.trim() } : h))
+      .select()
+    // Treat 0 rows updated (silent RLS block) as a failure
+    if (error || !updated || updated.length === 0) {
+      alert('Could not rename — make sure you are the household creator and try again.')
+      setRenameSaving(false)
+      return // keep input open
     }
+    setHouseholds(prev => prev.map(h => h.id === renamingId ? { ...h, name: renameVal.trim() } : h))
     setRenamingId(null)
     setRenameVal('')
     setRenameSaving(false)
+  }
+
+  async function handleTransferAdmin(toUserId: string) {
+    if (!household || !isAdmin || !userId) return
+    const toMember = members.find(m => m.user_id === toUserId)
+    const toName = toMember?.profile
+      ? `${toMember.profile.first_name ?? ''} ${toMember.profile.last_name ?? ''}`.trim() || 'this member'
+      : 'this member'
+    if (!confirm(`Transfer admin to ${toName}? You will become a regular member.`)) return
+
+    // Promote the target user to admin
+    await supabase.from('household_members')
+      .update({ role: 'admin' })
+      .eq('household_id', household.id)
+      .eq('user_id', toUserId)
+
+    // Demote yourself to member
+    await supabase.from('household_members')
+      .update({ role: 'member' })
+      .eq('household_id', household.id)
+      .eq('user_id', userId)
+
+    setMembers(prev => prev.map(m => {
+      if (m.user_id === toUserId) return { ...m, role: 'admin' }
+      if (m.user_id === userId) return { ...m, role: 'member' }
+      return m
+    }))
   }
 
   async function handleConnectBank() {
@@ -736,9 +768,23 @@ export default function HouseholdPage() {
                           <p className="font-head font-semibold text-espresso text-sm">{name}</p>
                           <p className="text-xs font-body text-muted capitalize">{m.role}</p>
                         </div>
-                        {m.user_id === userId && (
-                          <span className="text-xs font-head font-bold text-clay-dark bg-linen px-2.5 py-1 rounded-full">You</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {m.user_id === userId && (
+                            <span className="text-xs font-head font-bold text-clay-dark bg-linen px-2.5 py-1 rounded-full">You</span>
+                          )}
+                          {/* Transfer admin — visible to admins for other non-admin members */}
+                          {isAdmin && m.user_id !== userId && m.role !== 'admin' && (
+                            <button
+                              onClick={() => handleTransferAdmin(m.user_id)}
+                              title="Transfer admin to this member"
+                              className="text-xs font-head font-semibold text-muted hover:text-clay border border-out-var hover:border-clay/50 px-2.5 py-1 rounded-full transition-all">
+                              Make Admin
+                            </button>
+                          )}
+                          {m.role === 'admin' && m.user_id !== userId && (
+                            <span className="text-xs font-head font-bold text-clay bg-linen px-2.5 py-1 rounded-full">Admin</span>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
