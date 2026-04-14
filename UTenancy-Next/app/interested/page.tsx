@@ -38,18 +38,22 @@ export default function InterestedPage() {
       if (!u) { router.push('/auth'); return }
       setUser(u)
 
-      // Fetch listings the student has expressed interest in
+      // Step 1: get listing IDs the student expressed interest in
       supabase
         .from('listing_interests')
-        .select('listing:listings(*)')
+        .select('listing_id')
         .eq('student_id', u.id)
-        .then(({ data: interests }) => {
-          if (interests) {
-            const mapped = interests
-              .map((r: any) => r.listing)
-              .filter(Boolean) as Listing[]
-            setListings(mapped)
-          }
+        .then(async ({ data: interests }) => {
+          if (!interests || interests.length === 0) { setLoading(false); return }
+          const ids = interests.map((r: any) => r.listing_id as string).filter(Boolean)
+
+          // Step 2: fetch those listings directly (bypasses join-level RLS, uses per-row policy)
+          const { data: listingRows } = await supabase
+            .from('listings')
+            .select('*')
+            .in('id', ids)
+
+          if (listingRows) setListings(listingRows as Listing[])
           setLoading(false)
         })
     })

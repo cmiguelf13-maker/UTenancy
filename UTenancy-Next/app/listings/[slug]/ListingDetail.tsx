@@ -975,7 +975,11 @@ export default function ListingDetail({
   }, [])
 
   async function handleInterest() {
-    if (!user || !isDbListing) return
+    if (!user) { window.location.href = '/auth'; return }
+    if (!isDbListing) {
+      setActionToast({ msg: 'Sample listings can\'t be saved — browse real listings to express interest.', ok: false })
+      return
+    }
     setSubmitting(true)
     const supabase = createClient()
     try {

@@ -421,15 +421,15 @@ export default function ConversationPage() {
             </div>
           </div>
 
-          {/* View profile — always shown when other user is a student */}
+          {/* View profile — always shown when other user is a student (icon-only to keep approve button visible) */}
           {otherParticipant && otherParticipant.role !== 'landlord' && (
             <a
               href={`/profile/${otherParticipant.id}`}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+              title="View profile"
               aria-label="View profile"
+              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-all"
             >
-              <span className="material-symbols-outlined text-base">person</span>
-              Profile
+              <span className="material-symbols-outlined text-lg">person</span>
             </a>
           )}
 

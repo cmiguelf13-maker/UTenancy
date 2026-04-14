@@ -11,12 +11,13 @@ const AMENITY_OPTIONS = [
   'High-speed WiFi', 'Dishwasher', 'Gym', 'Pet-friendly', 'Furnished',
 ]
 
-type ListingStatus = 'active' | 'draft' | 'rented' | 'archived'
+type ListingStatus = 'active' | 'draft' | 'filled' | 'pending'
 
 const STATUS_CONFIG: Record<ListingStatus, { label: string; dot: string; badge: string }> = {
   active:   { label: 'Active',   dot: 'bg-green-500', badge: 'bg-green-50 text-green-700 border-green-200' },
   draft:    { label: 'Draft',    dot: 'bg-stone-400', badge: 'bg-stone-100 text-stone-500 border-stone-200' },
-  rented:   { label: 'Rented',   dot: 'bg-blue-500',  badge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  filled:   { label: 'Filled',   dot: 'bg-blue-500',  badge: 'bg-blue-50 text-blue-700 border-blue-200' },
+  pending:  { label: 'Pending',  dot: 'bg-orange-500', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
   archived: { label: 'Archived', dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
 }
 
@@ -89,7 +90,7 @@ export default function MyListingsPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       const u = data.session?.user ?? null
-      if (!u || u.user_metadata?.role === 'landlord') {
+      if (!u) {
         router.push('/')
         return
       }
@@ -273,11 +274,11 @@ export default function MyListingsPage() {
     setTogglingId(id)
     const { data: updated } = await supabase
       .from('listings')
-      .update({ status: 'rented' })
+      .update({ status: 'filled' })
       .eq('id', id)
       .select()
       .single()
-    if (updated) setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'rented' as ListingStatus } : l))
+    if (updated) setListings(prev => prev.map(l => l.id === id ? { ...l, status: 'filled' as ListingStatus } : l))
     setTogglingId(null)
   }
 
@@ -328,7 +329,7 @@ export default function MyListingsPage() {
             <div className="flex gap-1 p-1 bg-white border border-out-var rounded-2xl mb-6 shadow-sm">
               {([
                 { key: 'active',   label: 'Active',   icon: 'home',        count: listings.filter(l => l.status === 'active' || l.status === 'draft').length },
-                { key: 'inactive', label: 'Inactive', icon: 'inventory_2', count: listings.filter(l => l.status === 'rented' || l.status === 'archived').length },
+                { key: 'inactive', label: 'Inactive', icon: 'inventory_2', count: listings.filter(l => l.status === 'filled' || l.status === 'archived').length },
               ] as const).map(tab => (
                 <button
                   key={tab.key}
@@ -358,7 +359,7 @@ export default function MyListingsPage() {
             const filtered = listings.filter(l =>
               activeTab === 'active'
                 ? (l.status === 'active' || l.status === 'draft')
-                : (l.status === 'rented' || l.status === 'archived')
+                : (l.status === 'filled' || l.status === 'archived')
             )
 
             if (filtered.length === 0) {
@@ -379,7 +380,7 @@ export default function MyListingsPage() {
                 <div className="text-center py-24 border border-out-var rounded-2xl bg-white">
                   <span className="material-symbols-outlined text-out-var text-6xl mb-4 block">inventory_2</span>
                   <p className="font-head font-bold text-clay-dark text-lg mb-1">No inactive listings</p>
-                  <p className="font-body text-muted text-sm">Listings you mark as rented or archived will appear here.</p>
+                  <p className="font-body text-muted text-sm">Listings you mark as filled or archived will appear here.</p>
                 </div>
               )
             }
@@ -390,7 +391,7 @@ export default function MyListingsPage() {
 
                 const status = safeStatus(listing.status)
                 const cfg    = STATUS_CONFIG[status]
-                const isClosedOut = status === 'rented' || status === 'archived'
+                const isClosedOut = status === 'filled' || status === 'archived'
                 return (
                   <div key={listing.id} className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                     <div className="flex">

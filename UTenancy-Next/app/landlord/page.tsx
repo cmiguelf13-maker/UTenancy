@@ -16,14 +16,15 @@ const AMENITIES_LIST = [
 ]
 
 /* ─── Types ─────────────────────────────────────────── */
-type ListingStatus = 'active' | 'draft' | 'rented' | 'archived'
+type ListingStatus = 'active' | 'draft' | 'filled' | 'pending'
 type FilterTab     = 'all' | ListingStatus
 type ParsedAddress = { street: string; city: string; state: string; zip: string }
 
 const STATUS_CONFIG: Record<ListingStatus, { label: string; bg: string; dot: string }> = {
   active:   { label: 'Active',   bg: 'bg-green-50 text-green-700 border border-green-200',  dot: 'bg-green-500' },
   draft:    { label: 'Draft',    bg: 'bg-stone-100 text-stone-500 border border-stone-200', dot: 'bg-stone-400' },
-  rented:   { label: 'Rented',   bg: 'bg-blue-50 text-blue-700 border border-blue-200',     dot: 'bg-blue-500'  },
+  filled:   { label: 'Filled',   bg: 'bg-blue-50 text-blue-700 border border-blue-200',     dot: 'bg-blue-500'  },
+  pending:  { label: 'Pending',  bg: 'bg-orange-50 text-orange-700 border border-orange-200', dot: 'bg-orange-500' },
   archived: { label: 'Archived', bg: 'bg-amber-50 text-amber-700 border border-amber-200',  dot: 'bg-amber-400' },
 }
 
@@ -174,7 +175,7 @@ function ListingCard({
   const typeLabel = listing.type === 'open-room' ? 'Open Room' : 'Group Formation'
   const typeBg    = listing.type === 'open-room' ? 'bg-terra/90' : 'bg-clay/90'
   const status = safeStatus(listing.status)
-  const isClosedOut = status === 'rented' || status === 'archived'
+  const isClosedOut = status === 'filled' || status === 'archived'
 
   const interestCount = Array.isArray(listing.interest_count)
     ? (listing.interest_count[0]?.count ?? 0)
@@ -801,7 +802,7 @@ export default function LandlordPortal() {
     /* ── Enforce per-plan listing limits ── */
     const LISTING_LIMITS: Record<string, number> = { starter: 3, growth: 10 }
     const tierLimit = LISTING_LIMITS[subscriptionTier]
-    const activeListings = listings.filter(l => l.status !== 'archived' && l.status !== 'rented')
+    const activeListings = listings.filter(l => l.status !== 'archived' && l.status !== 'filled')
     if (tierLimit !== undefined && activeListings.length >= tierLimit) {
       setAddStatus(
         `Your ${subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)} plan allows up to ${tierLimit} active listing${tierLimit !== 1 ? 's' : ''}. ` +
@@ -1035,7 +1036,7 @@ export default function LandlordPortal() {
   async function handleMarkRented(id: string) {
     const { data: updated } = await supabase
       .from('listings')
-      .update({ status: 'rented', updated_at: new Date().toISOString() })
+      .update({ status: 'filled', updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single()
@@ -1093,7 +1094,7 @@ export default function LandlordPortal() {
   const totalApplicants = listings.reduce((s, l) =>
     s + (Array.isArray(l.interest_count) ? (l.interest_count[0]?.count ?? 0) : (l.interest_count ?? 0)), 0)
   const activeCount   = listings.filter((l) => l.status === 'active').length
-  const rentedCount   = listings.filter((l) => l.status === 'rented').length
+  const filledCount   = listings.filter((l) => l.status === 'filled').length
   const archivedCount = listings.filter((l) => l.status === 'archived').length
 
   /* ─── RENDER ─── */
@@ -1106,8 +1107,7 @@ export default function LandlordPortal() {
           <div className="flex items-center gap-2.5">
             <Link href="/" className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.png" alt="UTenancy" className="h-8 w-auto" />
-              <span className="hidden sm:inline font-head font-bold text-espresso text-base tracking-tight">UTenancy</span>
+              <img src="/logo.png" alt="UTenancy" className="h-8 w-auto" />
             </Link>
             <div className="flex flex-col leading-none">
               <span className="text-[10px] font-head font-bold text-terra uppercase tracking-widest leading-none">Landlord Portal</span>
@@ -1116,7 +1116,7 @@ export default function LandlordPortal() {
 
           {/* Filter tabs (desktop) */}
           <div className="hidden md:flex items-center gap-1 bg-surf-hi border border-out-var rounded-full px-1 py-1">
-            {(['all', 'active', 'draft', 'rented', 'archived'] as FilterTab[]).map((f) => (
+            {(['all', 'active', 'draft', 'filled', 'pending', 'archived'] as FilterTab[]).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize transition-all
                   ${filter === f ? 'clay-grad text-white shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
@@ -1258,13 +1258,13 @@ export default function LandlordPortal() {
 
         {/* Stats */}
         {(() => {
-          const monthlyRevenue = listings.filter(l => l.status === 'rented').reduce((s, l) => s + l.rent, 0)
+          const monthlyRevenue = listings.filter(l => l.status === 'filled').reduce((s, l) => s + l.rent, 0)
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <StatCard icon="home_work"    value={listings.length} label="Properties"  sub="In your portfolio"   />
               <StatCard icon="check_circle" value={activeCount}     label="Active Listings" sub="Visible to students" />
               <StatCard icon="group"        value={totalApplicants} label="Applicants"  sub="Across all listings" />
-              <StatCard icon="payments"     value={`$${monthlyRevenue.toLocaleString()}`} label="Monthly Revenue" sub="From rented units" />
+              <StatCard icon="payments"     value={`$${monthlyRevenue.toLocaleString()}`} label="Monthly Revenue" sub="From filled units" />
             </div>
           )
         })()}
@@ -1307,11 +1307,12 @@ export default function LandlordPortal() {
                     const badgeMap: Record<string, string> = {
                       active:   'bg-green-50 text-green-700 border border-green-200',
                       draft:    'bg-stone-100 text-stone-500 border border-stone-200',
-                      rented:   'bg-blue-50 text-blue-700 border border-blue-200',
+                      filled:   'bg-blue-50 text-blue-700 border border-blue-200',
+                      pending:  'bg-orange-50 text-orange-700 border border-orange-200',
                       archived: 'bg-amber-50 text-amber-700 border border-amber-200',
                     }
                     const badge   = badgeMap[l.status] ?? badgeMap.draft
-                    const bedAvail = l.status === 'active' ? l.bedrooms : (l.status === 'rented' ? 0 : l.bedrooms)
+                    const bedAvail = l.status === 'active' ? l.bedrooms : (l.status === 'filled' ? 0 : l.bedrooms)
                     return (
                       <tr key={l.id} className="hover:bg-surf-lo transition-colors cursor-pointer"
                           onClick={() => { setFilter('all'); }}>
@@ -1351,7 +1352,7 @@ export default function LandlordPortal() {
           </h2>
           {/* Mobile filter */}
           <div className="flex md:hidden gap-1 overflow-x-auto">
-            {(['all', 'active', 'draft', 'rented', 'archived'] as FilterTab[]).map((f) => (
+            {(['all', 'active', 'draft', 'filled', 'pending', 'archived'] as FilterTab[]).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize whitespace-nowrap transition-all
                   ${filter === f ? 'clay-grad text-white' : 'bg-white border border-out-var text-muted'}`}>

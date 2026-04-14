@@ -102,9 +102,12 @@ function ListingsContent() {
       if (bedsFilter === '1 Bed' && l.beds !== 1) return false
       if (bedsFilter === '2 Beds' && l.beds !== 2) return false
       if (bedsFilter === '3+ Beds' && l.beds < 3) return false
-      if (distanceFilter !== 'Any' && l.distanceMi != null) {
-        if (distanceFilter === 'Walking' && l.distanceMi > 0.5) return false
-        if (distanceFilter === 'Bus / Bike' && l.distanceMi > 3) return false
+      if (distanceFilter !== 'Any') {
+        if (l.distanceMi != null) {
+          if (distanceFilter === 'Walking' && l.distanceMi > 0.5) return false
+          if (distanceFilter === 'Bus / Bike' && l.distanceMi > 3) return false
+          if (distanceFilter === 'Drive' && l.distanceMi <= 3) return false
+        }
       }
       if (moveInDate && l.availableDate) {
         if (new Date(l.availableDate) > new Date(moveInDate)) return false
@@ -233,7 +236,7 @@ function ListingsContent() {
                   onChange={(e) => setDistanceFilter(e.target.value)}
                   className="text-xs font-head font-bold bg-linen border border-out-var rounded-full px-3 py-2 text-clay-dark outline-none cursor-pointer"
                 >
-                  {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
+                  {['Any', 'Walking', 'Bus / Bike', 'Drive'].map((o) => <option key={o}>{o}</option>)}
                 </select>
               </div>
 
