@@ -69,6 +69,8 @@ export default function ConversationPage() {
   const [messages, setMessages] = useState<MessageWithSender[]>([])
   const [otherParticipant, setOtherParticipant] = useState<Profile | null>(null)
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
+  // Session UID is set immediately (no async profile fetch needed) — used for approve button
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [messageText, setMessageText] = useState('')
   const [sending, setSending] = useState(false)
@@ -109,6 +111,9 @@ export default function ConversationPage() {
         router.push('/auth')
         return
       }
+
+      // Set session UID immediately — no waiting for profile fetch
+      setSessionUserId(session.user.id)
 
       // Current user profile
       const { data: userData } = await supabase
@@ -366,11 +371,12 @@ export default function ConversationPage() {
   })
 
   // Approve button shows whenever the current user is the listing poster for an open-room listing.
-  // No status check — allows approving additional people for remaining rooms.
+  // Uses sessionUserId (set immediately on load) rather than currentUser.id (requires profile fetch)
+  // so the button appears as soon as the listing loads, without any race condition.
   const showApproveButton =
     listing !== null &&
-    listing.landlord_id === currentUser?.id &&
-    listing.type === 'open-room'
+    listing.type === 'open-room' &&
+    (listing.landlord_id === sessionUserId || listing.landlord_id === currentUser?.id)
 
   return (
     <div className="flex flex-col h-[calc(100dvh-70px)] bg-surf-lo">

@@ -8,7 +8,7 @@ import type { User } from '@supabase/supabase-js'
 
 const links = [
   { href: '/#how-it-works', label: 'How It Works' },
-  { href: '/#listings',      label: 'Find Housing' },
+  { href: '/listings',       label: 'Find Housing' },
   { href: '/#landlords',     label: 'For Landlords' },
   { href: '/#pricing',       label: 'Pricing' },
 ]
