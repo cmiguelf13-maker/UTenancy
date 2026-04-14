@@ -296,7 +296,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 reveal">
             <div>
-              <span className="feature-pill mb-3 inline-flex">Sample Listings</span>
+              <span className="feature-pill mb-3 inline-flex">Live Listings</span>
               <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">Newest student<br /><em>homes near you.</em></h2>
             </div>
             <div className="flex flex-wrap gap-2">
