@@ -806,19 +806,51 @@ export default function ListingDetail({
       : null
   )
 
-  // Always re-fetch landlord profile client-side so we never show stale server-cached data.
+  // Real-time profile sync:
+  // 1. Fetch listing fresh from DB (bypasses any server-side cache) to get the current landlord_id.
+  // 2. Fetch that owner's profile and update the card.
+  // 3. Subscribe to listing row changes — if landlord_id is reassigned, card updates instantly.
   useEffect(() => {
-    const landlordId = (listing as any).landlord_id as string | undefined
-    if (!landlordId) return
+    const listingId = String(listing.id)
+    if (!listingId.includes('-')) return // mock listings have numeric IDs — skip
+
     const supabase = createClient()
-    supabase
-      .from('profiles')
-      .select('id, first_name, last_name, company, bio, phone')
-      .eq('id', landlordId)
-      .single()
-      .then(({ data }) => {
-        if (data) setResolvedProfile(data as LandlordProfile)
-      })
+
+    async function fetchProfileForOwner(ownerId: string) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, company, bio, phone')
+        .eq('id', ownerId)
+        .single()
+      if (data) setResolvedProfile(data as LandlordProfile)
+    }
+
+    async function init() {
+      // Fresh listing fetch — anon key can read active listings, bypasses server cache
+      const { data: fresh } = await supabase
+        .from('listings')
+        .select('landlord_id')
+        .eq('id', listingId)
+        .single()
+      if (fresh?.landlord_id) await fetchProfileForOwner(fresh.landlord_id)
+    }
+
+    init()
+
+    // Subscribe to listing row updates for real-time landlord_id changes
+    const channel = supabase
+      .channel(`listing-owner-sync-${listingId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'listings', filter: `id=eq.${listingId}` },
+        async (payload) => {
+          const newOwnerId = (payload.new as any).landlord_id as string | undefined
+          if (newOwnerId) await fetchProfileForOwner(newOwnerId)
+        },
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing.id])
 
