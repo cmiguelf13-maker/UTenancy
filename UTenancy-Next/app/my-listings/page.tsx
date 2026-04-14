@@ -571,7 +571,7 @@ export default function MyListingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className={LABEL}>Rent/mo *</label>
+                    <label className={LABEL}>Rent / mo · per person *</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
                       <input type="number" min="1" value={editRent} onChange={e => setEditRent(e.target.value)}
