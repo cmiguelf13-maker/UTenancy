@@ -32,82 +32,120 @@ function ExpenseRow({
   onUnsettle,
   onDelete,
   isOwner,
+  userId,
+  paidByIds,
+  onMarkPaid,
+  onUnmarkPaid,
 }: {
   expense: HouseholdExpense
   onSettle: (id: string) => void
   onUnsettle: (id: string) => void
   onDelete: (id: string) => void
   isOwner: boolean
+  userId: string | null
+  paidByIds: string[]
+  onMarkPaid: (id: string) => void
+  onUnmarkPaid: (id: string) => void
 }) {
   const meta = CATEGORY_META[expense.category] ?? CATEGORY_META.other
   const settled = expense.status === 'settled'
+  const paidCount = paidByIds.length
+  const totalCount = Math.max(expense.split_count, 1)
+  const progressPct = Math.min((paidCount / totalCount) * 100, 100)
+  const iHavePaid = userId ? paidByIds.includes(userId) : false
+  const perPersonAmt = (expense.amount / totalCount).toFixed(0)
 
   return (
-    <div className={`flex items-center gap-4 py-4 px-5 border-b border-out-var last:border-0 transition-opacity ${settled ? 'opacity-60' : ''}`}>
-      {/* Icon */}
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${meta.color}`}>
-        <span className="material-symbols-outlined fill text-white text-lg">{meta.icon}</span>
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-head font-semibold text-espresso text-sm truncate">{expense.title}</p>
-          {settled && (
-            <span className="text-[10px] font-head font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full shrink-0">
-              ✓ Settled
-            </span>
-          )}
-          {!settled && (
-            <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
-              Pending
-            </span>
-          )}
-          {expense.document_url && (
-            <a
-              href={expense.document_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="View attached document"
-              className="text-[10px] font-head font-bold text-clay bg-clay/8 border border-clay/20 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity">
-              <span className="material-symbols-outlined" style={{ fontSize: 10 }}>attach_file</span>
-              Receipt
-            </a>
-          )}
+    <div className={`py-4 px-5 border-b border-out-var last:border-0 transition-opacity ${settled ? 'opacity-60' : ''}`}>
+      {/* Main row */}
+      <div className="flex items-center gap-4">
+        {/* Icon */}
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${meta.color}`}>
+          <span className="material-symbols-outlined fill text-white text-lg">{meta.icon}</span>
         </div>
-        <p className="text-xs font-body text-muted mt-0.5">
-          {perPerson(expense.amount, expense.split_count)} each · {expense.split_count} people
-          {expense.due_date && ` · Due ${new Date(expense.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-        </p>
-      </div>
 
-      {/* Amount */}
-      <div className="text-right shrink-0">
-        <p className="font-head font-bold text-espresso">${expense.amount.toFixed(0)}</p>
-        <p className="text-xs font-body text-muted">total</p>
-      </div>
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-head font-semibold text-espresso text-sm truncate">{expense.title}</p>
+            {settled ? (
+              <span className="text-[10px] font-head font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full shrink-0">✓ All Paid</span>
+            ) : paidCount > 0 ? (
+              <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">{paidCount}/{totalCount} paid</span>
+            ) : (
+              <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">Pending</span>
+            )}
+            {expense.document_url && (
+              <a href={expense.document_url} target="_blank" rel="noopener noreferrer" title="View attached document"
+                className="text-[10px] font-head font-bold text-clay bg-clay/8 border border-clay/20 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity">
+                <span className="material-symbols-outlined" style={{ fontSize: 10 }}>attach_file</span>Receipt
+              </a>
+            )}
+          </div>
+          <p className="text-xs font-body text-muted mt-0.5">
+            <strong className="font-head text-espresso">${perPersonAmt}</strong> per person · {expense.split_count} people
+            {expense.due_date && ` · Due ${new Date(expense.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+          </p>
+        </div>
 
-      {/* Actions */}
-      {isOwner && (
-        <div className="flex items-center gap-1 shrink-0">
-          {!settled ? (
-            <button onClick={() => onSettle(expense.id)}
-              title="Mark settled"
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-muted hover:text-green-600 transition-colors">
-              <span className="material-symbols-outlined text-lg">check_circle</span>
+        {/* Total amount */}
+        <div className="text-right shrink-0">
+          <p className="font-head font-bold text-espresso">${expense.amount.toFixed(0)}</p>
+          <p className="text-xs font-body text-muted">total</p>
+        </div>
+
+        {/* Owner actions (settle all / delete) */}
+        {isOwner && (
+          <div className="flex items-center gap-1 shrink-0">
+            {!settled ? (
+              <button onClick={() => onSettle(expense.id)} title="Mark all as settled"
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-muted hover:text-green-600 transition-colors">
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+              </button>
+            ) : (
+              <button onClick={() => onUnsettle(expense.id)} title="Undo — mark as pending"
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 text-green-600 hover:text-amber-600 transition-colors">
+                <span className="material-symbols-outlined text-lg">undo</span>
+              </button>
+            )}
+            <button onClick={() => onDelete(expense.id)} title="Delete"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-muted hover:text-red-600 transition-colors">
+              <span className="material-symbols-outlined text-lg">delete</span>
             </button>
-          ) : (
-            <button onClick={() => onUnsettle(expense.id)}
-              title="Undo — mark as pending"
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-amber-50 text-green-600 hover:text-amber-600 transition-colors">
-              <span className="material-symbols-outlined text-lg">undo</span>
+          </div>
+        )}
+      </div>
+
+      {/* Progress bar + individual payment toggle — hidden once fully settled */}
+      {!settled && (
+        <div className="mt-3 ml-14 space-y-2">
+          {/* Progress bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-out-var rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${progressPct}%`,
+                  background: progressPct >= 100 ? '#22c55e' : 'linear-gradient(to right, #9c7060, #6b4c3b)',
+                }}
+              />
+            </div>
+            <span className="text-[10px] font-head font-semibold text-muted shrink-0">{paidCount}/{totalCount}</span>
+          </div>
+          {/* My payment toggle */}
+          {userId && (
+            <button
+              onClick={() => iHavePaid ? onUnmarkPaid(expense.id) : onMarkPaid(expense.id)}
+              className={`flex items-center gap-1.5 text-xs font-head font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                iHavePaid
+                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                  : 'bg-white text-muted border-out-var hover:border-clay/50 hover:text-clay-dark'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">{iHavePaid ? 'check_circle' : 'radio_button_unchecked'}</span>
+              {iHavePaid ? `Your $${perPersonAmt} marked as paid` : `Mark my $${perPersonAmt} as paid`}
             </button>
           )}
-          <button onClick={() => onDelete(expense.id)}
-            title="Delete"
-            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-muted hover:text-red-600 transition-colors">
-            <span className="material-symbols-outlined text-lg">delete</span>
-          </button>
         </div>
       )}
     </div>
@@ -352,6 +390,7 @@ export default function HouseholdPage() {
   const [inviteCopied, setInviteCopied]   = useState(false)
   const [connectingBank, setConnectingBank] = useState(false)
   const [paymentMsg, setPaymentMsg]       = useState<string | null>(null)
+  const [payments, setPayments]           = useState<Record<string, string[]>>({})
   const [deletingId, setDeletingId]       = useState<string | null>(null)
   const [renamingId, setRenamingId]       = useState<string | null>(null)
   const [renameVal, setRenameVal]         = useState('')
@@ -416,7 +455,25 @@ export default function HouseholdPage() {
         .select('*')
         .eq('household_id', activeHouseholdId)
         .order('created_at', { ascending: false })
-      setExpenses((expData ?? []) as HouseholdExpense[])
+      const loadedExpenses = (expData ?? []) as HouseholdExpense[]
+      setExpenses(loadedExpenses)
+
+      // Load individual payment records for these expenses
+      const expenseIds = loadedExpenses.map(e => e.id)
+      if (expenseIds.length > 0) {
+        const { data: payData } = await supabase
+          .from('expense_payments')
+          .select('expense_id, user_id')
+          .in('expense_id', expenseIds)
+        const payMap: Record<string, string[]> = {}
+        ;(payData ?? []).forEach((p: any) => {
+          if (!payMap[p.expense_id]) payMap[p.expense_id] = []
+          payMap[p.expense_id].push(p.user_id)
+        })
+        setPayments(payMap)
+      } else {
+        setPayments({})
+      }
 
       const { data: membData } = await supabase
         .from('household_members')
@@ -532,14 +589,52 @@ export default function HouseholdPage() {
     if (data) setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: 'pending' } : e))
   }
 
+  async function handleMarkPaid(expenseId: string) {
+    if (!userId) return
+    const { error } = await supabase
+      .from('expense_payments')
+      .insert({ expense_id: expenseId, user_id: userId })
+    if (error) return
+    setPayments(prev => {
+      const current = prev[expenseId] ?? []
+      if (current.includes(userId)) return prev
+      const updated = [...current, userId]
+      const expense = expenses.find(e => e.id === expenseId)
+      // Auto-settle the expense when all splits have been paid
+      if (expense && updated.length >= Math.max(expense.split_count, 1)) {
+        supabase.from('household_expenses').update({ status: 'settled' }).eq('id', expenseId).then(() => {
+          setExpenses(ex => ex.map(e => e.id === expenseId ? { ...e, status: 'settled' } : e))
+        })
+      }
+      return { ...prev, [expenseId]: updated }
+    })
+  }
+
+  async function handleUnmarkPaid(expenseId: string) {
+    if (!userId) return
+    await supabase.from('expense_payments').delete().eq('expense_id', expenseId).eq('user_id', userId)
+    setPayments(prev => ({
+      ...prev,
+      [expenseId]: (prev[expenseId] ?? []).filter(id => id !== userId),
+    }))
+    // If the expense was auto-settled, revert to pending
+    const expense = expenses.find(e => e.id === expenseId)
+    if (expense?.status === 'settled') {
+      await supabase.from('household_expenses').update({ status: 'pending' }).eq('id', expenseId)
+      setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, status: 'pending' } : e))
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('Delete this expense?')) return
     await supabase.from('household_expenses').delete().eq('id', id)
     setExpenses(prev => prev.filter(e => e.id !== id))
+    setPayments(prev => { const next = { ...prev }; delete next[id]; return next })
   }
 
   function handleAdd(e: HouseholdExpense) {
     setExpenses(prev => [e, ...prev])
+    setPayments(prev => ({ ...prev, [e.id]: [] }))
   }
 
   function copyInviteCode() {
@@ -801,6 +896,10 @@ export default function HouseholdPage() {
                     onUnsettle={handleUnsettle}
                     onDelete={handleDelete}
                     isOwner={e.paid_by === userId}
+                    userId={userId}
+                    paidByIds={payments[e.id] ?? []}
+                    onMarkPaid={handleMarkPaid}
+                    onUnmarkPaid={handleUnmarkPaid}
                   />
                 ))
               )}
