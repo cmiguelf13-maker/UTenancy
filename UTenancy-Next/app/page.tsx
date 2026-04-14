@@ -30,7 +30,7 @@ export default function HomePage() {
   const [waitlistType] = useState<'student' | 'landlord'>('landlord')
   const [waitlistEmail, setWaitlistEmail] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
-  const [priceMax, setPriceMax] = useState(3000)
+  const [priceMax, setPriceMax] = useState(10000)
   const [bedsFilter, setBedsFilter] = useState('Any')
   const [distanceFilter, setDistanceFilter] = useState('Any')
   const [moveInDate, setMoveInDate] = useState('')
@@ -95,16 +95,20 @@ export default function HomePage() {
   const filtered = allListings.filter((l) => {
     // Type filter
     if (listingFilter !== 'all' && l.type !== listingFilter) return false
-    // Price filter
-    if (l.price > priceMax) return false
+    // Price filter (priceMax >= 10000 means no cap)
+    if (priceMax < 10000 && l.price > priceMax) return false
     // Beds filter
     if (bedsFilter === '1 Bed' && l.beds !== 1) return false
     if (bedsFilter === '2 Beds' && l.beds !== 2) return false
     if (bedsFilter === '3+ Beds' && l.beds < 3) return false
-    // Distance filter (only applies when distanceMi is known)
-    if (distanceFilter !== 'Any' && l.distanceMi != null) {
-      if (distanceFilter === 'Walking' && l.distanceMi > 0.5) return false
-      if (distanceFilter === 'Bus / Bike' && l.distanceMi > 3) return false
+    // Distance filter
+    if (distanceFilter !== 'Any') {
+      if (l.distanceMi != null) {
+        if (distanceFilter === 'Walking' && l.distanceMi > 0.5) return false
+        if (distanceFilter === 'Bus / Bike' && l.distanceMi > 3) return false
+        // Drive = needs a car (> 3 mi). Unknown distanceMi shows under Drive too.
+        if (distanceFilter === 'Drive' && l.distanceMi <= 3) return false
+      }
     }
     // Move-in date filter (listing must be available on or before selected date)
     if (moveInDate && l.availableDate) {
@@ -317,8 +321,8 @@ export default function HomePage() {
           <div className="reveal bg-white rounded-2xl p-4 md:p-5 mb-8 flex flex-col sm:flex-row flex-wrap gap-4 items-stretch sm:items-center border border-out-var shadow-sm">
             <div className="flex items-center gap-3 w-full sm:flex-1 sm:min-w-0">
               <label className="text-xs font-head font-bold text-muted uppercase tracking-widest whitespace-nowrap">Price max</label>
-              <input type="range" min={500} max={3000} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} className="flex-1 h-2 accent-clay cursor-pointer" />
-              <span className="text-xs font-head font-bold text-clay whitespace-nowrap">${priceMax.toLocaleString()}</span>
+              <input type="range" min={500} max={10000} step={100} value={priceMax} onChange={(e) => setPriceMax(Number(e.target.value))} className="flex-1 h-2 accent-clay cursor-pointer" />
+              <span className="text-xs font-head font-bold text-clay whitespace-nowrap">{priceMax >= 10000 ? 'Any' : '$' + priceMax.toLocaleString()}</span>
             </div>
             <div className="flex gap-3 flex-wrap">
               <div className="flex items-center gap-2">
@@ -328,7 +332,7 @@ export default function HomePage() {
                   onChange={(e) => setDistanceFilter(e.target.value)}
                   className="text-xs font-head font-bold bg-linen border-none rounded-full px-3 py-2.5 text-clay-dark outline-none cursor-pointer"
                 >
-                  {['Any', 'Walking', 'Bus / Bike'].map((o) => <option key={o}>{o}</option>)}
+                  {['Any', 'Walking', 'Bus / Bike', 'Drive'].map((o) => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div className="flex items-center gap-2">
