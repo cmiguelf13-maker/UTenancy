@@ -785,6 +785,9 @@ export default function ListingDetail({
   similarListings?: SimilarListing[]
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  // Client-side profile — starts with the server prop, then re-fetches from DB
+  // to guarantee freshness regardless of server-side caching.
+  const [resolvedProfile, setResolvedProfile] = useState<LandlordProfile | undefined>(landlordProfile)
   const [showApply, setShowApply]         = useState(false)
   const [showGroup, setShowGroup]         = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -802,6 +805,22 @@ export default function ListingDetail({
       ? { distanceMi: listing.distanceMi, university: listing.university }
       : null
   )
+
+  // Always re-fetch landlord profile client-side so we never show stale server-cached data.
+  useEffect(() => {
+    const landlordId = (listing as any).landlord_id as string | undefined
+    if (!landlordId) return
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .select('id, first_name, last_name, company, bio, phone')
+      .eq('id', landlordId)
+      .single()
+      .then(({ data }) => {
+        if (data) setResolvedProfile(data as LandlordProfile)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing.id])
 
   const perPerson = listing.beds > 0 ? Math.round(listing.price / listing.beds) : listing.price
 
@@ -1166,10 +1185,10 @@ export default function ListingDetail({
             <div className="divider mb-8" />
 
             {/* Landlord Card — only for DB listings with profile data */}
-            {landlordProfile && (
+            {resolvedProfile && (
               <>
                 <LandlordCard
-                  profile={landlordProfile}
+                  profile={resolvedProfile}
                   listingId={String(listing.id)}
                   currentUser={user}
                   listingType={listing.type}
