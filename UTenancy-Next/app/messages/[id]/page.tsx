@@ -20,6 +20,10 @@ interface ListingInfo {
   type: string
   status: string
   landlord_id: string
+  address: string
+  city: string
+  rent: number
+  images: string[]
 }
 
 const getTimeAgo = (dateString: string): string => {
@@ -136,7 +140,7 @@ export default function ConversationPage() {
       if (convRow?.listing_id) {
         const { data: listingRow, error: listingErr } = await supabase
           .from('listings')
-          .select('id, type, status, landlord_id')
+          .select('id, type, status, landlord_id, address, city, rent, images')
           .eq('id', convRow.listing_id)
           .single()
         if (listingRow) setListing(listingRow as ListingInfo)
@@ -354,7 +358,7 @@ export default function ConversationPage() {
   const showApproveButton =
     listing !== null &&
     listing.landlord_id === currentUser?.id &&
-    listing.type === 'open' &&
+    listing.type === 'open-room' &&
     listing.status !== 'rented'
 
   const showApprovedBadge =
@@ -451,6 +455,35 @@ export default function ConversationPage() {
       {/* ── Messages list ── */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-surf-lo">
         <div className="max-w-2xl mx-auto space-y-4">
+          {/* Listing preview card */}
+          {listing && (
+            <div className="flex-shrink-0 mb-3 bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
+              <a href={`/listings/${listing.id}`} className="flex items-center gap-3 p-3 hover:bg-linen/50 transition-colors">
+                {/* Image */}
+                <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-linen">
+                  {listing.images && listing.images.length > 0 ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={listing.images[0]}
+                      alt={listing.address}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-linen">
+                      <span className="material-symbols-outlined text-out-var text-2xl">home</span>
+                    </div>
+                  )}
+                </div>
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-head font-bold text-clay-dark text-sm truncate">{listing.address}</p>
+                  <p className="text-xs text-muted font-body">{listing.city}</p>
+                  <p className="font-head font-bold text-clay-dark text-sm mt-1">${listing.rent}/mo</p>
+                  <span className="text-xs text-clay font-head font-bold inline-block mt-1">View listing →</span>
+                </div>
+              </a>
+            </div>
+          )}
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center py-20">
               <div>
