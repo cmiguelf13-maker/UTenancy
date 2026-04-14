@@ -167,7 +167,7 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto text-center">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2 bg-white/80 border border-out-var rounded-full px-4 py-1.5 mb-8 f1 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-clay animate-pulse-dot" />
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse-dot" />
               <span className="text-xs font-head font-bold text-clay-dark tracking-widest uppercase">Now live for students · LA &amp; beyond</span>
             </div>
 
