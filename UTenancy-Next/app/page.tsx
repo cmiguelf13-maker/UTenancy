@@ -508,7 +508,7 @@ export default function HomePage() {
               <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />
               Coming Soon
             </span>
-            <h2 className="font-display text-5xl md:text-6xl font-light text-white mt-2 mb-4">For Landlords.<br /><em className="text-sand">A full SaaS portal — coming soon.</em></h2>
+            <h2 className="font-display text-5xl md:text-6xl font-light text-white mt-2 mb-4">For Landlords.<br /><em className="text-sand">A full management portal — coming soon.</em></h2>
             <p className="font-body text-white/60 text-lg max-w-xl mx-auto mb-14">We&apos;re building a dedicated property management portal — verified student applicants, automated rent collection, and a full dashboard. Be first in line when we launch.</p>
 
             <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-12">
@@ -636,7 +636,7 @@ export default function HomePage() {
             <div className="max-w-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="UTenancy" className="h-8 w-auto mb-4" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
-              <p className="font-body text-white/40 text-sm leading-relaxed">Student housing, reimagined. Verified listings, built-in rent tools, and a SaaS layer for landlords.</p>
+              <p className="font-body text-white/40 text-sm leading-relaxed">Student housing, reimagined. Verified listings, built-in rent tools, and a landlord management platform.</p>
             </div>
             {[
               { heading: 'Students', links: [
