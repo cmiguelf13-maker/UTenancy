@@ -16,7 +16,7 @@ const AMENITIES_LIST = [
 ]
 
 /* ─── Types ─────────────────────────────────────────── */
-type ListingStatus = 'active' | 'draft' | 'filled' | 'pending'
+type ListingStatus = 'active' | 'draft' | 'filled' | 'pending' | 'archived'
 type FilterTab     = 'all' | ListingStatus
 type ParsedAddress = { street: string; city: string; state: string; zip: string }
 
