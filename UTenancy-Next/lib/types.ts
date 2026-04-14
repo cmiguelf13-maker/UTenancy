@@ -62,6 +62,7 @@ export interface HouseholdExpense {
   status: 'pending' | 'settled'
   due_date: string | null
   notes: string | null
+  document_url: string | null
   created_at: string
   // joined
   payer?: Profile
