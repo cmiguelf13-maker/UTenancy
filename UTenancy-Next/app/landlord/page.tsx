@@ -428,7 +428,7 @@ function ListingFormFields({
             defaultValue={defaults?.bathrooms ?? ''} required />
         </div>
         <div className="min-w-0 col-span-2 sm:col-span-1">
-          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo *</label>
+          <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo · per person *</label>
           <input type="number" name="rent" min={0} className="auth-input no-icon" placeholder="950"
             defaultValue={defaults?.rent ?? ''} required />
         </div>
