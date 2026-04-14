@@ -3,7 +3,7 @@ import { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'About | UTenancy',
-  description: 'UTenancy is reimagining student housing — verified listings, built-in rent tools, and a SaaS layer for landlords.',
+  description: 'UTenancy is reimagining student housing — verified listings, built-in rent tools, and a landlord management platform.',
 }
 
 export default function AboutPage() {
@@ -46,7 +46,7 @@ export default function AboutPage() {
               The student housing market has long been dominated by platforms built for the general public — not for the unique rhythms of academic life. Lease dates that don&apos;t align with semesters, listings with no proximity-to-campus data, no .edu verification, no group formation tools. We&apos;re changing all of that.
             </p>
             <p>
-              For landlords, managing student rentals can be a full-time job. UTenancy&apos;s SaaS layer gives landlords the tools to list, screen, and manage tenants from a single dashboard — with subscription tiers that grow as their portfolio does.
+              For landlords, managing student rentals can be a full-time job. UTenancy&apos;s landlord management platform gives landlords the tools to list, screen, and manage tenants from a single dashboard — with subscription tiers that grow as their portfolio does.
             </p>
           </section>
 
