@@ -110,6 +110,7 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
     amenities: dbListing.amenities ?? [],
     distanceMi: undefined,
     university: undefined,
+    landlord_id: dbListing.landlord_id ?? null,
     // Lease detail fields
     available_date: dbListing.available_date ?? null,
     lease_term: dbListing.lease_term ?? null,
