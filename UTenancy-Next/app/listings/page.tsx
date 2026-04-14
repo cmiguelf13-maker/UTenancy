@@ -27,6 +27,39 @@ function ListingsContent() {
   const [dbListings, setDbListings] = useState<MockListing[]>([])
   const [loading, setLoading] = useState(true)
 
+  /* ── listing alert signup state ── */
+  const [alertEmail, setAlertEmail] = useState('')
+  const [alertStatus, setAlertStatus] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle')
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null)
+
+  /* ── fetch session email for one-click alert signup ── */
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user?.email) setSessionEmail(data.session.user.email)
+    })
+  }, [])
+
+  /* ── sign up for listing alerts ── */
+  async function handleAlertSignup(emailOverride?: string) {
+    const email = emailOverride ?? alertEmail.trim()
+    if (!email) return
+    setAlertStatus('loading')
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const { error } = await supabase.from('listing_alerts').insert({
+      email,
+      user_id: session?.user?.id ?? null,
+    })
+    if (!error) {
+      setAlertStatus('success')
+    } else if (error.code === '23505') {
+      setAlertStatus('duplicate')
+    } else {
+      setAlertStatus('error')
+    }
+  }
+
   /* ── fetch DB listings ── */
   useEffect(() => {
     const supabase = createClient()
@@ -304,7 +337,7 @@ function ListingsContent() {
                 <button onClick={() => setTypeFilter('all')} className="hover:text-clay transition-colors"><span className="material-symbols-outlined text-[11px]">close</span></button>
               </span>
             )}
-            {priceMax < 3000 && (
+            {priceMax < 10000 && (
               <span className="inline-flex items-center gap-1.5 bg-clay/10 text-clay-dark text-xs font-head font-bold px-3 py-1 rounded-full">
                 Up to ${priceMax.toLocaleString()}
                 <button onClick={() => setPriceMax(3000)} className="hover:text-clay transition-colors"><span className="material-symbols-outlined text-[11px]">close</span></button>
@@ -373,15 +406,59 @@ function ListingsContent() {
           </div>
         )}
 
-        {/* Bottom CTA */}
+        {/* Bottom CTA — listing alerts */}
         {!loading && (
-          <div className="mt-16 text-center bg-white rounded-3xl border border-out-var py-12 px-6">
-            <span className="material-symbols-outlined text-clay text-4xl mb-3 block">home_work</span>
+          <div className="mt-16 bg-white rounded-3xl border border-out-var py-12 px-6 text-center">
+            <span className="material-symbols-outlined text-clay text-4xl mb-3 block">notifications_active</span>
             <p className="font-head font-bold text-clay-dark text-lg mb-2">Don&apos;t see the perfect place?</p>
-            <p className="font-body text-muted text-sm mb-6 max-w-sm mx-auto">More listings are added every week as we expand to new universities. Join the waitlist to be first to know.</p>
-            <Link href="/#waitlist" className="clay-grad text-white text-sm font-head font-bold px-8 py-3 rounded-full shadow-md inline-flex items-center gap-2 hover:opacity-90 transition-opacity">
-              <span className="material-symbols-outlined text-sm">notifications</span>Get Notified
-            </Link>
+            <p className="font-body text-muted text-sm mb-6 max-w-sm mx-auto">
+              New listings are added regularly. Get notified the moment one matches what you&apos;re looking for.
+            </p>
+
+            {alertStatus === 'success' ? (
+              <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 font-head font-bold text-sm px-6 py-3 rounded-full">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                You&apos;re on the list! We&apos;ll email you when new listings drop.
+              </div>
+            ) : alertStatus === 'duplicate' ? (
+              <div className="inline-flex items-center gap-2 bg-linen border border-out-var text-muted font-head font-bold text-sm px-6 py-3 rounded-full">
+                <span className="material-symbols-outlined text-base">info</span>
+                You&apos;re already signed up!
+              </div>
+            ) : sessionEmail ? (
+              /* Logged-in: one-click sign up */
+              <button
+                onClick={() => handleAlertSignup(sessionEmail)}
+                disabled={alertStatus === 'loading'}
+                className="clay-grad text-white text-sm font-head font-bold px-8 py-3 rounded-full shadow-md inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                <span className="material-symbols-outlined text-sm">notifications</span>
+                {alertStatus === 'loading' ? 'Signing up…' : `Notify me at ${sessionEmail}`}
+              </button>
+            ) : (
+              /* Not logged in: inline email input */
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
+                <input
+                  type="email"
+                  value={alertEmail}
+                  onChange={e => setAlertEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAlertSignup()}
+                  placeholder="your@email.com"
+                  className="flex-1 w-full sm:w-auto px-4 py-3 border border-out-var rounded-full text-sm font-body focus:outline-none focus:ring-2 focus:ring-clay/30 bg-linen"
+                />
+                <button
+                  onClick={() => handleAlertSignup()}
+                  disabled={alertStatus === 'loading' || !alertEmail.trim()}
+                  className="clay-grad text-white text-sm font-head font-bold px-6 py-3 rounded-full shadow-md inline-flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-sm">notifications</span>
+                  {alertStatus === 'loading' ? 'Signing up…' : 'Get Notified'}
+                </button>
+                {alertStatus === 'error' && (
+                  <p className="text-xs text-red-600 font-body mt-1">Something went wrong. Please try again.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
