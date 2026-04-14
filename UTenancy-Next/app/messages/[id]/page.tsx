@@ -124,16 +124,22 @@ export default function ConversationPage() {
 
       setCurrentUser(userData as Profile)
 
-      // Participants
+      // Participants — fetch user_ids first, then load the other person's profile directly
       const { data: participantData } = await supabase
         .from('conversation_participants')
-        .select('user_id, profile:profiles!conversation_participants_user_profile_fkey(*)')
+        .select('user_id')
         .eq('conversation_id', conversationId)
 
-      const other = (participantData as Array<{ user_id: string; profile: any }> | null)
-        ?.find((p) => p.user_id !== session.user.id)
-      if (other?.profile) {
-        setOtherParticipant(other.profile as Profile)
+      const otherUserId = (participantData as Array<{ user_id: string }> | null)
+        ?.find((p) => p.user_id !== session.user.id)?.user_id
+
+      if (otherUserId) {
+        const { data: otherProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', otherUserId)
+          .single()
+        if (otherProfile) setOtherParticipant(otherProfile as Profile)
       }
 
       // Listing linked to this conversation
