@@ -102,8 +102,8 @@ export default function UserAgreementPage() {
               <p>Landlords who receive student contact information through the Platform agree to use it solely to respond to housing inquiries. Landlords may not use student information for unsolicited marketing, share it with third parties, or use it for any purpose other than the specific housing transaction facilitated through the Platform.</p>
             </SubSection>
 
-            <SubSection title="e) Dashboard and SaaS Features">
-              <p>Access to the UTenancy landlord dashboard and SaaS tools is subject to applicable subscription fees and the Platform&apos;s acceptable use policies. Landlords agree not to share dashboard access with unauthorized parties or attempt to circumvent usage limits.</p>
+            <SubSection title="e) Dashboard and Management Features">
+              <p>Access to the UTenancy landlord dashboard and management tools is subject to applicable subscription fees and the Platform&apos;s acceptable use policies. Landlords agree not to share dashboard access with unauthorized parties or attempt to circumvent usage limits.</p>
             </SubSection>
 
             <SubSection title="f) Listing Status">
