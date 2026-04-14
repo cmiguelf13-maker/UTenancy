@@ -275,74 +275,44 @@ export default function HouseholdPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [userId, setUserId]         = useState<string | null>(null)
-  const [household, setHousehold]   = useState<Household | null>(null)
-  const [expenses, setExpenses]     = useState<HouseholdExpense[]>([])
-  const [members, setMembers]       = useState<{ user_id: string; role: string; profile?: Profile }[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [activeTab, setActiveTab]   = useState<'expenses' | 'members' | 'reminders'>('expenses')
-  const [inviteCopied, setInviteCopied] = useState(false)
+  const [userId, setUserId]               = useState<string | null>(null)
+  const [households, setHouseholds]       = useState<Household[]>([])
+  const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null)
+  const [expenses, setExpenses]           = useState<HouseholdExpense[]>([])
+  const [members, setMembers]             = useState<{ user_id: string; role: string; profile?: Profile }[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [showAddForm, setShowAddForm]     = useState(false)
+  const [activeTab, setActiveTab]         = useState<'expenses' | 'members' | 'reminders'>('expenses')
+  const [inviteCopied, setInviteCopied]   = useState(false)
   const [connectingBank, setConnectingBank] = useState(false)
-  const [paymentMsg, setPaymentMsg] = useState<string | null>(null)
+  const [paymentMsg, setPaymentMsg]       = useState<string | null>(null)
+  const [deletingId, setDeletingId]       = useState<string | null>(null)
 
+  // Load all households this user belongs to
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/auth'); return }
       setUserId(user.id)
 
-      // Find household where user is creator or member
-      const { data: hhAsCreator } = await supabase
-        .from('households')
-        .select('*')
-        .eq('created_by', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      const { data: membershipRow } = await supabase
+      // Fetch every household_id where user is a member
+      const { data: memberships } = await supabase
         .from('household_members')
         .select('household_id')
         .eq('user_id', user.id)
-        .limit(1)
-        .single()
 
-      let hh: Household | null = hhAsCreator as Household | null
+      const hhIds = (memberships ?? []).map((m: any) => m.household_id as string)
 
-      if (!hh && membershipRow?.household_id) {
-        const { data: hhViaMemb } = await supabase
+      if (hhIds.length > 0) {
+        const { data: hhData } = await supabase
           .from('households')
           .select('*')
-          .eq('id', membershipRow.household_id)
-          .single()
-        hh = hhViaMemb as Household | null
-      }
-
-      if (hh) {
-        setHousehold(hh)
-
-        // Load expenses
-        const { data: expData } = await supabase
-          .from('household_expenses')
-          .select('*')
-          .eq('household_id', hh.id)
+          .in('id', hhIds)
           .order('created_at', { ascending: false })
 
-        setExpenses((expData ?? []) as HouseholdExpense[])
-
-        // Load members with profiles
-        const { data: membData } = await supabase
-          .from('household_members')
-          .select('user_id, role, profile:profiles(first_name, last_name, avatar_url)')
-          .eq('household_id', hh.id)
-
-        // Supabase returns joined rows as arrays; normalise profile to a single object
-        const normalised = (membData ?? []).map((m: any) => ({
-          ...m,
-          profile: Array.isArray(m.profile) ? m.profile[0] ?? undefined : m.profile ?? undefined,
-        }))
-        setMembers(normalised as typeof members)
+        const hhs = (hhData ?? []) as Household[]
+        setHouseholds(hhs)
+        if (hhs.length > 0) setActiveHouseholdId(hhs[0].id)
       }
 
       setLoading(false)
@@ -359,6 +329,47 @@ export default function HouseholdPage() {
       window.history.replaceState({}, '', '/tenant/household')
     }
   }, [router])
+
+  // Reload expenses + members whenever the active household changes
+  useEffect(() => {
+    if (!activeHouseholdId) { setExpenses([]); setMembers([]); return }
+    const loadData = async () => {
+      const { data: expData } = await supabase
+        .from('household_expenses')
+        .select('*')
+        .eq('household_id', activeHouseholdId)
+        .order('created_at', { ascending: false })
+      setExpenses((expData ?? []) as HouseholdExpense[])
+
+      const { data: membData } = await supabase
+        .from('household_members')
+        .select('user_id, role, profile:profiles(first_name, last_name, avatar_url)')
+        .eq('household_id', activeHouseholdId)
+      const normalised = (membData ?? []).map((m: any) => ({
+        ...m,
+        profile: Array.isArray(m.profile) ? m.profile[0] ?? undefined : m.profile ?? undefined,
+      }))
+      setMembers(normalised as { user_id: string; role: string; profile?: Profile }[])
+    }
+    loadData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeHouseholdId])
+
+  async function handleDeleteHousehold(householdId: string) {
+    if (!confirm('Delete this household? This will remove all members and expenses and cannot be undone.')) return
+    setDeletingId(householdId)
+    await supabase.from('household_expenses').delete().eq('household_id', householdId)
+    await supabase.from('household_members').delete().eq('household_id', householdId)
+    await supabase.from('households').delete().eq('id', householdId)
+    const remaining = households.filter(h => h.id !== householdId)
+    setHouseholds(remaining)
+    if (activeHouseholdId === householdId) {
+      setActiveHouseholdId(remaining.length > 0 ? remaining[0].id : null)
+      setExpenses([])
+      setMembers([])
+    }
+    setDeletingId(null)
+  }
 
   async function handleConnectBank() {
     setConnectingBank(true)
@@ -416,6 +427,10 @@ export default function HouseholdPage() {
     })
   }
 
+  // ── Derived household (active selection) ──
+  const household = households.find(h => h.id === activeHouseholdId) ?? null
+  const isAdmin = !!household && (household.created_by === userId || members.some(m => m.user_id === userId && m.role === 'admin'))
+
   // ── Computed totals ──
   const totalThisMonth = expenses.reduce((s, e) => s + e.amount, 0)
   const memberCount    = members.length || 1
@@ -433,7 +448,7 @@ export default function HouseholdPage() {
   }
 
   // No household yet — show setup screen
-  if (!household) {
+  if (households.length === 0) {
     return (
       <div className="min-h-screen bg-surf-lo flex flex-col">
         <div className="bg-white border-b border-out-var px-6 py-5">
@@ -448,13 +463,16 @@ export default function HouseholdPage() {
           {userId && (
             <CreateHouseholdForm
               userId={userId}
-              onCreated={hh => { setHousehold(hh); setMembers([]) }}
+              onCreated={hh => { setHouseholds([hh]); setActiveHouseholdId(hh.id); setMembers([]) }}
             />
           )}
         </div>
       </div>
     )
   }
+
+  // Active household not found (shouldn't happen but guard)
+  if (!household) return null
 
   return (
     <div className="min-h-screen bg-surf-lo pb-20">
@@ -470,12 +488,42 @@ export default function HouseholdPage() {
               <p className="text-xs font-body text-muted">{memberCount} roommate{memberCount !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          <button onClick={copyInviteCode}
-            className="flex items-center gap-1.5 text-xs font-head font-semibold text-clay-dark bg-linen hover:bg-clay/10 border border-out-var px-3 py-2 rounded-xl transition-colors">
-            <span className="material-symbols-outlined text-sm">{inviteCopied ? 'check' : 'link'}</span>
-            {inviteCopied ? 'Copied!' : 'Invite link'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={copyInviteCode}
+              className="flex items-center gap-1.5 text-xs font-head font-semibold text-clay-dark bg-linen hover:bg-clay/10 border border-out-var px-3 py-2 rounded-xl transition-colors">
+              <span className="material-symbols-outlined text-sm">{inviteCopied ? 'check' : 'link'}</span>
+              {inviteCopied ? 'Copied!' : 'Invite link'}
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => handleDeleteHousehold(household.id)}
+                disabled={deletingId === household.id}
+                title="Delete household"
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-red-50 text-muted hover:text-red-600 border border-out-var transition-colors disabled:opacity-50">
+                <span className="material-symbols-outlined text-base">{deletingId === household.id ? 'hourglass_empty' : 'delete'}</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Household switcher — shown when user belongs to multiple */}
+        {households.length > 1 && (
+          <div className="max-w-3xl mx-auto mt-3 flex gap-2 overflow-x-auto pb-0.5">
+            {households.map(hh => (
+              <button
+                key={hh.id}
+                onClick={() => { setActiveHouseholdId(hh.id); setShowAddForm(false); setActiveTab('expenses') }}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-semibold border transition-all
+                  ${activeHouseholdId === hh.id
+                    ? 'clay-grad text-white border-transparent shadow-sm'
+                    : 'bg-linen text-muted border-out-var hover:border-clay/50 hover:text-clay-dark'}`}
+              >
+                <span className="material-symbols-outlined text-sm">house</span>
+                {hh.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Payment message banner */}
