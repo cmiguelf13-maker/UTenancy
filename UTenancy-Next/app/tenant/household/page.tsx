@@ -63,6 +63,17 @@ function ExpenseRow({
               Pending
             </span>
           )}
+          {expense.document_url && (
+            <a
+              href={expense.document_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="View attached document"
+              className="text-[10px] font-head font-bold text-clay bg-clay/8 border border-clay/20 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity">
+              <span className="material-symbols-outlined" style={{ fontSize: 10 }}>attach_file</span>
+              Receipt
+            </a>
+          )}
         </div>
         <p className="text-xs font-body text-muted mt-0.5">
           {perPerson(expense.amount, expense.split_count)} each · {expense.split_count} people
@@ -116,13 +127,15 @@ function AddExpenseForm({
   onClose: () => void
 }) {
   const supabase = createClient()
-  const [title, setTitle]       = useState('')
-  const [amount, setAmount]     = useState('')
-  const [category, setCategory] = useState<ExpenseCategory>('other')
-  const [splitCount, setSplit]  = useState(memberCount)
-  const [dueDate, setDueDate]   = useState('')
-  const [saving, setSaving]     = useState(false)
-  const [err, setErr]           = useState<string | null>(null)
+  const [title, setTitle]           = useState('')
+  const [amount, setAmount]         = useState('')
+  const [category, setCategory]     = useState<ExpenseCategory>('other')
+  const [splitCount, setSplit]       = useState(memberCount)
+  const [dueDate, setDueDate]       = useState('')
+  const [saving, setSaving]         = useState(false)
+  const [err, setErr]               = useState<string | null>(null)
+  const [docFile, setDocFile]       = useState<File | null>(null)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
 
   async function submit() {
     if (!title.trim() || !amount || Number(amount) <= 0) {
@@ -131,6 +144,25 @@ function AddExpenseForm({
     setSaving(true); setErr(null)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setErr('Not signed in'); setSaving(false); return }
+
+    // Upload proof document if provided
+    let documentUrl: string | null = null
+    if (docFile) {
+      setUploadingDoc(true)
+      const ext = docFile.name.split('.').pop() ?? 'pdf'
+      const path = `expenses/${householdId}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('listing-images')
+        .upload(path, docFile, { upsert: false })
+      setUploadingDoc(false)
+      if (upErr) {
+        setErr('Could not upload document: ' + upErr.message)
+        setSaving(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('listing-images').getPublicUrl(path)
+      documentUrl = urlData.publicUrl
+    }
 
     const { data, error } = await supabase
       .from('household_expenses')
@@ -143,6 +175,7 @@ function AddExpenseForm({
         split_count: splitCount,
         due_date: dueDate || null,
         status: 'pending',
+        document_url: documentUrl,
       })
       .select()
       .single()
@@ -195,6 +228,38 @@ function AddExpenseForm({
         </div>
       </div>
 
+      {/* Optional proof document upload */}
+      <div>
+        <label className="block text-xs font-head font-semibold text-espresso mb-1">
+          Proof / Receipt <span className="font-normal text-muted">(optional)</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <div className={`flex items-center gap-2 px-3 py-2.5 text-sm border rounded-xl transition-colors w-full
+            ${docFile ? 'border-clay/50 bg-clay/5 text-clay-dark' : 'border-out-var bg-white text-muted hover:border-clay/30'}`}>
+            <span className="material-symbols-outlined text-base shrink-0">
+              {docFile ? 'check_circle' : 'upload_file'}
+            </span>
+            <span className="truncate font-body text-xs">
+              {docFile ? docFile.name : 'Attach receipt or document…'}
+            </span>
+            {docFile && (
+              <button
+                type="button"
+                onClick={e => { e.preventDefault(); setDocFile(null) }}
+                className="ml-auto shrink-0 text-muted hover:text-red-500 transition-colors">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            )}
+          </div>
+          <input
+            type="file"
+            accept="image/*,.pdf,.doc,.docx"
+            className="sr-only"
+            onChange={e => setDocFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+      </div>
+
       {amount && Number(amount) > 0 && splitCount > 0 && (
         <p className="text-sm font-head text-clay-dark">
           = <strong>{perPerson(Number(amount), splitCount)}</strong> per person
@@ -204,9 +269,9 @@ function AddExpenseForm({
       {err && <p className="text-xs text-red-600">{err}</p>}
 
       <div className="flex gap-2 pt-1">
-        <button onClick={submit} disabled={saving}
+        <button onClick={submit} disabled={saving || uploadingDoc}
           className="clay-grad text-white text-sm font-head font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60">
-          {saving ? 'Saving…' : 'Add Expense'}
+          {uploadingDoc ? 'Uploading…' : saving ? 'Saving…' : 'Add Expense'}
         </button>
         <button onClick={onClose}
           className="px-4 py-2.5 text-sm font-head text-muted hover:text-espresso rounded-xl hover:bg-white transition-colors">
@@ -276,6 +341,7 @@ export default function HouseholdPage() {
   const supabase = createClient()
 
   const [userId, setUserId]               = useState<string | null>(null)
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null)
   const [households, setHouseholds]       = useState<Household[]>([])
   const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null)
   const [expenses, setExpenses]           = useState<HouseholdExpense[]>([])
@@ -297,6 +363,14 @@ export default function HouseholdPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/auth'); return }
       setUserId(user.id)
+
+      // Fetch current user's own profile for the members list
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, avatar_url')
+        .eq('id', user.id)
+        .single()
+      if (myProfile) setCurrentUserProfile(myProfile as Profile)
 
       // Fetch every household_id where user is a member
       const { data: memberships } = await supabase
@@ -746,50 +820,69 @@ export default function HouseholdPage() {
                   {inviteCopied ? 'Link copied!' : 'Invite'}
                 </button>
               </div>
-              {members.length === 0 ? (
-                <div className="py-10 text-center">
-                  <p className="text-sm font-body text-muted">Share the invite link to add roommates.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-out-var">
-                  {members.map(m => {
-                    const p = m.profile
-                    const name = p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Member' : 'Member'
-                    return (
-                      <div key={m.user_id} className="flex items-center gap-4 px-5 py-4">
-                        <div className="w-10 h-10 clay-grad rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                          {p?.avatar_url ? (
-                            <img src={p.avatar_url} alt={name} className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            <span className="text-white font-head font-bold text-sm">{name[0]?.toUpperCase()}</span>
-                          )}
+              {(() => {
+                // Ensure the current user always appears in the list, even if the DB join didn't return their profile
+                const selfInList = userId ? members.some(m => m.user_id === userId) : true
+                const displayMembers = (userId && !selfInList)
+                  ? [{ user_id: userId, role: isAdmin ? 'admin' : 'member', profile: currentUserProfile ?? undefined }, ...members]
+                  : members.map(m => m.user_id === userId && !m.profile && currentUserProfile
+                    ? { ...m, profile: currentUserProfile }
+                    : m
+                  )
+
+                if (displayMembers.length === 0) {
+                  return (
+                    <div className="py-10 text-center">
+                      <p className="text-sm font-body text-muted">Share the invite link to add roommates.</p>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="divide-y divide-out-var">
+                    {displayMembers.map(m => {
+                      const p = m.profile
+                      const name = p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Member' : 'Member'
+                      const isYou = m.user_id === userId
+                      return (
+                        <div key={m.user_id} className="flex items-center gap-4 px-5 py-4">
+                          <div className="w-10 h-10 clay-grad rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                            {p?.avatar_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.avatar_url} alt={name} className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              <span className="text-white font-head font-bold text-sm">{name[0]?.toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-head font-semibold text-espresso text-sm">
+                              {name}{isYou ? '' : ''}
+                            </p>
+                            <p className="text-xs font-body text-muted capitalize">{m.role}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {isYou && (
+                              <span className="text-xs font-head font-bold text-clay-dark bg-linen px-2.5 py-1 rounded-full">You</span>
+                            )}
+                            {/* Transfer admin — visible to admins for other non-admin members */}
+                            {isAdmin && !isYou && m.role !== 'admin' && (
+                              <button
+                                onClick={() => handleTransferAdmin(m.user_id)}
+                                title="Transfer admin to this member"
+                                className="text-xs font-head font-semibold text-muted hover:text-clay border border-out-var hover:border-clay/50 px-2.5 py-1 rounded-full transition-all">
+                                Make Admin
+                              </button>
+                            )}
+                            {m.role === 'admin' && !isYou && (
+                              <span className="text-xs font-head font-bold text-clay bg-linen px-2.5 py-1 rounded-full">Admin</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-head font-semibold text-espresso text-sm">{name}</p>
-                          <p className="text-xs font-body text-muted capitalize">{m.role}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {m.user_id === userId && (
-                            <span className="text-xs font-head font-bold text-clay-dark bg-linen px-2.5 py-1 rounded-full">You</span>
-                          )}
-                          {/* Transfer admin — visible to admins for other non-admin members */}
-                          {isAdmin && m.user_id !== userId && m.role !== 'admin' && (
-                            <button
-                              onClick={() => handleTransferAdmin(m.user_id)}
-                              title="Transfer admin to this member"
-                              className="text-xs font-head font-semibold text-muted hover:text-clay border border-out-var hover:border-clay/50 px-2.5 py-1 rounded-full transition-all">
-                              Make Admin
-                            </button>
-                          )}
-                          {m.role === 'admin' && m.user_id !== userId && (
-                            <span className="text-xs font-head font-bold text-clay bg-linen px-2.5 py-1 rounded-full">Admin</span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         )}
@@ -844,28 +937,31 @@ export default function HouseholdPage() {
               </div>
             </div>
 
-            {/* ACH payment info */}
-            <div className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
+            {/* ACH payment info — Coming Soon */}
+            <div className="bg-white rounded-2xl border border-out-var p-5 shadow-sm relative overflow-hidden">
+              {/* Coming Soon badge */}
+              <div className="absolute top-3 right-3">
+                <span className="bg-clay/10 text-clay text-[10px] font-head font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                  Coming Soon
+                </span>
+              </div>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md shrink-0">
-                  <span className="material-symbols-outlined fill text-white text-lg">account_balance</span>
+                <div className="w-10 h-10 bg-linen rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                  <span className="material-symbols-outlined text-clay text-lg">account_balance</span>
                 </div>
                 <div>
-                  <h4 className="font-head font-bold text-espresso text-sm">Stripe ACH Payments</h4>
-                  <p className="text-xs font-body text-muted">Bank-to-bank, no fees for students</p>
+                  <h4 className="font-head font-bold text-espresso text-sm">ACH Payments</h4>
+                  <p className="text-xs font-body text-muted">Pay your landlord directly through UTenancy</p>
                 </div>
               </div>
               <p className="text-sm font-body text-muted leading-relaxed">
-                Connect your bank account to pay your share directly through UTenancy.
-                Landlords receive direct deposits automatically — no Venmo math, no awkward reminders.
+                Soon you&apos;ll be able to pay your share of rent and expenses directly to your landlord through UTenancy
+                via bank transfer — no Venmo math, no awkward reminders, automatic receipts.
               </p>
-              <button
-                onClick={handleConnectBank}
-                disabled={connectingBank}
-                className="mt-4 w-full clay-grad text-white font-head font-semibold py-2.5 rounded-xl hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                <span className="material-symbols-outlined text-base">account_balance</span>
-                {connectingBank ? 'Redirecting to Stripe…' : 'Connect Bank Account'}
-              </button>
+              <div className="mt-4 w-full bg-linen/80 text-muted font-head font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 border border-out-var cursor-not-allowed select-none opacity-70">
+                <span className="material-symbols-outlined text-base">lock</span>
+                Available Soon
+              </div>
             </div>
           </div>
         )}
