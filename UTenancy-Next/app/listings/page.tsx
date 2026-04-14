@@ -16,7 +16,7 @@ function ListingsContent() {
   /* ── filter state ── */
   const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
   const [typeFilter, setTypeFilter] = useState<'all' | ListingType>(() => (searchParams.get('type') as ListingType) ?? 'all')
-  const [priceMax, setPriceMax] = useState(3000)
+  const [priceMax, setPriceMax] = useState(10000)
   const [bedsFilter, setBedsFilter] = useState('Any')
   const [distanceFilter, setDistanceFilter] = useState('Any')
   const [moveInDate, setMoveInDate] = useState('')
@@ -73,7 +73,7 @@ function ListingsContent() {
   /* ── derived: active filter count ── */
   const activeFilterCount = [
     typeFilter !== 'all',
-    priceMax < 3000,
+    priceMax < 10000,
     bedsFilter !== 'Any',
     distanceFilter !== 'Any',
     !!moveInDate,
@@ -98,7 +98,7 @@ function ListingsContent() {
         if (!searchableText.includes(q)) return false
       }
       if (typeFilter !== 'all' && l.type !== typeFilter) return false
-      if (l.price > priceMax) return false
+      if (priceMax < 10000 && l.price > priceMax) return false
       if (bedsFilter === '1 Bed' && l.beds !== 1) return false
       if (bedsFilter === '2 Beds' && l.beds !== 2) return false
       if (bedsFilter === '3+ Beds' && l.beds < 3) return false
@@ -126,7 +126,7 @@ function ListingsContent() {
   function clearFilters() {
     setSearch('')
     setTypeFilter('all')
-    setPriceMax(3000)
+    setPriceMax(10000)
     setBedsFilter('Any')
     setDistanceFilter('Any')
     setMoveInDate('')
@@ -214,13 +214,15 @@ function ListingsContent() {
                 <input
                   type="range"
                   min={500}
-                  max={3000}
-                  step={50}
+                  max={10000}
+                  step={100}
                   value={priceMax}
                   onChange={(e) => setPriceMax(Number(e.target.value))}
                   className="flex-1"
                 />
-                <span className="text-xs font-head font-bold text-clay whitespace-nowrap w-16 text-right">${priceMax.toLocaleString()}</span>
+                <span className="text-xs font-head font-bold text-clay whitespace-nowrap w-16 text-right">
+                  {priceMax >= 10000 ? 'Any' : '$' + priceMax.toLocaleString()}
+                </span>
               </div>
 
               {/* Distance */}
