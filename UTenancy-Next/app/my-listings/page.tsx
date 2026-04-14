@@ -11,7 +11,7 @@ const AMENITY_OPTIONS = [
   'High-speed WiFi', 'Dishwasher', 'Gym', 'Pet-friendly', 'Furnished',
 ]
 
-type ListingStatus = 'active' | 'draft' | 'filled' | 'pending'
+type ListingStatus = 'active' | 'draft' | 'filled' | 'pending' | 'archived'
 
 const STATUS_CONFIG: Record<ListingStatus, { label: string; dot: string; badge: string }> = {
   active:   { label: 'Active',   dot: 'bg-green-500', badge: 'bg-green-50 text-green-700 border-green-200' },
