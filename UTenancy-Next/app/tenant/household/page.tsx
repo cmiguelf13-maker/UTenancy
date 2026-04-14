@@ -287,6 +287,9 @@ export default function HouseholdPage() {
   const [connectingBank, setConnectingBank] = useState(false)
   const [paymentMsg, setPaymentMsg]       = useState<string | null>(null)
   const [deletingId, setDeletingId]       = useState<string | null>(null)
+  const [renamingId, setRenamingId]       = useState<string | null>(null)
+  const [renameVal, setRenameVal]         = useState('')
+  const [renameSaving, setRenameSaving]   = useState(false)
 
   // Load all households this user belongs to
   useEffect(() => {
@@ -369,6 +372,21 @@ export default function HouseholdPage() {
       setMembers([])
     }
     setDeletingId(null)
+  }
+
+  async function handleRenameHousehold() {
+    if (!renamingId || !renameVal.trim() || renameSaving) return
+    setRenameSaving(true)
+    const { error } = await supabase
+      .from('households')
+      .update({ name: renameVal.trim() })
+      .eq('id', renamingId)
+    if (!error) {
+      setHouseholds(prev => prev.map(h => h.id === renamingId ? { ...h, name: renameVal.trim() } : h))
+    }
+    setRenamingId(null)
+    setRenameVal('')
+    setRenameSaving(false)
   }
 
   async function handleConnectBank() {
@@ -484,7 +502,37 @@ export default function HouseholdPage() {
               <span className="material-symbols-outlined text-espresso">arrow_back</span>
             </Link>
             <div>
-              <h1 className="font-head font-bold text-espresso text-lg">{household.name}</h1>
+              {renamingId === household.id ? (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={renameVal}
+                    onChange={e => setRenameVal(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleRenameHousehold(); if (e.key === 'Escape') { setRenamingId(null); setRenameVal('') } }}
+                    className="text-lg font-head font-bold text-espresso border-b-2 border-clay outline-none bg-transparent w-40"
+                  />
+                  <button onClick={handleRenameHousehold} disabled={renameSaving}
+                    className="text-clay hover:text-clay-dark transition-colors">
+                    <span className="material-symbols-outlined text-base">check</span>
+                  </button>
+                  <button onClick={() => { setRenamingId(null); setRenameVal('') }}
+                    className="text-muted hover:text-espresso transition-colors">
+                    <span className="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-head font-bold text-espresso text-lg">{household.name}</h1>
+                  {isAdmin && (
+                    <button
+                      onClick={() => { setRenamingId(household.id); setRenameVal(household.name) }}
+                      title="Rename household"
+                      className="text-muted hover:text-clay transition-colors">
+                      <span className="material-symbols-outlined text-sm">edit</span>
+                    </button>
+                  )}
+                </div>
+              )}
               <p className="text-xs font-body text-muted">{memberCount} roommate{memberCount !== 1 ? 's' : ''}</p>
             </div>
           </div>
