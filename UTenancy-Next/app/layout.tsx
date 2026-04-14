@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     template: '%s | UTenancy',
   },
   description:
-    'UTenancy connects verified university students with real off-campus housing and roommates — and gives landlords a SaaS layer to manage it all.',
+    'UTenancy connects verified university students with real off-campus housing and roommates — and gives landlords a management platform to run it all.',
   keywords: ['student housing', 'off-campus', 'roommates', 'university', 'rent'],
   openGraph: {
     type: 'website',
