@@ -80,7 +80,7 @@ export default function TermsOfServicePage() {
           </Section>
 
           <Section title="6. Fees and Payments">
-            <p>Certain features of the Platform, particularly landlord SaaS tools, may require a paid subscription. Pricing, billing cycles, and refund policies will be disclosed at the time of purchase and are incorporated into these Terms by reference. All fees are non-refundable except as required by applicable law or as expressly stated in a separate written agreement.</p>
+            <p>Certain features of the Platform, particularly landlord management tools, may require a paid subscription. Pricing, billing cycles, and refund policies will be disclosed at the time of purchase and are incorporated into these Terms by reference. All fees are non-refundable except as required by applicable law or as expressly stated in a separate written agreement.</p>
           </Section>
 
           <Section title="7. Intellectual Property">
