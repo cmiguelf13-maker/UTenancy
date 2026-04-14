@@ -4,6 +4,9 @@ import { getListingBySlug, LISTINGS } from '@/lib/listings'
 import { createServerClient } from '@/lib/supabase-server'
 import ListingDetail from './ListingDetail'
 
+// Force dynamic rendering so DB listing data is never stale-cached
+export const dynamic = 'force-dynamic'
+
 export function generateStaticParams() {
   return LISTINGS.map((l) => ({ slug: l.slug }))
 }
