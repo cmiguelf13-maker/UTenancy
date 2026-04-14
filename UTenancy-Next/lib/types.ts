@@ -91,8 +91,8 @@ export interface Listing {
   bathrooms: number
   rent: number
   type: 'open-room' | 'group-formation'
-  /** active = published; draft = incomplete; rented = filled; archived = closed out */
-  status: 'active' | 'draft' | 'rented' | 'archived'
+  /** active = published; draft = incomplete; filled = fully occupied; archived = closed out */
+  status: 'active' | 'draft' | 'pending' | 'filled' | 'archived'
   description: string | null
   amenities: string[]
   images: string[]

@@ -25,11 +25,11 @@ function buildMonthlyData(listings: Listing[]): MonthBucket[] {
   for (let i = 5; i >= 0; i--) {
     const d     = new Date(now.getFullYear(), now.getMonth() - i, 1)
     const label = MONTHS[d.getMonth()]
-    const rented  = listings.filter(l => l.status === 'rented').length
+    const filled  = listings.filter(l => l.status === 'filled').length
     const total   = listings.length
     // Simulate a realistic revenue curve (real data would come from Stripe)
-    const revenue = rented * (listings.reduce((s, l) => s + l.rent, 0) / Math.max(total, 1))
-    buckets.push({ month: label, revenue: Math.round(revenue), occupied: rented, total })
+    const revenue = filled * (listings.reduce((s, l) => s + l.rent, 0) / Math.max(total, 1))
+    buckets.push({ month: label, revenue: Math.round(revenue), occupied: filled, total })
   }
   return buckets
 }
@@ -129,10 +129,10 @@ export default function AnalyticsPage() {
   const monthly   = buildMonthlyData(listings)
   const maxRev    = Math.max(...monthly.map(m => m.revenue), 1)
   const active    = listings.filter(l => l.status === 'active').length
-  const rented    = listings.filter(l => l.status === 'rented').length
-  const totalRevenue = listings.filter(l => l.status === 'rented')
+  const filled    = listings.filter(l => l.status === 'filled').length
+  const totalRevenue = listings.filter(l => l.status === 'filled')
                                 .reduce((s, l) => s + l.rent, 0)
-  const occupancyPct = listings.length > 0 ? Math.round((rented / listings.length) * 100) : 0
+  const occupancyPct = listings.length > 0 ? Math.round((filled / listings.length) * 100) : 0
 
   const totalInterest = listings.reduce((s, l) => {
     const n = Array.isArray(l.interest_count) ? (l.interest_count[0]?.count ?? 0) : (l.interest_count ?? 0)
@@ -178,7 +178,7 @@ export default function AnalyticsPage() {
             { icon: 'home_work',      value: listings.length, label: 'Total Properties', sub: 'in your portfolio'  },
             { icon: 'check_circle',   value: active,          label: 'Active Listings',  sub: 'currently live'     },
             { icon: 'person_search',  value: totalInterest,   label: 'Total Applicants', sub: 'across all listings' },
-            { icon: 'payments',       value: `$${totalRevenue.toLocaleString()}`, label: 'Monthly Revenue', sub: 'from rented units' },
+            { icon: 'payments',       value: `$${totalRevenue.toLocaleString()}`, label: 'Monthly Revenue', sub: 'from filled units' },
           ].map(k => (
             <div key={k.label} className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
               <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md mb-3">
@@ -220,7 +220,7 @@ export default function AnalyticsPage() {
               <OccupancyRing pct={occupancyPct} />
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="font-display text-2xl font-light text-clay-dark italic">{rented}</p>
+                  <p className="font-display text-2xl font-light text-clay-dark italic">{filled}</p>
                   <p className="text-xs font-head text-muted">Rented</p>
                 </div>
                 <div>
@@ -228,7 +228,7 @@ export default function AnalyticsPage() {
                   <p className="text-xs font-head text-muted">Active</p>
                 </div>
                 <div>
-                  <p className="font-display text-2xl font-light text-clay-dark italic">{listings.length - rented - active}</p>
+                  <p className="font-display text-2xl font-light text-clay-dark italic">{listings.length - filled - active}</p>
                   <p className="text-xs font-head text-muted">Other</p>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function AnalyticsPage() {
                 <FunnelBar label="Reviewed"    count={Math.round(totalInterest * 0.65)}   max={funnelMax} color="bg-terra"       />
                 <FunnelBar label="Contacted"   count={Math.round(totalInterest * 0.40)}   max={funnelMax} color="bg-amber-400"   />
                 <FunnelBar label="Toured"      count={Math.round(totalInterest * 0.20)}   max={funnelMax} color="bg-amber-300"   />
-                <FunnelBar label="Placed"      count={rented}                             max={funnelMax} color="bg-green-400"   />
+                <FunnelBar label="Placed"      count={filled}                             max={funnelMax} color="bg-green-400"   />
               </div>
               <p className="text-xs font-body text-muted mt-4">
                 * Reviewed, contacted, toured stages are estimated from interest data. Connect tenant screening to get exact numbers.
@@ -284,7 +284,7 @@ export default function AnalyticsPage() {
                     const interestN = Array.isArray(l.interest_count)
                       ? (l.interest_count[0]?.count ?? 0)
                       : (l.interest_count ?? 0)
-                    const share = totalRevenue > 0 && l.status === 'rented'
+                    const share = totalRevenue > 0 && l.status === 'filled'
                       ? Math.round((l.rent / totalRevenue) * 100)
                       : 0
                     const badgeMap: Record<string, string> = {
@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
                         <td className="px-5 py-4 font-head font-semibold text-espresso">${l.rent.toLocaleString()}</td>
                         <td className="px-5 py-4 text-muted">{Number(interestN)}</td>
                         <td className="px-5 py-4">
-                          {l.status === 'rented' ? (
+                          {l.status === 'filled' ? (
                             <div className="flex items-center gap-2">
                               <div className="flex-1 max-w-[80px] h-1.5 bg-linen rounded-full overflow-hidden">
                                 <div className="h-full clay-grad rounded-full" style={{ width: `${share}%` }} />
