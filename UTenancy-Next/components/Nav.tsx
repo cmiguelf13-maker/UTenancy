@@ -128,15 +128,24 @@ export default function Nav() {
                 </Link>
               )}
 
-              {/* Student: messaging icon */}
+              {/* Student: interested properties + messaging icons */}
               {user.user_metadata?.role !== 'landlord' && (
-                <Link href="/messages" title="Messages"
-                  className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
-                </Link>
+                <>
+                  <Link href="/interested" title="Interested Properties"
+                    className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                  </Link>
+                  <Link href="/messages" title="Messages"
+                    className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </Link>
+                </>
               )}
 
               {/* Profile avatar + dropdown */}
@@ -180,11 +189,6 @@ export default function Nav() {
                       </Link>
                     ) : (
                       <>
-                        <Link href="/interested" onClick={() => setMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
-                          <span className="material-symbols-outlined text-clay text-lg">favorite</span>
-                          Interested Properties
-                        </Link>
                         <Link href="/tenant/household" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
                           <span className="material-symbols-outlined text-clay text-lg">house</span>
