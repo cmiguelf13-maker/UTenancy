@@ -65,6 +65,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${plusJakarta.variable} ${fraunces.variable} ${beVietnam.variable}`}
     >
       <head>
+        {/* Preconnect to Google Fonts domains for faster icon font load */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Material Symbols icon font */}
         <link
           rel="stylesheet"
