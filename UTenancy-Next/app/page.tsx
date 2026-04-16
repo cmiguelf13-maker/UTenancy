@@ -156,8 +156,21 @@ export default function HomePage() {
     }
   }
 
+  const orgSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'UTenancy',
+    url: 'https://utenancy.com',
+    logo: 'https://utenancy.com/logo.png',
+    description: 'Student housing platform connecting university students with verified off-campus rentals and roommates.',
+  }
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+      />
       {/* ── HERO ─────────────────────────────────── */}
       <section className="relative overflow-hidden pt-20 md:pt-28 pb-32 px-6 md:px-10">
         <div className="absolute -top-40 right-0 w-[700px] h-[700px] rounded-full opacity-25 blur-[140px] pointer-events-none" style={{ background: 'radial-gradient(circle,#fec8b6,#9c7060)' }} />
