@@ -662,6 +662,47 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── FAQ ──────────────────────────────────── */}
+      <section className="py-24 px-6 md:px-10 bg-white">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: [
+              { '@type': 'Question', name: 'Is UTenancy free for students?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. UTenancy is completely free for students. Create an account with your .edu email, browse verified listings, and message landlords at no cost.' } },
+              { '@type': 'Question', name: 'What universities does UTenancy serve?', acceptedAnswer: { '@type': 'Answer', text: 'UTenancy currently focuses on universities in the Los Angeles area, including LMU, USC, UCLA, and others. We are expanding to more universities soon.' } },
+              { '@type': 'Question', name: 'How do I find off-campus housing near my university?', acceptedAnswer: { '@type': 'Answer', text: 'Sign up with your .edu email, then browse listings filtered by proximity to your campus. You can filter by price, bedroom count, and room type (open room or group formation).' } },
+              { '@type': 'Question', name: 'What is the difference between an open room and a group formation?', acceptedAnswer: { '@type': 'Answer', text: 'An open room listing means there is one vacant bedroom available in an existing shared unit. A group formation listing is for a full unit where a group of students form a household together.' } },
+              { '@type': 'Question', name: 'Are landlords on UTenancy verified?', acceptedAnswer: { '@type': 'Answer', text: 'Yes. All landlords go through a verification process before their listings appear on UTenancy. This helps ensure students are connecting with legitimate, accountable property owners.' } },
+            ],
+          }) }}
+        />
+        <div className="max-w-2xl mx-auto">
+          <h2 className="font-display text-3xl md:text-4xl font-medium text-espresso mb-3">
+            Frequently asked questions
+          </h2>
+          <p className="font-body text-stone/60 mb-12">Everything students ask before they sign up.</p>
+          <div className="divide-y divide-out-var">
+            {[
+              { q: 'Is UTenancy free for students?', a: 'Yes — completely free. Create an account with your .edu email, browse verified listings, and message landlords at no cost.' },
+              { q: 'What universities does UTenancy serve?', a: 'We currently focus on universities in the Los Angeles area, including LMU, USC, UCLA, and others. We\'re expanding to more schools soon.' },
+              { q: 'How do I find off-campus housing near my university?', a: 'Sign up with your .edu email, then browse listings filtered by proximity to your campus. You can filter by price, bedroom count, and room type.' },
+              { q: 'What\'s the difference between an open room and a group formation?', a: 'An open room is one vacant bedroom in an existing shared unit. A group formation is a full unit where a group of students form a household together from scratch.' },
+              { q: 'Are landlords on UTenancy verified?', a: 'Yes. All landlords go through verification before their listings go live — so you\'re always connecting with legitimate, accountable property owners.' },
+            ].map(({ q, a }) => (
+              <details key={q} className="group py-5">
+                <summary className="flex items-center justify-between cursor-pointer list-none gap-4">
+                  <span className="font-head font-semibold text-espresso">{q}</span>
+                  <span className="material-symbols-outlined text-muted flex-shrink-0 group-open:rotate-180 transition-transform text-lg" style={{ fontVariationSettings: "'wght' 300" }}>expand_more</span>
+                </summary>
+                <p className="font-body text-stone/70 text-sm leading-relaxed mt-3 pr-8">{a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── FOOTER ───────────────────────────────── */}
       <footer className="bg-stone py-16 px-6 md:px-10">
         <div className="max-w-7xl mx-auto">
