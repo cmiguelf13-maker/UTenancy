@@ -91,7 +91,7 @@ export const POSTS: BlogPost[] = [
 
 <p>UTenancy was built specifically to solve the student housing problem in LA. All listings on the platform are from verified landlords, and you can filter by proximity to your university, price, bedroom count, and room type (open room vs. group formation). It's free for students to browse and apply.</p>
 
-<p>Start your search at <a href="https://utenancy.com">utenancy.com</a> — and bookmark listings fast. The LA rental market doesn't wait.</p>
+<p>If you're an LMU student, check out our dedicated <a href="https://utenancy.com/housing/lmu">student housing guide for LMU</a> — it covers the best neighborhoods, average rent by area, and how to get started. Or <a href="https://utenancy.com/listings">browse all listings</a> and the LA rental market doesn't wait.</p>
     `.trim(),
   },
 
@@ -187,7 +187,7 @@ export const POSTS: BlogPost[] = [
 
 <p>Read your lease before you sign it. If something is confusing, ask the landlord to explain it in writing. If something is important to you (subletting, early termination, pets), negotiate it before signing — not after. Once it's signed, both parties are bound by it.</p>
 
-<p>UTenancy listings come from verified landlords and often include lease term details upfront — so you can filter by flexibility before you even reach out. Browse listings at <a href="https://utenancy.com">utenancy.com</a>.</p>
+<p>UTenancy listings come from verified landlords and often include lease term details upfront — so you can filter by flexibility before you even reach out. <a href="https://utenancy.com/listings">Browse all listings</a>, or if you're near LMU, visit our <a href="https://utenancy.com/housing/lmu">LMU housing guide</a> for neighborhood-specific advice.</p>
     `.trim(),
   },
 
@@ -365,7 +365,7 @@ export const POSTS: BlogPost[] = [
 
 <p>UTenancy has two listing types built specifically for the roommate market: <strong>open rooms</strong> (one vacant bedroom in an existing unit) and <strong>group formations</strong> (a group of students looking to form a household together). Both are verified listings from real landlords near LA universities.</p>
 
-<p>Browse roommate-friendly student housing at <a href="https://utenancy.com">utenancy.com</a>.</p>
+<p>Browse roommate-friendly student housing at <a href="https://utenancy.com/listings">utenancy.com/listings</a>. LMU students can also check our <a href="https://utenancy.com/housing/lmu">neighborhood guide for LMU housing</a> to find the best areas for shared rentals near campus.</p>
     `.trim(),
   },
 
