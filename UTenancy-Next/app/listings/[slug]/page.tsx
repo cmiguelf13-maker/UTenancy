@@ -17,9 +17,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Try mock listing first
   const listing = getListingBySlug(slug)
   if (listing) {
+    const title = `${listing.title} — UTenancy Student Housing`
+    const description = listing.description
     return {
-      title: `${listing.title} — UTenancy Student Housing`,
-      description: listing.description,
+      title,
+      description,
+      alternates: { canonical: `https://utenancy.com/listings/${listing.slug}` },
+      openGraph: {
+        title,
+        description,
+        images: listing.img
+          ? [{ url: listing.img, width: 1200, height: 630, alt: listing.title }]
+          : [{ url: '/og-image.png' }],
+      },
+      twitter: {
+        card: 'summary_large_image' as const,
+        title,
+        description,
+        images: listing.img ? [listing.img] : ['/og-image.png'],
+      },
     }
   }
 
@@ -27,14 +43,32 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const supabase = createServerClient()
   const { data } = await supabase
     .from('listings')
-    .select('address, city, description')
+    .select('address, city, state, description, rent, bedrooms, images')
     .eq('id', slug)
     .single()
 
   if (data) {
+    const title = `${data.address}, ${data.city} — UTenancy Student Housing`
+    const description = data.description
+      ?? `${data.bedrooms}BR in ${data.city}, ${data.state} — $${data.rent}/mo on UTenancy`
+    const ogImage = data.images?.[0]
     return {
-      title: `${data.address}, ${data.city} — UTenancy Student Housing`,
-      description: data.description,
+      title,
+      description,
+      alternates: { canonical: `https://utenancy.com/listings/${slug}` },
+      openGraph: {
+        title,
+        description,
+        images: ogImage
+          ? [{ url: ogImage, width: 1200, height: 630, alt: `${data.address} listing photo` }]
+          : [{ url: '/og-image.png' }],
+      },
+      twitter: {
+        card: 'summary_large_image' as const,
+        title,
+        description,
+        images: ogImage ? [ogImage] : ['/og-image.png'],
+      },
     }
   }
 
@@ -131,11 +165,40 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
     img: l.images?.[0] ?? '',
   }))
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Apartment',
+    name: dbListing.address,
+    description: dbListing.description ?? `${dbListing.bedrooms}BR apartment in ${dbListing.city}, ${dbListing.state}`,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: dbListing.address,
+      addressLocality: dbListing.city,
+      addressRegion: dbListing.state,
+      addressCountry: 'US',
+    },
+    numberOfRooms: dbListing.bedrooms,
+    url: `https://utenancy.com/listings/${dbListing.id}`,
+    offers: {
+      '@type': 'Offer',
+      price: dbListing.rent,
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+    },
+    ...(dbListing.images?.[0] ? { image: dbListing.images[0] } : {}),
+  }
+
   return (
-    <ListingDetail
-      listing={listing}
-      landlordProfile={landlordProfile ?? undefined}
-      similarListings={similarListings}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ListingDetail
+        listing={listing}
+        landlordProfile={landlordProfile ?? undefined}
+        similarListings={similarListings}
+      />
+    </>
   )
 }
