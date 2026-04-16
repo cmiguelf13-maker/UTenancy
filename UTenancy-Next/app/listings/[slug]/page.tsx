@@ -165,6 +165,16 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
     img: l.images?.[0] ?? '',
   }))
 
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://utenancy.com' },
+      { '@type': 'ListItem', position: 2, name: 'Listings', item: 'https://utenancy.com/listings' },
+      { '@type': 'ListItem', position: 3, name: `${dbListing.address}, ${dbListing.city}`, item: `https://utenancy.com/listings/${dbListing.id}` },
+    ],
+  }
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Apartment',
@@ -190,6 +200,10 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
