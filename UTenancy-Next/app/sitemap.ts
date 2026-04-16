@@ -24,6 +24,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
+  const blogSlugs = [
+    'how-to-find-off-campus-housing-los-angeles',
+    'lease-terms-every-student-should-understand',
+    'how-to-attract-student-tenants-landlord-guide',
+    'renting-with-roommates-complete-guide',
+    'best-neighborhoods-students-los-angeles',
+  ]
+
   return [
     {
       url: 'https://utenancy.com',
@@ -32,16 +40,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1.0,
     },
     {
-      url: 'https://utenancy.com/about',
+      url: 'https://utenancy.com/housing/lmu',
       lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: 'https://utenancy.com/listings',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.9,
     },
     {
       url: 'https://utenancy.com/blog',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.6,
+    },
+    ...blogSlugs.map((slug) => ({
+      url: `https://utenancy.com/blog/${slug}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
+    {
+      url: 'https://utenancy.com/about',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
     },
     ...dbListingUrls,
     ...mockListingUrls,
