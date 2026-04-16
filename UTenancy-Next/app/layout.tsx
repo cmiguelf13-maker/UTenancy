@@ -28,16 +28,33 @@ const beVietnam = Be_Vietnam_Pro({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://utenancy.com'),
   title: {
     default: 'UTenancy — Student Housing, Reimagined',
     template: '%s | UTenancy',
   },
   description:
     'UTenancy connects verified university students with real off-campus housing and roommates — and gives landlords a management platform to run it all.',
-  keywords: ['student housing', 'off-campus', 'roommates', 'university', 'rent'],
+  keywords: ['student housing', 'off-campus', 'roommates', 'university', 'rent', 'college housing', 'student apartments'],
   openGraph: {
     type: 'website',
     siteName: 'UTenancy',
+    title: 'UTenancy — Student Housing, Reimagined',
+    description: 'Find verified off-campus housing near your university. Browse real listings and connect with roommates.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'UTenancy — Student Housing, Reimagined',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'UTenancy — Student Housing, Reimagined',
+    description: 'Find verified off-campus housing near your university. Browse real listings and connect with roommates.',
+    images: ['/og-image.png'],
   },
 }
 
