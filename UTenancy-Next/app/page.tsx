@@ -165,11 +165,31 @@ export default function HomePage() {
     description: 'Student housing platform connecting university students with verified off-campus rentals and roommates.',
   }
 
+  const websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'UTenancy',
+    url: 'https://utenancy.com',
+    description: 'Find verified off-campus student housing near your university.',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: 'https://utenancy.com/listings?q={search_term_string}',
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  }
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
       {/* ── HERO ─────────────────────────────────── */}
       <section className="relative overflow-hidden pt-20 md:pt-28 pb-32 px-6 md:px-10">
@@ -227,7 +247,7 @@ export default function HomePage() {
           {/* Floating cards */}
           <div className="hidden lg:block relative mt-16 h-72">
             <div className="absolute left-0 top-4 w-64 bg-white rounded-2xl shadow-2xl shadow-clay/10 overflow-hidden border border-out-var animate-float-a">
-              <Image src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80" alt="Heritage Commons" width={256} height={144} className="w-full h-36 object-cover" />
+              <Image src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&q=80" alt="Heritage Commons student apartment in Playa Vista, LA" width={256} height={144} className="w-full h-36 object-cover" priority />
               <div className="p-4">
                 <div className="flex justify-between items-start mb-1">
                   <p className="font-head font-bold text-clay-dark text-sm">Heritage Commons</p>
@@ -489,7 +509,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-linen">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=100&q=80" alt="listing" className="w-full h-full object-cover" />
+                      <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=100&q=80" alt="Heritage Commons student apartment" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-head font-bold text-clay-dark text-xs truncate">Heritage Commons</p>
