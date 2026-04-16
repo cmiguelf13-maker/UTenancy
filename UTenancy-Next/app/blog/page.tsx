@@ -1,45 +1,12 @@
 import Link from 'next/link'
 import { Metadata } from 'next'
+import { POSTS } from '@/lib/blog-posts'
 
 export const metadata: Metadata = {
-  title: 'Blog | UTenancy',
-  description: 'Tips, guides, and updates from the UTenancy team — student housing advice, landlord resources, and platform news.',
+  title: 'Blog',
+  description: 'Tips, guides, and updates from the UTenancy team — student housing advice, landlord resources, and off-campus renting guides.',
+  alternates: { canonical: 'https://utenancy.com/blog' },
 }
-
-const POSTS = [
-  {
-    slug: 'how-to-find-off-campus-housing',
-    tag: 'For Students',
-    title: '5 Things to Look for When Finding Off-Campus Housing',
-    excerpt: 'Moving off campus for the first time? Here\'s what to prioritize — from lease terms to landlord responsiveness — before you sign anything.',
-    date: 'March 12, 2025',
-    readTime: '5 min read',
-  },
-  {
-    slug: 'lease-terms-explained',
-    tag: 'Renting 101',
-    title: 'Lease Terms Every Student Should Understand',
-    excerpt: 'Security deposits, early termination clauses, subletting rights — we break down the clauses that matter most for student renters.',
-    date: 'February 28, 2025',
-    readTime: '7 min read',
-  },
-  {
-    slug: 'landlord-tips-student-rentals',
-    tag: 'For Landlords',
-    title: 'How to Attract and Retain Great Student Tenants',
-    excerpt: 'Student tenants can be your most reliable renters if you set the right expectations. Here\'s what works.',
-    date: 'February 10, 2025',
-    readTime: '6 min read',
-  },
-  {
-    slug: 'group-housing-guide',
-    tag: 'For Students',
-    title: 'Renting With Roommates: A Complete Guide',
-    excerpt: 'Everything you need to know about finding, vetting, and living with roommates — from group leases to splitting utilities fairly.',
-    date: 'January 22, 2025',
-    readTime: '8 min read',
-  },
-]
 
 export default function BlogPage() {
   return (
@@ -68,30 +35,29 @@ export default function BlogPage() {
         {/* Posts grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {POSTS.map((post) => (
-            <article
-              key={post.slug}
-              className="border border-white/10 rounded-2xl p-6 bg-white/5 flex flex-col gap-4 hover:bg-white/[0.08] transition-colors group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center border border-sand/30 rounded-full px-3 py-1 text-xs font-head font-bold text-sand/80 uppercase tracking-widest">
-                  {post.tag}
-                </span>
-                <span className="font-body text-white/30 text-xs">{post.readTime}</span>
-              </div>
-              <div>
-                <h2 className="font-head font-bold text-white text-lg mb-2 group-hover:text-sand transition-colors leading-snug">
-                  {post.title}
-                </h2>
-                <p className="font-body text-white/50 text-sm leading-relaxed">{post.excerpt}</p>
-              </div>
-              <div className="flex items-center justify-between mt-auto pt-2">
-                <span className="font-body text-white/30 text-xs">{post.date}</span>
-                <span className="font-head font-bold text-sand/60 text-xs group-hover:text-sand transition-colors flex items-center gap-1">
-                  Read more
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </span>
-              </div>
-            </article>
+            <Link key={post.slug} href={`/blog/${post.slug}`} className="block group">
+              <article className="border border-white/10 rounded-2xl p-6 bg-white/5 flex flex-col gap-4 hover:bg-white/[0.08] transition-colors h-full">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center border border-sand/30 rounded-full px-3 py-1 text-xs font-head font-bold text-sand/80 uppercase tracking-widest">
+                    {post.tag}
+                  </span>
+                  <span className="font-body text-white/30 text-xs">{post.readTime}</span>
+                </div>
+                <div>
+                  <h2 className="font-head font-bold text-white text-lg mb-2 group-hover:text-sand transition-colors leading-snug">
+                    {post.title}
+                  </h2>
+                  <p className="font-body text-white/50 text-sm leading-relaxed">{post.excerpt}</p>
+                </div>
+                <div className="flex items-center justify-between mt-auto pt-2">
+                  <span className="font-body text-white/30 text-xs">{post.date}</span>
+                  <span className="font-head font-bold text-sand/60 text-xs group-hover:text-sand transition-colors flex items-center gap-1">
+                    Read more
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                  </span>
+                </div>
+              </article>
+            </Link>
           ))}
         </div>
 
