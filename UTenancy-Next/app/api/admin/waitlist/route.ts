@@ -8,6 +8,10 @@ const ADMIN_EMAIL = 'cfernandez@utenancy.com'
  * GET /api/admin/waitlist
  * Requires a valid Supabase session belonging to the admin account.
  * Uses the service-role key to fetch waitlist data (bypasses RLS).
+ *
+ * Query params:
+ *   page     - page number, 1-based (default: 1)
+ *   per_page - entries per page, max 200 (default: 100)
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization') ?? ''
@@ -28,16 +32,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Fetch all waitlist entries using the service-role key (bypasses RLS)
+  // Parse pagination params
+  const { searchParams } = new URL(req.url)
+  const page    = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
+  const perPage = Math.min(200, Math.max(1, parseInt(searchParams.get('per_page') ?? '100', 10)))
+  const from    = (page - 1) * perPage
+  const to      = from + perPage - 1
+
+  // Fetch paginated waitlist entries using the service-role key (bypasses RLS)
   const supabase = createServerClient()
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('waitlist')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(from, to)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ entries: data })
+  return NextResponse.json({
+    entries:    data,
+    total:      count ?? 0,
+    page,
+    per_page:   perPage,
+    total_pages: Math.ceil((count ?? 0) / perPage),
+  })
 }
