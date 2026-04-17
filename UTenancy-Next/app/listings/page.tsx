@@ -68,6 +68,7 @@ function ListingsContent() {
       .select('*')
       .eq('status', 'active')
       .order('created_at', { ascending: false })
+      .limit(500)
       .then(({ data }) => {
         if (!data) { setLoading(false); return }
         const mapped: MockListing[] = data.map((d: any) => ({
