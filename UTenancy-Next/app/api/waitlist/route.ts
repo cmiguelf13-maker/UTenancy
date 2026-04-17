@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 /**
  * POST /api/waitlist
@@ -7,8 +8,22 @@ import { createServerClient } from '@/lib/supabase-server'
  *
  * Saves the email to the waitlist table in Supabase.
  * Returns 200 on success, 409 if already signed up, 400 on bad input.
+ * Rate limited to 5 requests per minute per IP.
  */
 export async function POST(req: NextRequest) {
+  // ── Rate limiting: 5 signups per minute per IP ──
+  const ip = getClientIp(req)
+  const { allowed, resetAt } = checkRateLimit(`waitlist:${ip}`, 5, 60 * 1000)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again in a minute.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)) },
+      }
+    )
+  }
+
   const body = await req.json().catch(() => null)
 
   if (!body || typeof body.email !== 'string' || !body.email.trim()) {
