@@ -3,14 +3,6 @@ import Stripe from 'stripe'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  'https://dzoigotkcaghqjyrotgp.supabase.co'
-
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6b2lnb3RrY2FnaHFqeXJvdGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjg0MzksImV4cCI6MjA5MDkwNDQzOX0.coVY5stZKapQ_JiYek8ywckLC0VYumd4s_cNaNVmooE'
-
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!)
 }
@@ -28,16 +20,20 @@ export async function POST(req: NextRequest) {
   const stripe = getStripe()
 
   const cookieStore = await cookies()
-  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() { return cookieStore.getAll() },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) =>
-          cookieStore.set(name, value, options)
-        )
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        },
       },
-    },
-  })
+    }
+  )
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -56,35 +52,43 @@ export async function POST(req: NextRequest) {
 
   let connectId: string | null = profile?.stripe_connect_id ?? null
 
-  if (!connectId) {
-    // Create a new Express account
-    const account = await stripe.accounts.create({
-      type: 'express',
-      email: user.email,
-      metadata: { supabase_user_id: user.id },
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-    })
-    connectId = account.id
-
-    // Persist the Connect account ID
-    await supabase
-      .from('profiles')
-      .update({ stripe_connect_id: connectId })
-      .eq('id', user.id)
-  }
-
   const origin = req.headers.get('origin') ?? 'https://utenancy.com'
 
-  // Generate an Account Link for onboarding / re-onboarding
-  const accountLink = await stripe.accountLinks.create({
-    account: connectId,
-    refresh_url: `${origin}/landlord?connect=refresh`,
-    return_url:  `${origin}/landlord?connect=success`,
-    type: 'account_onboarding',
-  })
+  try {
+    if (!connectId) {
+      // Create a new Express account
+      const account = await stripe.accounts.create({
+        type: 'express',
+        email: user.email,
+        metadata: { supabase_user_id: user.id },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      })
+      connectId = account.id
 
-  return NextResponse.json({ url: accountLink.url })
+      // Persist the Connect account ID
+      await supabase
+        .from('profiles')
+        .update({ stripe_connect_id: connectId })
+        .eq('id', user.id)
+    }
+
+    // Generate an Account Link for onboarding / re-onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: connectId,
+      refresh_url: `${origin}/landlord?connect=refresh`,
+      return_url:  `${origin}/landlord?connect=success`,
+      type: 'account_onboarding',
+    })
+
+    return NextResponse.json({ url: accountLink.url })
+  } catch (err) {
+    console.error('Stripe connect onboard error:', err)
+    return NextResponse.json(
+      { error: 'Payout account setup unavailable. Please try again.' },
+      { status: 503 }
+    )
+  }
 }
