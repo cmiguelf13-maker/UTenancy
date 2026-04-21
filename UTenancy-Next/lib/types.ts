@@ -101,6 +101,7 @@ export interface Listing {
   deposit: number | null
   utilities: string | null
   pets_allowed: string | null
+  target_schools: string[]
   created_at: string
   updated_at: string
   // optional joined fields
