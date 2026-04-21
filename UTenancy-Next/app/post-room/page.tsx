@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { SCHOOL_OPTIONS } from '@/lib/distance'
 
 const AMENITY_OPTIONS = [
   'Parking', 'In-unit laundry', 'A/C', 'Backyard', 'Hardwood floors',
@@ -27,6 +28,7 @@ export default function PostRoomPage() {
   const [rent, setRent] = useState('')
   const [description, setDescription] = useState('')
   const [amenities, setAmenities] = useState<string[]>([])
+  const [targetSchools, setTargetSchools] = useState<string[]>([])
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
 
@@ -129,6 +131,10 @@ export default function PostRoomPage() {
     setAmenities(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a])
   }
 
+  function toggleSchool(slug: string) {
+    setTargetSchools(prev => prev.includes(slug) ? prev.filter(x => x !== slug) : [...prev, slug])
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
@@ -180,6 +186,7 @@ export default function PostRoomPage() {
           status: files.length > 0 ? 'active' : 'draft',
           description: description || null,
           amenities,
+          target_schools: targetSchools,
           images: [],
           available_date: availableDate || null,
           lease_term: leaseTerm,
@@ -415,6 +422,24 @@ export default function PostRoomPage() {
                       ? 'clay-grad text-white border-transparent shadow-sm'
                       : 'border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
                   {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Promote to Schools */}
+          <div className="bg-white rounded-2xl border border-out-var/40 p-5">
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider mb-1">Promote to Schools</h2>
+            <p className="text-xs font-body text-muted mb-3">Students at these schools will see walking distance to their campus on your listing.</p>
+            <div className="flex flex-wrap gap-2">
+              {SCHOOL_OPTIONS.map(school => (
+                <button key={school.slug} type="button" onClick={() => toggleSchool(school.slug)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-head font-bold border transition-all
+                    ${targetSchools.includes(school.slug)
+                      ? 'clay-grad text-white border-transparent shadow-sm'
+                      : 'border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>school</span>
+                  {school.short}
                 </button>
               ))}
             </div>
