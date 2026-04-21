@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { Listing } from '@/lib/types'
+import { SCHOOL_OPTIONS } from '@/lib/distance'
 import type { User } from '@supabase/supabase-js'
 
 /* ─── Constants ─────────────────────────────────────── */
@@ -126,6 +127,33 @@ function AmenityPills({ selected, onChange }: {
               ? 'clay-grad text-white border-transparent shadow-sm'
               : 'bg-white border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
           {item}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/* ─── SchoolPicker ───────────────────────────────────── */
+function SchoolPicker({ selected, onChange }: {
+  selected: string[]
+  onChange: (v: string[]) => void
+}) {
+  function toggle(slug: string) {
+    onChange(selected.includes(slug)
+      ? selected.filter((s) => s !== slug)
+      : [...selected, slug]
+    )
+  }
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {SCHOOL_OPTIONS.map((school) => (
+        <button key={school.slug} type="button" onClick={() => toggle(school.slug)}
+          className={`px-3 py-1.5 rounded-full text-xs font-head font-semibold border transition-all flex items-center gap-1.5
+            ${selected.includes(school.slug)
+              ? 'clay-grad text-white border-transparent shadow-sm'
+              : 'bg-white border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}>
+          <span className="material-symbols-outlined" style={{ fontSize: 13 }}>school</span>
+          {school.short}
         </button>
       ))}
     </div>
@@ -293,6 +321,8 @@ function ListingFormFields({
   defaults,
   amenities,
   setAmenities,
+  schools,
+  setSchools,
   existingImagePreviews,
   onRemoveExisting,
   newPreviews,
@@ -305,6 +335,8 @@ function ListingFormFields({
   defaults?: Listing | null
   amenities: string[]
   setAmenities: (a: string[]) => void
+  schools: string[]
+  setSchools: (s: string[]) => void
   existingImagePreviews?: string[]
   onRemoveExisting?: (url: string) => void
   newPreviews: string[]
@@ -536,6 +568,16 @@ function ListingFormFields({
         <AmenityPills selected={amenities} onChange={setAmenities} />
       </div>
 
+      {/* Target Schools */}
+      <div>
+        <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-1">
+          Promote to Schools
+          <span className="font-normal normal-case text-muted ml-1">(select all that apply)</span>
+        </label>
+        <p className="text-[11px] font-body text-muted mb-1">Students at these schools will see walking distance to their campus on your listing.</p>
+        <SchoolPicker selected={schools} onChange={setSchools} />
+      </div>
+
       {/* Photos */}
       <div>
         <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
@@ -624,6 +666,7 @@ export default function LandlordPortal() {
   const [showAddModal,    setShowAddModal]    = useState(false)
   const [addListingType,  setAddListingType]  = useState<'open-room' | 'group-formation'>('group-formation')
   const [addAmenities,    setAddAmenities]    = useState<string[]>([])
+  const [addSchools,      setAddSchools]      = useState<string[]>([])
   const [addFiles,        setAddFiles]        = useState<File[]>([])
   const [addPreviews,     setAddPreviews]     = useState<string[]>([])
   const [savingAdd,       setSavingAdd]       = useState(false)
@@ -635,6 +678,7 @@ export default function LandlordPortal() {
   const [editFormAddress,   setEditFormAddress]   = useState<ParsedAddress | null>(null)
   const [editListingType,   setEditListingType]   = useState<'open-room' | 'group-formation'>('group-formation')
   const [editAmenities,     setEditAmenities]     = useState<string[]>([])
+  const [editSchools,       setEditSchools]       = useState<string[]>([])
   const [editExistingImgs,  setEditExistingImgs]  = useState<string[]>([])  // kept URLs
   const [editNewFiles,      setEditNewFiles]      = useState<File[]>([])
   const [editNewPreviews,   setEditNewPreviews]   = useState<string[]>([])
@@ -843,6 +887,7 @@ export default function LandlordPortal() {
         status:         isDraft ? 'draft' : 'active',
         description:    finalDescription,
         amenities:      addAmenities,
+        target_schools: addSchools,
         images:         [],
         available_date: availableDate || null,
         lease_term:     leaseTerm || null,
@@ -888,6 +933,7 @@ export default function LandlordPortal() {
         setAddFiles([])
         setAddPreviews([])
         setAddAmenities([])
+        setAddSchools([])
         setAddListingType('group-formation')
         form.reset()
       }, 2000)
@@ -900,6 +946,7 @@ export default function LandlordPortal() {
       setAddFiles([])
       setAddPreviews([])
       setAddAmenities([])
+      setAddSchools([])
       setAddListingType('group-formation')
       form.reset()
     }, 2000)
@@ -910,6 +957,7 @@ export default function LandlordPortal() {
     setEditListing(listing)
     setEditListingType(listing.type)
     setEditAmenities(listing.amenities ?? [])
+    setEditSchools(listing.target_schools ?? [])
     setEditFormAddress({ street: listing.address ?? '', city: listing.city ?? '', state: listing.state ?? 'CA', zip: listing.zip ?? '' })
     setEditExistingImgs(listing.images ?? [])
     setEditNewFiles([])
@@ -979,6 +1027,7 @@ export default function LandlordPortal() {
         status:         newStatus,
         description:    description || null,
         amenities:      editAmenities,
+        target_schools: editSchools,
         images:         allImages,
         available_date: availableDate || null,
         lease_term:     leaseTerm || null,
@@ -1539,7 +1588,7 @@ export default function LandlordPortal() {
             style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)', maxHeight: '90vh' }}>
             {/* Header */}
             <div className="flex-shrink-0 px-8 pt-8 pb-2">
-              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddListingType('group-formation'); setAddFormAddress(null) }}
+              <button onClick={() => { setShowAddModal(false); setSavingAdd(false); setAddStatus(null); setAddFiles([]); setAddPreviews([]); setAddAmenities([]); setAddSchools([]); setAddListingType('group-formation'); setAddFormAddress(null) }}
                 className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full text-outline hover:text-clay hover:bg-surf-lo transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
@@ -1557,6 +1606,8 @@ export default function LandlordPortal() {
                 <ListingFormFields
                   amenities={addAmenities}
                   setAmenities={setAddAmenities}
+                  schools={addSchools}
+                  setSchools={setAddSchools}
                   newPreviews={addPreviews}
                   onRemoveNew={removeAddFile}
                   onNewFileSelect={addFileSelect}
@@ -1597,6 +1648,8 @@ export default function LandlordPortal() {
                   defaults={editListing}
                   amenities={editAmenities}
                   setAmenities={setEditAmenities}
+                  schools={editSchools}
+                  setSchools={setEditSchools}
                   existingImagePreviews={editExistingImgs}
                   onRemoveExisting={removeEditExistingImage}
                   newPreviews={editNewPreviews}
