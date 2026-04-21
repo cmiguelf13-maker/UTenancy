@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { Listing } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
-import { getDistanceToNearestSchool } from '@/lib/distance'
+import { getDistancesToSchools, getDistanceToNearestSchool } from '@/lib/distance'
 
 /* ── Types ─────────────────────────────────────────────────────── */
 type LandlordProfile = {
@@ -800,6 +800,9 @@ export default function ListingDetail({
   const [hasApplied, setHasApplied] = useState(false)
   const [copyDone, setCopyDone] = useState(false)
   const [actionToast, setActionToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [schoolDistances, setSchoolDistances] = useState<Array<{ slug: string; short: string; name: string; distanceMi: number }>>([])
+  const [selectedSchoolIdx, setSelectedSchoolIdx] = useState(0)
+  // Legacy single-school fallback (for mock listings that have distanceMi/university pre-set)
   const [distanceInfo, setDistanceInfo] = useState<{ distanceMi: number; university: string } | null>(
     listing.distanceMi && listing.university
       ? { distanceMi: listing.distanceMi, university: listing.university }
@@ -866,10 +869,25 @@ export default function ListingDetail({
     ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
     : FALLBACK_PHOTOS
 
-  // Compute distance for DB listings that don't have it pre-computed
+  // Compute distances to target schools for DB listings
   useEffect(() => {
-    if (!distanceInfo && listing.title && listing.location) {
-      const [city] = listing.location.split(',').map((s: string) => s.trim())
+    const targetSchools = (listing as any).target_schools as string[] | undefined
+    if (!listing.title || !listing.location) return
+
+    const [city] = listing.location.split(',').map((s: string) => s.trim())
+
+    if (targetSchools && targetSchools.length > 0) {
+      // Multi-school mode: compute distances to all selected schools
+      getDistancesToSchools(listing.title, city, targetSchools).then((results) => {
+        if (results.length > 0) {
+          setSchoolDistances(results)
+          setSelectedSchoolIdx(0)
+          // Also set legacy distanceInfo for the stats card
+          setDistanceInfo({ distanceMi: results[0].distanceMi, university: results[0].short })
+        }
+      })
+    } else if (!distanceInfo && listing.title && listing.location) {
+      // Fallback: find nearest university (legacy / mock listings)
       getDistanceToNearestSchool(listing.title, city).then((info) => {
         if (info) setDistanceInfo(info)
       })
@@ -1052,9 +1070,13 @@ export default function ListingDetail({
     }
   }
 
-  const mapDestination = distanceInfo?.university
-    ? `${distanceInfo.university}`
-    : 'Loyola Marymount University, Los Angeles, CA'
+  // Determine which school the map points to
+  const activeSchool = schoolDistances.length > 0 ? schoolDistances[selectedSchoolIdx] : null
+  const mapDestination = activeSchool
+    ? `${activeSchool.name}, Los Angeles, CA`
+    : distanceInfo?.university
+      ? `${distanceInfo.university}, Los Angeles, CA`
+      : 'Loyola Marymount University, Los Angeles, CA'
 
   return (
     <>
@@ -1165,7 +1187,14 @@ export default function ListingDetail({
                   <span className="material-symbols-outlined text-sm">location_on</span>
                   {listing.location}
                 </span>
-                {distanceInfo && (
+                {schoolDistances.length > 0 ? (
+                  schoolDistances.map((s) => (
+                    <span key={s.slug} className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">school</span>
+                      {s.distanceMi} mi from {s.short}
+                    </span>
+                  ))
+                ) : distanceInfo && (
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">school</span>
                     {distanceInfo.distanceMi} mi from {distanceInfo.university}
@@ -1179,17 +1208,28 @@ export default function ListingDetail({
 
               <div className="flex flex-wrap gap-3">
                 {[
-                  { icon: 'bed',          label: `${listing.beds} Bedroom${listing.beds !== 1 ? 's' : ''}` },
-                  { icon: 'bathtub',      label: `${listing.baths ?? 1} Bathroom${(listing.baths ?? 1) !== 1 ? 's' : ''}` },
-                  ...(distanceInfo
-                    ? [{ icon: 'directions_walk', label: `${distanceInfo.distanceMi} mi to ${distanceInfo.university}` }]
-                    : []),
+                  { icon: 'bed',     label: `${listing.beds} Bedroom${listing.beds !== 1 ? 's' : ''}` },
+                  { icon: 'bathtub', label: `${listing.baths ?? 1} Bathroom${(listing.baths ?? 1) !== 1 ? 's' : ''}` },
                 ].map(({ icon, label }) => (
                   <div key={icon} className="stat-card">
                     <span className="material-symbols-outlined text-clay text-xl">{icon}</span>
                     <span className="text-xs font-head font-bold text-clay-dark">{label}</span>
                   </div>
                 ))}
+                {schoolDistances.length > 0
+                  ? schoolDistances.map((s) => (
+                    <div key={s.slug} className="stat-card">
+                      <span className="material-symbols-outlined text-clay text-xl">directions_walk</span>
+                      <span className="text-xs font-head font-bold text-clay-dark">{s.distanceMi} mi to {s.short}</span>
+                    </div>
+                  ))
+                  : distanceInfo && (
+                    <div className="stat-card">
+                      <span className="material-symbols-outlined text-clay text-xl">directions_walk</span>
+                      <span className="text-xs font-head font-bold text-clay-dark">{distanceInfo.distanceMi} mi to {distanceInfo.university}</span>
+                    </div>
+                  )
+                }
               </div>
             </div>
 
@@ -1236,8 +1276,33 @@ export default function ListingDetail({
             {/* Location & Map */}
             <div className="mb-8 reveal">
               <h2 className="font-head text-xl font-bold text-clay-dark mb-4">Location</h2>
+
+              {/* School selector tabs — shown when listing has target schools */}
+              {schoolDistances.length > 0 && (
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {schoolDistances.map((school, idx) => (
+                    <button
+                      key={school.slug}
+                      type="button"
+                      onClick={() => setSelectedSchoolIdx(idx)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-head font-semibold border transition-all
+                        ${selectedSchoolIdx === idx
+                          ? 'clay-grad text-white border-transparent shadow-sm'
+                          : 'bg-white border-out-var text-muted hover:border-clay/50 hover:text-clay-dark'}`}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>school</span>
+                      {school.short}
+                      <span className={`ml-0.5 ${selectedSchoolIdx === idx ? 'text-white/80' : 'text-clay'}`}>
+                        {school.distanceMi} mi
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="rounded-2xl overflow-hidden border border-out-var/40 shadow-sm" style={{ height: 320 }}>
                 <iframe
+                  key={mapDestination}
                   title="Property location"
                   width="100%"
                   height="100%"
@@ -1249,9 +1314,11 @@ export default function ListingDetail({
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <span className="material-symbols-outlined text-clay text-sm">school</span>
-                {distanceInfo
-                  ? <p className="text-xs font-body text-muted"><strong className="text-clay-dark font-semibold">{distanceInfo.distanceMi} mi</strong> walking distance to {distanceInfo.university}</p>
-                  : <p className="text-xs font-body text-muted">Walking directions to nearby university</p>
+                {activeSchool
+                  ? <p className="text-xs font-body text-muted"><strong className="text-clay-dark font-semibold">{activeSchool.distanceMi} mi</strong> walking distance to {activeSchool.name}</p>
+                  : distanceInfo
+                    ? <p className="text-xs font-body text-muted"><strong className="text-clay-dark font-semibold">{distanceInfo.distanceMi} mi</strong> walking distance to {distanceInfo.university}</p>
+                    : <p className="text-xs font-body text-muted">Walking directions to nearby university</p>
                 }
               </div>
             </div>
@@ -1355,7 +1422,7 @@ export default function ListingDetail({
                 <div className="w-8 h-8 clay-grad rounded-full flex items-center justify-center">
                   <span className="text-cream font-head font-black text-xs">U</span>
                 </div>
-                <span>{distanceInfo ? `Verified ${distanceInfo.university} Listing` : 'UTenancy Verified Listing'}</span>
+                <span>{activeSchool ? `Verified ${activeSchool.short} Listing` : distanceInfo ? `Verified ${distanceInfo.university} Listing` : 'UTenancy Verified Listing'}</span>
               </div>
               <span className="feature-pill">Student-Verified</span>
               <span className="feature-pill">Landlord Screened</span>
