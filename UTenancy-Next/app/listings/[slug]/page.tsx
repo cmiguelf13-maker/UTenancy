@@ -151,6 +151,7 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
     deposit: dbListing.deposit ?? null,
     utilities: dbListing.utilities ?? null,
     pets_allowed: dbListing.pets_allowed ?? null,
+    target_schools: dbListing.target_schools ?? [],
   } as any
 
   const similarListings = (similarRows ?? []).map((l: any) => ({
