@@ -648,11 +648,45 @@ export default function LandlordPortal() {
   const [filter,  setFilter]  = useState<FilterTab>('all')
 
   /* Applicant review modal */
+  type RentApplication = {
+    id: string
+    status: string
+    created_at: string
+    message: string | null
+    full_name: string | null
+    phone: string | null
+    date_of_birth: string | null
+    university: string | null
+    enrollment_status: string | null
+    major: string | null
+    grad_year: string | null
+    employment_status: string | null
+    monthly_income: number | null
+    has_cosigner: boolean | null
+    cosigner_name: string | null
+    ref1_name: string | null
+    ref1_relationship: string | null
+    ref1_contact: string | null
+    ref2_name: string | null
+    ref2_relationship: string | null
+    ref2_contact: string | null
+    move_in_date: string | null
+    lease_term: string | null
+    num_occupants: number | null
+    has_pets: boolean | null
+    pets_description: string | null
+    rejection_reason: string | null
+    profile: { id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null } | null
+  }
   const [reviewListing,     setReviewListing]     = useState<Listing | null>(null)
   const [applicants,         setApplicants]         = useState<Array<{ id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null }>>([])
-  const [rentApplications,   setRentApplications]   = useState<Array<{ id: string; message: string | null; created_at: string; profile: { id: string; first_name: string | null; last_name: string | null; university: string | null; bio: string | null } | null }>>([])
+  const [rentApplications,   setRentApplications]   = useState<RentApplication[]>([])
   const [loadingApplicants,  setLoadingApplicants]  = useState(false)
   const [reviewModalType,    setReviewModalType]    = useState<'applicants' | 'interested'>('applicants')
+  const [expandedAppId,      setExpandedAppId]      = useState<string | null>(null)
+  const [rejectingAppId,     setRejectingAppId]     = useState<string | null>(null)
+  const [rejectionReason,    setRejectionReason]    = useState('')
+  const [appActionMsg,       setAppActionMsg]       = useState<string | null>(null)
 
   /* ── Subscription ── */
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free')
@@ -1107,7 +1141,7 @@ export default function LandlordPortal() {
         .eq('listing_id', listing.id),
       supabase
         .from('rent_applications')
-        .select('id, message, created_at, profile:profiles!rent_applications_user_id_fkey(id, first_name, last_name, university, bio)')
+        .select('id, status, created_at, message, full_name, phone, date_of_birth, university, enrollment_status, major, grad_year, employment_status, monthly_income, has_cosigner, cosigner_name, ref1_name, ref1_relationship, ref1_contact, ref2_name, ref2_relationship, ref2_contact, move_in_date, lease_term, num_occupants, has_pets, pets_description, rejection_reason, profile:profiles!rent_applications_user_id_fkey(id, first_name, last_name, university, bio)')
         .eq('listing_id', listing.id)
         .order('created_at', { ascending: false }),
     ])
@@ -1124,6 +1158,104 @@ export default function LandlordPortal() {
       setRentApplications(applications as any)
     }
     setLoadingApplicants(false)
+  }
+
+  /* ── UPDATE application status (approve / shortlist / reject) ── */
+  async function handleUpdateAppStatus(appId: string, newStatus: string, reason?: string) {
+    setAppActionMsg(null)
+    const payload: Record<string, string> = { status: newStatus }
+    if (reason) payload.rejection_reason = reason
+    const { error } = await supabase.from('rent_applications').update(payload).eq('id', appId)
+    if (error) { setAppActionMsg('Could not update status. Please try again.'); return }
+    setRentApplications((prev) => prev.map((a) => a.id === appId ? { ...a, status: newStatus, rejection_reason: reason ?? a.rejection_reason } : a))
+    setRejectingAppId(null)
+    setRejectionReason('')
+  }
+
+  /* ── Open a message thread with the applicant ── */
+  async function handleMessageApplicant(profileId: string) {
+    if (!reviewListing || !user) return
+    const err = await (async () => {
+      const { data: convId, error } = await supabase.rpc('open_conversation', {
+        p_listing_id: reviewListing.id,
+        p_user_a:     user.id,
+        p_user_b:     profileId,
+      })
+      if (error || !convId) return error?.message ?? 'Could not open chat'
+      window.location.href = `/messages/${convId}`
+      return null
+    })()
+    if (err) setAppActionMsg('Could not open chat: ' + err)
+  }
+
+  /* ── Download application as formatted PDF (print-to-PDF) ── */
+  function handleDownloadPDF(app: RentApplication, listingAddress: string) {
+    const w = window.open('', '_blank', 'width=800,height=900')
+    if (!w) return
+    const dob = app.date_of_birth ? new Date(app.date_of_birth + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+    const moveIn = app.move_in_date ? new Date(app.move_in_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+    const submitted = new Date(app.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    const row = (label: string, value: string | null | undefined | number | boolean) => {
+      if (value === null || value === undefined || value === '') return ''
+      const display = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value)
+      return `<tr><td style="padding:6px 12px;font-weight:600;color:#6b4c3b;width:38%;border-bottom:1px solid #f0e8e3">${label}</td><td style="padding:6px 12px;color:#2e1e18;border-bottom:1px solid #f0e8e3">${display}</td></tr>`
+    }
+    const section = (title: string, rows: string) => `
+      <div style="margin-bottom:20px">
+        <div style="background:#6b4c3b;color:#fff;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 14px;border-radius:6px 6px 0 0">${title}</div>
+        <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e8d8d0;border-top:none;border-radius:0 0 6px 6px">${rows}</table>
+      </div>`
+    w.document.write(`<!DOCTYPE html><html><head><title>Rental Application — ${app.full_name ?? 'Applicant'}</title>
+    <style>body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#2e1e18;margin:0;padding:0;background:#faf5f2}
+    @media print{body{background:#fff}}</style></head><body>
+    <div style="max-width:680px;margin:0 auto;padding:32px 24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-size:22px;font-weight:300;color:#6b4c3b;letter-spacing:-.02em">Rental Application</div>
+          <div style="font-size:13px;color:#9c7060;margin-top:2px">${listingAddress}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:#9c7060">Submitted</div>
+          <div style="font-size:13px;font-weight:600;color:#2e1e18">${submitted}</div>
+        </div>
+      </div>
+      <hr style="border:none;border-top:2px solid #6b4c3b;margin-bottom:24px">
+      ${section('Personal Information', [
+        row('Full Legal Name', app.full_name),
+        row('Date of Birth', dob),
+        row('Phone', app.phone),
+        row('University / School', app.university),
+        row('Enrollment Status', app.enrollment_status),
+        row('Major / Field of Study', app.major),
+        row('Expected Graduation', app.grad_year),
+      ].join(''))}
+      ${section('Financial Information', [
+        row('Employment Status', app.employment_status),
+        row('Monthly Income', app.monthly_income ? '$' + Number(app.monthly_income).toLocaleString() : null),
+        row('Has Co-signer / Guarantor', app.has_cosigner ? 'Yes' : 'No'),
+        row('Co-signer Name', app.cosigner_name),
+      ].join(''))}
+      ${(app.ref1_name || app.ref2_name) ? section('References', [
+        app.ref1_name ? `<tr><td colspan="2" style="padding:8px 12px;font-weight:700;color:#6b4c3b;background:#faf0ec;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Reference 1</td></tr>` : '',
+        row('Name', app.ref1_name), row('Relationship', app.ref1_relationship), row('Contact', app.ref1_contact),
+        app.ref2_name ? `<tr><td colspan="2" style="padding:8px 12px;font-weight:700;color:#6b4c3b;background:#faf0ec;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Reference 2</td></tr>` : '',
+        row('Name', app.ref2_name), row('Relationship', app.ref2_relationship), row('Contact', app.ref2_contact),
+      ].join('')) : ''}
+      ${section('Move-in Preferences', [
+        row('Desired Move-in Date', moveIn),
+        row('Lease Term', app.lease_term),
+        row('Total Occupants', app.num_occupants),
+        row('Has Pets', app.has_pets ? 'Yes' : 'No'),
+        row('Pet Description', app.pets_description),
+      ].join(''))}
+      ${app.message ? section('Message to Landlord', `<tr><td colspan="2" style="padding:12px;color:#2e1e18;font-style:italic">"${app.message}"</td></tr>`) : ''}
+      <div style="margin-top:24px;padding:12px 16px;background:#fff;border:1px solid #e8d8d0;border-radius:8px;font-size:11px;color:#9c7060">
+        This document was generated from the UTenancy platform. It is not a lease agreement. The applicant confirmed all information is accurate.
+      </div>
+    </div>
+    <script>setTimeout(function(){window.print()},400)</script>
+    </body></html>`)
+    w.document.close()
   }
 
   /* ─── Loading screen ─── */
@@ -1443,7 +1575,7 @@ export default function LandlordPortal() {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
           style={{ background: 'rgba(30,20,16,.55)', backdropFilter: 'blur(6px)' }}
           onClick={() => setReviewListing(null)}>
-          <div className="bg-white rounded-3xl shadow-2xl border border-out-var w-full max-w-md p-8 relative"
+          <div className="bg-white rounded-3xl shadow-2xl border border-out-var w-full max-w-xl p-8 relative"
             style={{ boxShadow: '0 40px 80px rgba(81,53,38,.18)' }}
             onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setReviewListing(null)}
@@ -1489,6 +1621,9 @@ export default function LandlordPortal() {
                 {/* ── Rent Applications ── */}
                 {reviewModalType === 'applicants' && (
                   <div>
+                    {appActionMsg && (
+                      <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs font-body text-red-700">{appActionMsg}</div>
+                    )}
                     {rentApplications.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-10 text-center">
                         <span className="material-symbols-outlined text-out-var text-4xl mb-2">assignment</span>
@@ -1499,33 +1634,195 @@ export default function LandlordPortal() {
                       <div className="space-y-3">
                         {rentApplications.map((app) => {
                           const p = app.profile
+                          const initials = ((p?.first_name?.[0] ?? '') + (p?.last_name?.[0] ?? '')).toUpperCase()
+                          const isExpanded = expandedAppId === app.id
+                          const isRejecting = rejectingAppId === app.id
+                          const displayName = app.full_name || [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Applicant'
+                          const submittedDate = new Date(app.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                          const moveInDate = app.move_in_date ? new Date(app.move_in_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+                          const statusConfig: Record<string, { label: string; cls: string }> = {
+                            pending:     { label: 'Pending',     cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
+                            shortlisted: { label: 'Shortlisted', cls: 'bg-green-50 text-green-700 border border-green-200' },
+                            approved:    { label: 'Approved',    cls: 'bg-blue-50 text-blue-700 border border-blue-200'   },
+                            rejected:    { label: 'Rejected',    cls: 'bg-red-50 text-red-500 border border-red-200'      },
+                          }
+                          const sc = statusConfig[app.status] ?? statusConfig.pending
+
                           return (
-                            <div key={app.id} className="p-4 bg-linen rounded-2xl border border-out-var/40">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="w-9 h-9 rounded-full flex-shrink-0 clay-grad flex items-center justify-center">
-                                  <span className="text-white font-head font-black text-xs">
-                                    {(p?.first_name?.[0] ?? '') + (p?.last_name?.[0] ?? '')}
-                                  </span>
+                            <div key={app.id} className="bg-white rounded-2xl border border-out-var/60 overflow-hidden shadow-sm">
+                              {/* ── Card header ── */}
+                              <div className="flex items-center gap-3 p-4">
+                                <div className="w-10 h-10 rounded-full flex-shrink-0 clay-grad flex items-center justify-center shadow-sm">
+                                  <span className="text-white font-head font-black text-xs">{initials || '?'}</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-head font-bold text-clay-dark">{p?.first_name} {p?.last_name}</p>
-                                  {p?.university && <p className="text-xs font-body text-muted">{p.university}</p>}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="text-sm font-head font-bold text-clay-dark leading-tight">{displayName}</p>
+                                    <span className={`text-[10px] font-head font-bold px-2 py-0.5 rounded-full ${sc.cls}`}>{sc.label}</span>
+                                  </div>
+                                  <p className="text-xs font-body text-muted mt-0.5">
+                                    {app.university || p?.university || ''}{app.university && app.move_in_date ? ' · ' : ''}{moveInDate ? `Move-in ${moveInDate}` : ''}
+                                  </p>
                                 </div>
-                                {p?.id && (
-                                  <a href={`/profile/${p.id}`}
-                                    className="flex-shrink-0 text-xs font-head font-bold text-clay hover:text-clay-dark transition-colors underline underline-offset-2">
-                                    Profile
-                                  </a>
-                                )}
+                                <button
+                                  onClick={() => setExpandedAppId(isExpanded ? null : app.id)}
+                                  className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-muted hover:text-clay hover:bg-linen transition-all">
+                                  <span className="material-symbols-outlined text-base">{isExpanded ? 'expand_less' : 'expand_more'}</span>
+                                </button>
                               </div>
-                              {app.message && (
-                                <p className="text-xs font-body text-muted bg-white rounded-xl px-3 py-2 border border-out-var/30 italic">
-                                  &ldquo;{app.message}&rdquo;
-                                </p>
+
+                              {/* ── Expanded detail ── */}
+                              {isExpanded && (
+                                <div className="border-t border-out-var/40 px-4 pb-4 pt-3 space-y-4">
+
+                                  {/* About */}
+                                  <div>
+                                    <p className="text-[10px] font-head font-bold text-clay uppercase tracking-widest mb-2">About</p>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-body">
+                                      {app.phone && <div><span className="text-muted">Phone</span><br /><span className="font-semibold text-clay-dark">{app.phone}</span></div>}
+                                      {app.date_of_birth && <div><span className="text-muted">Date of Birth</span><br /><span className="font-semibold text-clay-dark">{new Date(app.date_of_birth + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>}
+                                      {app.enrollment_status && <div><span className="text-muted">Enrollment</span><br /><span className="font-semibold text-clay-dark">{app.enrollment_status}</span></div>}
+                                      {app.major && <div><span className="text-muted">Major</span><br /><span className="font-semibold text-clay-dark">{app.major}</span></div>}
+                                      {app.grad_year && <div><span className="text-muted">Graduation</span><br /><span className="font-semibold text-clay-dark">{app.grad_year}</span></div>}
+                                    </div>
+                                  </div>
+
+                                  {/* Financial */}
+                                  {(app.employment_status || app.monthly_income || app.has_cosigner) && (
+                                    <div>
+                                      <p className="text-[10px] font-head font-bold text-clay uppercase tracking-widest mb-2">Financial</p>
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-body">
+                                        {app.employment_status && <div><span className="text-muted">Employment</span><br /><span className="font-semibold text-clay-dark">{app.employment_status}</span></div>}
+                                        {app.monthly_income !== null && app.monthly_income !== undefined && <div><span className="text-muted">Monthly Income</span><br /><span className="font-semibold text-clay-dark">${Number(app.monthly_income).toLocaleString()}</span></div>}
+                                        {app.has_cosigner && <div><span className="text-muted">Co-signer</span><br /><span className="font-semibold text-clay-dark">{app.cosigner_name || 'Yes'}</span></div>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* References */}
+                                  {(app.ref1_name || app.ref2_name) && (
+                                    <div>
+                                      <p className="text-[10px] font-head font-bold text-clay uppercase tracking-widest mb-2">References</p>
+                                      <div className="space-y-2">
+                                        {app.ref1_name && (
+                                          <div className="bg-surf-lo rounded-xl px-3 py-2 text-xs font-body">
+                                            <span className="font-semibold text-clay-dark">{app.ref1_name}</span>
+                                            {app.ref1_relationship && <span className="text-muted"> · {app.ref1_relationship}</span>}
+                                            {app.ref1_contact && <div className="text-muted mt-0.5">{app.ref1_contact}</div>}
+                                          </div>
+                                        )}
+                                        {app.ref2_name && (
+                                          <div className="bg-surf-lo rounded-xl px-3 py-2 text-xs font-body">
+                                            <span className="font-semibold text-clay-dark">{app.ref2_name}</span>
+                                            {app.ref2_relationship && <span className="text-muted"> · {app.ref2_relationship}</span>}
+                                            {app.ref2_contact && <div className="text-muted mt-0.5">{app.ref2_contact}</div>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Preferences */}
+                                  <div>
+                                    <p className="text-[10px] font-head font-bold text-clay uppercase tracking-widest mb-2">Preferences</p>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-body">
+                                      {moveInDate && <div><span className="text-muted">Move-in</span><br /><span className="font-semibold text-clay-dark">{moveInDate}</span></div>}
+                                      {app.lease_term && <div><span className="text-muted">Lease Term</span><br /><span className="font-semibold text-clay-dark">{app.lease_term}</span></div>}
+                                      {app.num_occupants && <div><span className="text-muted">Occupants</span><br /><span className="font-semibold text-clay-dark">{app.num_occupants}</span></div>}
+                                      <div><span className="text-muted">Pets</span><br /><span className="font-semibold text-clay-dark">{app.has_pets ? (app.pets_description || 'Yes') : 'No'}</span></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Message */}
+                                  {app.message && (
+                                    <div className="bg-linen rounded-xl px-3 py-2.5 text-xs font-body text-clay-dark italic border border-out-var/30">
+                                      &ldquo;{app.message}&rdquo;
+                                    </div>
+                                  )}
+
+                                  {/* Rejection reason (if rejected) */}
+                                  {app.status === 'rejected' && app.rejection_reason && (
+                                    <div className="bg-red-50 rounded-xl px-3 py-2 text-xs font-body text-red-700 border border-red-100">
+                                      <span className="font-semibold">Rejection reason:</span> {app.rejection_reason}
+                                    </div>
+                                  )}
+
+                                  {/* Rejection input inline */}
+                                  {isRejecting && (
+                                    <div className="space-y-2">
+                                      <textarea
+                                        className="w-full text-xs font-body border border-out-var rounded-xl px-3 py-2 resize-none outline-none focus:border-clay/60 transition-colors"
+                                        rows={2}
+                                        placeholder="Optional: reason for declining (sent to student)…"
+                                        value={rejectionReason}
+                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                      />
+                                      <div className="flex gap-2">
+                                        <button onClick={() => { setRejectingAppId(null); setRejectionReason('') }}
+                                          className="flex-1 text-xs font-head font-semibold border border-out-var rounded-lg py-1.5 text-muted hover:text-clay-dark hover:border-clay/30 transition-all">
+                                          Cancel
+                                        </button>
+                                        <button onClick={() => handleUpdateAppStatus(app.id, 'rejected', rejectionReason || undefined)}
+                                          className="flex-1 text-xs font-head font-bold bg-red-500 text-white rounded-lg py-1.5 hover:bg-red-600 transition-all">
+                                          Confirm Reject
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Action buttons */}
+                                  {!isRejecting && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {app.status !== 'shortlisted' && app.status !== 'approved' && (
+                                        <button onClick={() => handleUpdateAppStatus(app.id, 'shortlisted')}
+                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-green-50 text-green-700 border border-green-200 rounded-xl py-2 hover:bg-green-100 transition-all">
+                                          <span className="material-symbols-outlined text-sm">thumb_up</span> Shortlist
+                                        </button>
+                                      )}
+                                      {app.status === 'shortlisted' && (
+                                        <button onClick={() => handleUpdateAppStatus(app.id, 'approved')}
+                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded-xl py-2 hover:bg-blue-100 transition-all">
+                                          <span className="material-symbols-outlined text-sm">check_circle</span> Approve
+                                        </button>
+                                      )}
+                                      {app.status !== 'rejected' && (
+                                        <button onClick={() => { setRejectingAppId(app.id); setRejectionReason('') }}
+                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-red-50 text-red-500 border border-red-100 rounded-xl py-2 hover:bg-red-100 transition-all">
+                                          <span className="material-symbols-outlined text-sm">thumb_down</span> Reject
+                                        </button>
+                                      )}
+                                      {p?.id && (
+                                        <button onClick={() => handleMessageApplicant(p.id)}
+                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-surf-lo text-clay-dark border border-out-var rounded-xl py-2 hover:bg-linen transition-all">
+                                          <span className="material-symbols-outlined text-sm">chat_bubble</span> Message
+                                        </button>
+                                      )}
+                                      <button onClick={() => handleDownloadPDF(app, reviewListing?.address ?? '')}
+                                        className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-surf-lo text-clay-dark border border-out-var rounded-xl py-2 hover:bg-linen transition-all">
+                                        <span className="material-symbols-outlined text-sm">download</span> PDF
+                                      </button>
+                                      {p?.id && (
+                                        <a href={`/profile/${p.id}`} target="_blank"
+                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-surf-lo text-clay-dark border border-out-var rounded-xl py-2 hover:bg-linen transition-all">
+                                          <span className="material-symbols-outlined text-sm">person</span> Profile
+                                        </a>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <p className="text-[10px] font-body text-out-var text-right">Applied {submittedDate}</p>
+                                </div>
                               )}
-                              <p className="text-[10px] font-body text-out-var mt-2">
-                                Applied {new Date(app.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </p>
+
+                              {/* ── Collapsed summary row ── */}
+                              {!isExpanded && (
+                                <div className="flex items-center gap-4 px-4 pb-3 text-xs font-body text-muted">
+                                  {app.employment_status && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm text-terra">work</span>{app.employment_status}</span>}
+                                  {moveInDate && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm text-terra">calendar_today</span>{moveInDate}</span>}
+                                  {app.monthly_income ? <span className="flex items-center gap-1"><span className="material-symbols-outlined text-sm text-terra">payments</span>${Number(app.monthly_income).toLocaleString()}/mo</span> : null}
+                                  <span className="ml-auto text-[10px] text-out-var">{submittedDate}</span>
+                                </div>
+                              )}
                             </div>
                           )
                         })}
