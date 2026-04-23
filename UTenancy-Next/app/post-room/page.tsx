@@ -345,7 +345,7 @@ export default function PostRoomPage() {
                   type="date"
                   value={availableDate}
                   onChange={(e) => setAvailableDate(e.target.value)}
-                  className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] bg-white"
+                  className="w-full max-w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] bg-white"
                 />
               </div>
               <div className="min-w-0">
