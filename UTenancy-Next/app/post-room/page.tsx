@@ -335,7 +335,7 @@ export default function PostRoomPage() {
           </div>
 
           {/* Lease Details */}
-          <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4 overflow-hidden">
             <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Lease Details</h2>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
