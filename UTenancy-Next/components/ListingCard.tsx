@@ -4,9 +4,13 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Listing } from '@/lib/listings'
+import { SCHOOL_OPTIONS } from '@/lib/distance'
 
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [saved, setSaved] = useState(false)
+  const schoolSlug = listing.university
+    ? (SCHOOL_OPTIONS.find(s => s.short === listing.university)?.slug ?? null)
+    : null
   return (
     <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var'}`}>
       {listing.featured && (
@@ -41,9 +45,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         </div>
         <div className="p-5">
           <h3 className="font-head font-bold text-clay-dark text-base truncate mb-1">{listing.title}</h3>
-          <p className="text-xs font-body text-muted flex items-center gap-1 mb-4">
+          <p className="text-xs font-body text-muted flex items-center gap-1 mb-2">
             <span className="material-symbols-outlined text-xs">location_on</span>{listing.location}
           </p>
+          {schoolSlug && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-head font-bold text-clay bg-clay/10 px-2.5 py-1 rounded-full mb-3">
+              <span className="material-symbols-outlined text-[10px]">school</span>
+              Near {listing.university}
+            </span>
+          )}
           <div className="flex justify-between items-end">
             <div>
               <p className="text-[11px] font-head font-bold uppercase tracking-widest text-muted mb-0.5">{listing.type === 'group' ? 'Total Rent' : 'Per Person'}</p>
