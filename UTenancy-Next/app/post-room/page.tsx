@@ -55,6 +55,11 @@ export default function PostRoomPage() {
         router.push('/')
         return
       }
+      // /post-room is for students only — landlords post via the landlord dashboard
+      if (u.user_metadata?.role === 'landlord') {
+        router.push('/landlord')
+        return
+      }
       setUser(u)
       setLoading(false)
       // Fetch subscription tier for limit enforcement
