@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import ListingCard from '@/components/ListingCard'
 import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
-import { getDistanceToNearestSchool } from '@/lib/distance'
+import { getDistanceToNearestSchool, SCHOOL_OPTIONS } from '@/lib/distance'
 
 type SortOption = 'newest' | 'price-asc' | 'price-desc' | 'most-interested' | 'distance'
 
@@ -14,7 +14,11 @@ function ListingsContent() {
   const searchParams = useSearchParams()
 
   /* ── filter state ── */
-  const [search, setSearch] = useState(() => searchParams.get('q') ?? '')
+  const [universityFilter, setUniversityFilter] = useState<string>(() => {
+    const slug = searchParams.get('university') ?? ''
+    return slug ? (SCHOOL_OPTIONS.find(s => s.slug === slug)?.short ?? '') : ''
+  })
+  const [addressSearch, setAddressSearch] = useState(() => searchParams.get('q') ?? '')
   const [typeFilter, setTypeFilter] = useState<'all' | ListingType>(() => (searchParams.get('type') as ListingType) ?? 'all')
   const [priceMax, setPriceMax] = useState(10000)
   const [bedsFilter, setBedsFilter] = useState('Any')
@@ -111,18 +115,21 @@ function ListingsContent() {
     bedsFilter !== 'Any',
     distanceFilter !== 'Any',
     !!moveInDate,
-    !!search,
+    !!universityFilter,
+    !!addressSearch,
   ].filter(Boolean).length
 
   /* ── filtered + sorted ── */
   const filtered = useMemo(() => {
     let result = allListings.filter((l) => {
-      if (search) {
-        const q = search.toLowerCase()
+      if (universityFilter) {
+        if ((l.university ?? '') !== universityFilter) return false
+      }
+      if (addressSearch) {
+        const q = addressSearch.toLowerCase()
         const searchableText = [
           l.title,
           l.location,
-          l.university ?? '',
           l.description ?? '',
           ...(l.amenities ?? []),
           `${l.beds} bed`,
@@ -159,10 +166,11 @@ function ListingsContent() {
     }
 
     return result
-  }, [allListings, search, typeFilter, priceMax, bedsFilter, distanceFilter, moveInDate, sortBy])
+  }, [allListings, universityFilter, addressSearch, typeFilter, priceMax, bedsFilter, distanceFilter, moveInDate, sortBy])
 
   function clearFilters() {
-    setSearch('')
+    setUniversityFilter('')
+    setAddressSearch('')
     setTypeFilter('all')
     setPriceMax(10000)
     setBedsFilter('Any')
@@ -203,21 +211,20 @@ function ListingsContent() {
 
           {/* Search + type toggle row */}
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search bar */}
+            {/* University Picker */}
             <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or neighbourhood…"
-                className="w-full pl-10 pr-4 py-2.5 bg-linen border border-out-var rounded-full text-sm font-body text-clay-dark placeholder:text-outline focus:outline-none focus:ring-2 ring-clay/20 transition-all"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-clay-dark transition-colors">
-                  <span className="material-symbols-outlined text-base">close</span>
-                </button>
-              )}
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none z-10">school</span>
+              <select
+                value={universityFilter}
+                onChange={(e) => setUniversityFilter(e.target.value)}
+                className={`w-full pl-10 pr-8 py-2.5 border rounded-full text-sm font-body focus:outline-none focus:ring-2 ring-clay/20 transition-all appearance-none cursor-pointer ${universityFilter ? 'bg-clay/5 border-clay/40 text-clay-dark font-bold' : 'bg-linen border-out-var text-clay-dark'}`}
+              >
+                <option value="">All Universities</option>
+                {SCHOOL_OPTIONS.map(s => (
+                  <option key={s.slug} value={s.short}>{s.label}</option>
+                ))}
+              </select>
+              <span className="material-symbols-outlined absolute right-3.5 top-1/2 -translate-y-1/2 text-outline text-sm pointer-events-none">expand_more</span>
             </div>
 
             {/* Type tabs */}
@@ -246,6 +253,25 @@ function ListingsContent() {
           {/* Expandable sub-filters */}
           {showFilters && (
             <div className="flex flex-wrap gap-5 items-center pt-1 pb-1 border-t border-out-var/60">
+              {/* Address search */}
+              <div className="flex items-center gap-2 flex-1 min-w-48">
+                <label className="text-xs font-head font-bold text-muted uppercase tracking-widest whitespace-nowrap">Address</label>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={addressSearch}
+                    onChange={(e) => setAddressSearch(e.target.value)}
+                    placeholder="Street, neighbourhood…"
+                    className="w-full pl-3 pr-7 py-2 bg-linen border border-out-var rounded-full text-xs font-body text-clay-dark placeholder:text-outline focus:outline-none focus:ring-2 ring-clay/20 transition-all"
+                  />
+                  {addressSearch && (
+                    <button onClick={() => setAddressSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-clay-dark transition-colors">
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Price max */}
               <div className="flex items-center gap-3 flex-1 min-w-52">
                 <label className="text-xs font-head font-bold text-muted uppercase tracking-widest whitespace-nowrap">Price max</label>
@@ -362,10 +388,17 @@ function ListingsContent() {
                 <button onClick={() => setMoveInDate('')} className="hover:text-clay transition-colors"><span className="material-symbols-outlined text-[11px]">close</span></button>
               </span>
             )}
-            {search && (
+            {universityFilter && (
               <span className="inline-flex items-center gap-1.5 bg-clay/10 text-clay-dark text-xs font-head font-bold px-3 py-1 rounded-full">
-                &ldquo;{search}&rdquo;
-                <button onClick={() => setSearch('')} className="hover:text-clay transition-colors"><span className="material-symbols-outlined text-[11px]">close</span></button>
+                <span className="material-symbols-outlined text-[11px]">school</span>
+                {universityFilter}
+                <button onClick={() => setUniversityFilter('')} className="hover:text-clay transition-colors"><span className="material-symbols-outlined text-[11px]">close</span></button>
+              </span>
+            )}
+            {addressSearch && (
+              <span className="inline-flex items-center gap-1.5 bg-clay/10 text-clay-dark text-xs font-head font-bold px-3 py-1 rounded-full">
+                &ldquo;{addressSearch}&rdquo;
+                <button onClick={() => setAddressSearch('')} className="hover:text-clay transition-colors"><span className="material-symbols-outlined text-[11px]">close</span></button>
               </span>
             )}
           </div>
