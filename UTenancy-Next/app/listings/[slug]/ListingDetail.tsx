@@ -1596,7 +1596,7 @@ export default function ListingDetail({
               <div className="border-t border-out-var/40 px-6 py-4">
                 <div className="flex items-center gap-3 text-xs font-body text-muted">
                   <span className="material-symbols-outlined fill text-clay text-base">verified</span>
-                  <span>Landlord identity &amp; property verified by UTenancy</span>
+                  <span>{listing.type === 'open' ? 'Student identity verified by UTenancy' : 'Landlord identity & property verified by UTenancy'}</span>
                 </div>
               </div>
 
