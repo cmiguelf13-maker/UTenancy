@@ -650,6 +650,7 @@ export default function LandlordPortal() {
   /* Applicant review modal */
   type RentApplication = {
     id: string
+    user_id: string
     status: string
     created_at: string
     message: string | null
@@ -1134,14 +1135,14 @@ export default function LandlordPortal() {
     setRentApplications([])
     setLoadingApplicants(true)
 
-    const [{ data: interests }, { data: applications }] = await Promise.all([
+    const [{ data: interests }, { data: rawApps }] = await Promise.all([
       supabase
         .from('listing_interests')
         .select('student_id')
         .eq('listing_id', listing.id),
       supabase
         .from('rent_applications')
-        .select('id, status, created_at, message, full_name, phone, date_of_birth, university, enrollment_status, major, grad_year, employment_status, monthly_income, has_cosigner, cosigner_name, ref1_name, ref1_relationship, ref1_contact, ref2_name, ref2_relationship, ref2_contact, move_in_date, lease_term, num_occupants, has_pets, pets_description, rejection_reason, profile:profiles!rent_applications_user_id_fkey(id, first_name, last_name, university, bio)')
+        .select('id, user_id, status, created_at, message, full_name, phone, date_of_birth, university, enrollment_status, major, grad_year, employment_status, monthly_income, has_cosigner, cosigner_name, ref1_name, ref1_relationship, ref1_contact, ref2_name, ref2_relationship, ref2_contact, move_in_date, lease_term, num_occupants, has_pets, pets_description, rejection_reason')
         .eq('listing_id', listing.id)
         .order('created_at', { ascending: false }),
     ])
@@ -1154,8 +1155,17 @@ export default function LandlordPortal() {
         .in('id', studentIds)
       setApplicants(profileData || [])
     }
-    if (applications) {
-      setRentApplications(applications as any)
+
+    if (rawApps && rawApps.length > 0) {
+      // Fetch profiles separately (user_id → auth.users, profiles share the same id)
+      const userIds = rawApps.map((a: any) => a.user_id).filter(Boolean)
+      const { data: profData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, university, bio')
+        .in('id', userIds)
+      const profileMap: Record<string, any> = {}
+      if (profData) profData.forEach((p: any) => { profileMap[p.id] = p })
+      setRentApplications(rawApps.map((a: any) => ({ ...a, profile: profileMap[a.user_id] ?? null })))
     }
     setLoadingApplicants(false)
   }
