@@ -10,9 +10,20 @@ import { SCHOOL_OPTIONS } from '@/lib/distance'
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [saved, setSaved] = useState(false)
   const router = useRouter()
-  const schoolSlug = listing.university
-    ? (SCHOOL_OPTIONS.find(s => s.short === listing.university)?.slug ?? null)
-    : null
+
+  // Build school tags from targetSchools (DB slugs) with fallback to geo-computed university
+  const schoolTags: Array<{ slug: string; short: string }> =
+    (listing.targetSchools ?? []).length > 0
+      ? (listing.targetSchools ?? []).flatMap((slug) => {
+          const s = SCHOOL_OPTIONS.find((o) => o.slug === slug)
+          return s ? [{ slug: s.slug, short: s.short }] : []
+        })
+      : listing.university
+      ? (() => {
+          const s = SCHOOL_OPTIONS.find((o) => o.short === listing.university)
+          return s ? [{ slug: s.slug, short: s.short }] : []
+        })()
+      : []
   return (
     <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var'}`}>
       {listing.featured && (
@@ -50,17 +61,22 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           <p className="text-xs font-body text-muted flex items-center gap-1 mb-2">
             <span className="material-symbols-outlined text-xs">location_on</span>{listing.location}
           </p>
-          {schoolSlug && (
-            <span
-              role="link"
-              tabIndex={0}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/housing/${schoolSlug}`) }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); router.push(`/housing/${schoolSlug}`) } }}
-              className="inline-flex items-center gap-1 text-[10px] font-head font-bold text-clay bg-clay/10 hover:bg-clay/20 px-2.5 py-1 rounded-full mb-3 cursor-pointer transition-colors"
-            >
-              <span className="material-symbols-outlined text-[10px]">school</span>
-              Near {listing.university}
-            </span>
+          {schoolTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {schoolTags.map((tag) => (
+                <span
+                  key={tag.slug}
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/housing/${tag.slug}`) }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); router.push(`/housing/${tag.slug}`) } }}
+                  className="inline-flex items-center gap-1 text-[10px] font-head font-bold text-clay bg-clay/10 hover:bg-clay/20 px-2.5 py-1 rounded-full cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[10px]">school</span>
+                  Near {tag.short}
+                </span>
+              ))}
+            </div>
           )}
           <div className="flex justify-between items-end">
             <div>
