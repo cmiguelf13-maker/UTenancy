@@ -296,9 +296,9 @@ export default function HomePage() {
       </div>
 
       {/* ── HOW IT WORKS ─────────────────────────── */}
-      <section id="how-it-works" className="py-28 px-6 md:px-10 bg-surf">
+      <section id="how-it-works" className="py-16 px-6 md:px-10 bg-surf">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20 reveal">
+          <div className="text-center mb-10 reveal">
             <span className="feature-pill mb-4 inline-flex">For Students</span>
             <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-4">Finding a place<br /><em>shouldn&apos;t be this hard.</em></h2>
             <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy makes it three steps. No sketchy strangers. No expired listings. No guessing who you&apos;ll live with.</p>
