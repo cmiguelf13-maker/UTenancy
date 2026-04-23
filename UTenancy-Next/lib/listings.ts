@@ -25,6 +25,7 @@ export interface Listing {
   description?: string
   amenities?: string[]
   availableDate?: string // ISO date string, e.g. "2026-05-01"
+  targetSchools?: string[] // slugs from DB, e.g. ["lmu", "otis"]
 }
 
 export const LISTINGS: Listing[] = [
