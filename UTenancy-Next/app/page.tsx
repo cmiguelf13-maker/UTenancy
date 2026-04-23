@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
+import { type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
 import ListingCard from '@/components/ListingCard'
@@ -90,7 +90,7 @@ export default function HomePage() {
       })
   }, [])
 
-  const allListings = [...dbListings, ...LISTINGS]
+  const allListings = [...dbListings]
 
   const filtered = allListings.filter((l) => {
     // Type filter
@@ -192,7 +192,7 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
       />
       {/* ── HERO ─────────────────────────────────── */}
-      <section className="relative overflow-hidden pt-20 md:pt-28 pb-32 px-6 md:px-10">
+      <section className="relative overflow-hidden pt-20 md:pt-28 pb-6 px-6 md:px-10">
         <div className="absolute -top-40 right-0 w-[700px] h-[700px] rounded-full opacity-25 blur-[140px] pointer-events-none" style={{ background: 'radial-gradient(circle,#fec8b6,#9c7060)' }} />
         <div className="absolute bottom-0 -left-20 w-[400px] h-[400px] rounded-full opacity-15 blur-[100px] pointer-events-none" style={{ background: '#6b4c3b' }} />
 
@@ -325,9 +325,9 @@ export default function HomePage() {
       </section>
 
       {/* ── LISTINGS GRID ────────────────────────── */}
-      <section id="listings" className="py-28 px-6 md:px-10 bg-surf-lo">
+      <section id="listings" className="py-16 px-6 md:px-10 bg-surf-lo">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 reveal">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 reveal">
             <div>
               <span className="feature-pill mb-3 inline-flex">Live Listings</span>
               <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-3">Newest student<br /><em>homes near you.</em></h2>
