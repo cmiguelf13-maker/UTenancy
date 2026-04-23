@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { Listing } from '@/lib/listings'
 import { SCHOOL_OPTIONS } from '@/lib/distance'
 
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [saved, setSaved] = useState(false)
+  const router = useRouter()
   const schoolSlug = listing.university
     ? (SCHOOL_OPTIONS.find(s => s.short === listing.university)?.slug ?? null)
     : null
@@ -49,7 +51,13 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             <span className="material-symbols-outlined text-xs">location_on</span>{listing.location}
           </p>
           {schoolSlug && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-head font-bold text-clay bg-clay/10 px-2.5 py-1 rounded-full mb-3">
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/housing/${schoolSlug}`) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); router.push(`/housing/${schoolSlug}`) } }}
+              className="inline-flex items-center gap-1 text-[10px] font-head font-bold text-clay bg-clay/10 hover:bg-clay/20 px-2.5 py-1 rounded-full mb-3 cursor-pointer transition-colors"
+            >
               <span className="material-symbols-outlined text-[10px]">school</span>
               Near {listing.university}
             </span>
