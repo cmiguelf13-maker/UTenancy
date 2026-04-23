@@ -665,12 +665,6 @@ export default function LandlordPortal() {
     monthly_income: number | null
     has_cosigner: boolean | null
     cosigner_name: string | null
-    ref1_name: string | null
-    ref1_relationship: string | null
-    ref1_contact: string | null
-    ref2_name: string | null
-    ref2_relationship: string | null
-    ref2_contact: string | null
     move_in_date: string | null
     lease_term: string | null
     num_occupants: number | null
@@ -1142,7 +1136,7 @@ export default function LandlordPortal() {
         .eq('listing_id', listing.id),
       supabase
         .from('rent_applications')
-        .select('id, user_id, status, created_at, message, full_name, phone, date_of_birth, university, enrollment_status, major, grad_year, employment_status, monthly_income, has_cosigner, cosigner_name, ref1_name, ref1_relationship, ref1_contact, ref2_name, ref2_relationship, ref2_contact, move_in_date, lease_term, num_occupants, has_pets, pets_description, rejection_reason')
+        .select('id, user_id, status, created_at, message, full_name, phone, date_of_birth, university, enrollment_status, major, grad_year, employment_status, monthly_income, has_cosigner, cosigner_name, move_in_date, lease_term, num_occupants, has_pets, pets_description, rejection_reason')
         .eq('listing_id', listing.id)
         .order('created_at', { ascending: false }),
     ])
@@ -1245,12 +1239,6 @@ export default function LandlordPortal() {
         row('Has Co-signer / Guarantor', app.has_cosigner ? 'Yes' : 'No'),
         row('Co-signer Name', app.cosigner_name),
       ].join(''))}
-      ${(app.ref1_name || app.ref2_name) ? section('References', [
-        app.ref1_name ? `<tr><td colspan="2" style="padding:8px 12px;font-weight:700;color:#6b4c3b;background:#faf0ec;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Reference 1</td></tr>` : '',
-        row('Name', app.ref1_name), row('Relationship', app.ref1_relationship), row('Contact', app.ref1_contact),
-        app.ref2_name ? `<tr><td colspan="2" style="padding:8px 12px;font-weight:700;color:#6b4c3b;background:#faf0ec;font-size:11px;text-transform:uppercase;letter-spacing:.06em">Reference 2</td></tr>` : '',
-        row('Name', app.ref2_name), row('Relationship', app.ref2_relationship), row('Contact', app.ref2_contact),
-      ].join('')) : ''}
       ${section('Move-in Preferences', [
         row('Desired Move-in Date', moveIn),
         row('Lease Term', app.lease_term),
@@ -1705,29 +1693,6 @@ export default function LandlordPortal() {
                                         {app.employment_status && <div><span className="text-muted">Employment</span><br /><span className="font-semibold text-clay-dark">{app.employment_status}</span></div>}
                                         {app.monthly_income !== null && app.monthly_income !== undefined && <div><span className="text-muted">Monthly Income</span><br /><span className="font-semibold text-clay-dark">${Number(app.monthly_income).toLocaleString()}</span></div>}
                                         {app.has_cosigner && <div><span className="text-muted">Co-signer</span><br /><span className="font-semibold text-clay-dark">{app.cosigner_name || 'Yes'}</span></div>}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* References */}
-                                  {(app.ref1_name || app.ref2_name) && (
-                                    <div>
-                                      <p className="text-[10px] font-head font-bold text-clay uppercase tracking-widest mb-2">References</p>
-                                      <div className="space-y-2">
-                                        {app.ref1_name && (
-                                          <div className="bg-surf-lo rounded-xl px-3 py-2 text-xs font-body">
-                                            <span className="font-semibold text-clay-dark">{app.ref1_name}</span>
-                                            {app.ref1_relationship && <span className="text-muted"> · {app.ref1_relationship}</span>}
-                                            {app.ref1_contact && <div className="text-muted mt-0.5">{app.ref1_contact}</div>}
-                                          </div>
-                                        )}
-                                        {app.ref2_name && (
-                                          <div className="bg-surf-lo rounded-xl px-3 py-2 text-xs font-body">
-                                            <span className="font-semibold text-clay-dark">{app.ref2_name}</span>
-                                            {app.ref2_relationship && <span className="text-muted"> · {app.ref2_relationship}</span>}
-                                            {app.ref2_contact && <div className="text-muted mt-0.5">{app.ref2_contact}</div>}
-                                          </div>
-                                        )}
                                       </div>
                                     </div>
                                   )}
