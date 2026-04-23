@@ -90,6 +90,7 @@ function ListingsContent() {
           description: d.description,
           amenities: d.amenities,
           availableDate: d.available_date ?? undefined,
+          targetSchools: d.target_schools ?? [],
         }))
         setDbListings(mapped)
         setLoading(false)
@@ -123,7 +124,12 @@ function ListingsContent() {
   const filtered = useMemo(() => {
     let result = allListings.filter((l) => {
       if (universityFilter) {
-        if ((l.university ?? '') !== universityFilter) return false
+        const selectedSlug = SCHOOL_OPTIONS.find(s => s.short === universityFilter)?.slug
+        const matchesGeo = (l.university ?? '') === universityFilter
+        const matchesTargeted = selectedSlug
+          ? (l.targetSchools ?? []).includes(selectedSlug)
+          : false
+        if (!matchesGeo && !matchesTargeted) return false
       }
       if (addressSearch) {
         const q = addressSearch.toLowerCase()
