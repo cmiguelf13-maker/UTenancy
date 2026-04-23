@@ -589,12 +589,12 @@ export default function MyListingsPage() {
                 </div>
 
                 {/* Lease details */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="min-w-0">
                     <label className={LABEL}>Available From</label>
-                    <input type="date" value={editAvailDate} onChange={e => setEditAvailDate(e.target.value)} className={INPUT} />
+                    <input type="date" value={editAvailDate} onChange={e => setEditAvailDate(e.target.value)} className={INPUT + ' max-w-full'} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <label className={LABEL}>Deposit</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
@@ -610,14 +610,14 @@ export default function MyListingsPage() {
                       <option key={t}>{t}</option>)}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="min-w-0">
                     <label className={LABEL}>Utilities</label>
                     <select value={editUtilities} onChange={e => setEditUtilities(e.target.value)} className={SELECT}>
                       {['Tenant pays','Included in rent','Partially included'].map(t => <option key={t}>{t}</option>)}
                     </select>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <label className={LABEL}>Pets</label>
                     <select value={editPets} onChange={e => setEditPets(e.target.value)} className={SELECT}>
                       {['Negotiable','Yes','No','Cats only','Small pets only'].map(t => <option key={t}>{t}</option>)}
