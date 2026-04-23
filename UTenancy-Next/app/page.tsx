@@ -745,10 +745,17 @@ export default function HomePage() {
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="font-body text-white/30 text-xs">© {new Date().getFullYear()} UTenancy, Inc. All rights reserved.</p>
-            <div className="flex gap-6">
+            <div className="flex items-center gap-6">
               <Link href="/legal/privacy" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">Privacy Policy</Link>
               <Link href="/legal/terms" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">Terms of Service</Link>
               <Link href="/legal/user-agreement" className="font-body text-white/30 text-xs hover:text-white/60 transition-colors">User Agreement</Link>
+              <a href="https://www.instagram.com/u_tenancy/" target="_blank" rel="noopener noreferrer" aria-label="UTenancy on Instagram" className="text-white/30 hover:text-white/70 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                  <circle cx="12" cy="12" r="4"/>
+                  <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"/>
+                </svg>
+              </a>
             </div>
           </div>
         </div>
