@@ -145,7 +145,7 @@ export default function LMUPage() {
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                href="/listings?q=playa+vista"
+                href="/listings?university=lmu"
                 className="inline-flex items-center justify-center gap-2 clay-grad text-white px-6 py-3.5 rounded-full font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/20"
               >
                 Browse Listings Near LMU
@@ -293,7 +293,7 @@ export default function LMUPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                href="/listings?q=playa+vista"
+                href="/listings?university=lmu"
                 className="inline-flex items-center justify-center gap-2 clay-grad text-white px-7 py-3.5 rounded-full font-head font-bold text-sm hover:opacity-90 transition-all shadow-xl shadow-clay/30"
               >
                 Browse listings near LMU
