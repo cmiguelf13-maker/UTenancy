@@ -58,6 +58,35 @@ export const metadata: Metadata = {
   },
 }
 
+/* ── Site-level structured data (sitewide, server-rendered) ── */
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'UTenancy',
+  url: 'https://utenancy.com',
+  description: 'UTenancy connects verified university students with real off-campus housing and roommates — and gives landlords a management platform to run it all.',
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: {
+      '@type': 'EntryPoint',
+      urlTemplate: 'https://utenancy.com/listings?q={search_term_string}',
+    },
+    'query-input': 'required name=search_term_string',
+  },
+}
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'UTenancy',
+  url: 'https://utenancy.com',
+  logo: {
+    '@type': 'ImageObject',
+    url: 'https://utenancy.com/logo.png',
+  },
+  description: 'UTenancy connects verified university students with real off-campus housing and roommates.',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
@@ -72,6 +101,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        />
+        {/* Site-level structured data — WebSite (enables SearchAction) + Organization */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
         />
       </head>
       <body className="font-body bg-cream text-stone antialiased">
