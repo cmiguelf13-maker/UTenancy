@@ -1,15 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { Listing } from '@/lib/listings'
 import { SCHOOL_OPTIONS } from '@/lib/distance'
+import { createClient } from '@/lib/supabase'
 
 export default function ListingCard({ listing }: { listing: Listing }) {
   const [saved, setSaved] = useState(false)
+  const [interestCount, setInterestCount] = useState(listing.interested ?? 0)
   const router = useRouter()
+
+  // DB listings have UUID slugs with hyphens; mock listings have numeric IDs
+  const isDbListing = typeof listing.id === 'string' && (listing.id as string).includes('-')
 
   // Build school tags from targetSchools (DB slugs) with fallback to geo-computed university
   const schoolTags: Array<{ slug: string; short: string }> =
@@ -24,6 +29,60 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           return s ? [{ slug: s.slug, short: s.short }] : []
         })()
       : []
+
+  // For DB listings: load real interest count + check if current user already saved
+  useEffect(() => {
+    if (!isDbListing) return
+    const supabase = createClient()
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      const uid = session?.user?.id ?? null
+
+      const { data: interests } = await supabase
+        .from('listing_interests')
+        .select('student_id')
+        .eq('listing_id', String(listing.id))
+
+      if (interests) {
+        setInterestCount(interests.length)
+        if (uid) {
+          setSaved(interests.some((i: { student_id: string }) => i.student_id === uid))
+        }
+      }
+    }
+    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDbListing, listing.id])
+
+  async function handleSave(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!isDbListing) return
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) { window.location.href = '/auth'; return }
+    const uid = session.user.id
+
+    if (saved) {
+      const { error } = await supabase
+        .from('listing_interests')
+        .delete()
+        .eq('listing_id', String(listing.id))
+        .eq('student_id', uid)
+      if (!error) {
+        setSaved(false)
+        setInterestCount((c) => Math.max(0, c - 1))
+      }
+    } else {
+      const { error } = await supabase
+        .from('listing_interests')
+        .insert({ listing_id: String(listing.id), student_id: uid })
+      if (!error) {
+        setSaved(true)
+        setInterestCount((c) => c + 1)
+      }
+    }
+  }
+
   return (
     <article className={`card-lift img-zoom bg-white rounded-3xl overflow-hidden border cursor-pointer relative ${listing.featured ? 'border-clay/30 shadow-lg shadow-clay/10' : 'border-out-var'}`}>
       {listing.featured && (
@@ -50,7 +109,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           </span>
           <button
             className="absolute top-4 right-4 w-9 h-9 bg-white/85 backdrop-blur-sm rounded-full flex items-center justify-center text-clay hover:bg-white transition-all shadow-md"
-            onClick={(e) => { e.preventDefault(); setSaved((s) => !s) }}
+            onClick={handleSave}
             aria-label="Save to favourites"
           >
             <span className={`material-symbols-outlined text-lg ${saved ? 'fill' : ''}`}>favorite</span>
@@ -89,7 +148,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                 <p className="text-xs text-muted font-body">{listing.baths} bath{listing.baths !== 1 ? 's' : ''}</p>
               )}
               <p className="text-xs text-muted font-body flex items-center justify-end gap-1">
-                <span className="material-symbols-outlined fill text-xs">group</span>{listing.interested} interested
+                <span className="material-symbols-outlined fill text-xs">group</span>{interestCount} interested
               </p>
             </div>
           </div>
@@ -99,7 +158,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                 View Listing <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </span>
               {listing.distanceMi != null && listing.university && (
-                <span className="feature-pill text-[10px] px-2.5 py-1">~{listing.distanceMi} mi to {listing.university}</span>
+                <span className="feature-pill text-[10px] px-2.5 py-1">{listing.distanceMi} mi · {listing.university}</span>
               )}
             </div>
           )}
