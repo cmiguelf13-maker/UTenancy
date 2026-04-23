@@ -313,13 +313,6 @@ function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: 
   const [monthlyIncome, setMonthlyIncome] = useState('')
   const [hasCosigner, setHasCosigner] = useState(false)
   const [cosignerName, setCosignerName] = useState('')
-  const [ref1Name, setRef1Name] = useState('')
-  const [ref1Rel, setRef1Rel] = useState('')
-  const [ref1Contact, setRef1Contact] = useState('')
-  const [ref2Name, setRef2Name] = useState('')
-  const [ref2Rel, setRef2Rel] = useState('')
-  const [ref2Contact, setRef2Contact] = useState('')
-
   // Step 3 — Preferences & Submit
   const [moveIn, setMoveIn] = useState('')
   const [leaseTerm, setLeaseTerm] = useState('')
@@ -381,12 +374,6 @@ function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: 
       monthly_income: monthlyIncome ? Number(monthlyIncome) : null,
       has_cosigner: hasCosigner,
       cosigner_name: cosignerName || null,
-      ref1_name: ref1Name || null,
-      ref1_relationship: ref1Rel || null,
-      ref1_contact: ref1Contact || null,
-      ref2_name: ref2Name || null,
-      ref2_relationship: ref2Rel || null,
-      ref2_contact: ref2Contact || null,
       move_in_date: moveIn || null,
       lease_term: leaseTerm || null,
       num_occupants: numOccupants ? Number(numOccupants) : null,
@@ -407,7 +394,7 @@ function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: 
     }
   }
 
-  const STEPS = ['About You', 'Financial & Refs', 'Preferences']
+  const STEPS = ['About You', 'Financial', 'Preferences']
 
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -520,7 +507,7 @@ function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: 
               </div>
             )}
 
-            {/* ── Step 2: Financial & References ── */}
+            {/* ── Step 2: Financial ── */}
             {step === 2 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -548,22 +535,6 @@ function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: 
                   {hasCosigner && (
                     <input type="text" className="form-input mt-2" value={cosignerName} onChange={(e) => setCosignerName(e.target.value)} placeholder="Co-signer's full name" />
                   )}
-                </div>
-                <div className="p-4 bg-surf-lo rounded-2xl border border-out-var/40 space-y-3">
-                  <p className="text-xs font-head font-bold text-clay-dark uppercase tracking-wide">Reference 1</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="text" className="form-input" value={ref1Name} onChange={(e) => setRef1Name(e.target.value)} placeholder="Full name" />
-                    <input type="text" className="form-input" value={ref1Rel} onChange={(e) => setRef1Rel(e.target.value)} placeholder="Relationship" />
-                  </div>
-                  <input type="text" className="form-input" value={ref1Contact} onChange={(e) => setRef1Contact(e.target.value)} placeholder="Phone or email" />
-                </div>
-                <div className="p-4 bg-surf-lo rounded-2xl border border-out-var/40 space-y-3">
-                  <p className="text-xs font-head font-bold text-clay-dark uppercase tracking-wide">Reference 2</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="text" className="form-input" value={ref2Name} onChange={(e) => setRef2Name(e.target.value)} placeholder="Full name" />
-                    <input type="text" className="form-input" value={ref2Rel} onChange={(e) => setRef2Rel(e.target.value)} placeholder="Relationship" />
-                  </div>
-                  <input type="text" className="form-input" value={ref2Contact} onChange={(e) => setRef2Contact(e.target.value)} placeholder="Phone or email" />
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setApplyError(null); setStep(1) }} className="border border-out-var text-clay-dark py-3 px-5 rounded-xl font-head font-bold text-sm hover:bg-linen transition-all">Back</button>
