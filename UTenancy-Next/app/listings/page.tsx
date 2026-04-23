@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import ListingCard from '@/components/ListingCard'
-import { LISTINGS, type Listing as MockListing, type ListingType } from '@/lib/listings'
+import { type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool, SCHOOL_OPTIONS } from '@/lib/distance'
 
@@ -107,7 +107,7 @@ function ListingsContent() {
       })
   }, [])
 
-  const allListings = useMemo(() => [...dbListings, ...LISTINGS], [dbListings])
+  const allListings = useMemo(() => [...dbListings], [dbListings])
 
   /* ── derived: active filter count ── */
   const activeFilterCount = [
