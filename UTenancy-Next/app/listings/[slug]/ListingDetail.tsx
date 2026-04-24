@@ -664,7 +664,7 @@ function GroupModal({
         .select('id, name, max_size, created_by, application_group_members(user_id, profiles(first_name, last_name))')
         .eq('listing_id', listingId)
         .order('created_at', { ascending: true })
-      const fetched = (data ?? []) as ApplicationGroup[]
+      const fetched = (data ?? []) as unknown as ApplicationGroup[]
       setGroups(fetched)
       if (user) {
         const mine = fetched.find((g) => g.application_group_members.some((m) => m.user_id === user.id))
@@ -1129,7 +1129,7 @@ export default function ListingDetail({
           .select('id, name, max_size, created_by, application_group_members(user_id, profiles(first_name, last_name))')
           .eq('listing_id', String(listing.id))
           .order('created_at', { ascending: true })
-        const fetched = (groupData ?? []) as ApplicationGroup[]
+        const fetched = (groupData ?? []) as unknown as ApplicationGroup[]
         setListingGroups(fetched)
         if (u) {
           const mine = fetched.find((g) => g.application_group_members.some((m) => m.user_id === u.id))
