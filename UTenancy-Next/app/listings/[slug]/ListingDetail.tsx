@@ -30,6 +30,18 @@ type SimilarListing = {
   slug?: string
 }
 
+type GroupMember = {
+  user_id: string
+  profiles: { first_name: string | null; last_name: string | null } | null
+}
+type ApplicationGroup = {
+  id: string
+  name: string
+  max_size: number
+  created_by: string
+  application_group_members: GroupMember[]
+}
+
 /* ── Shared helper: open or create a 1-on-1 conversation ─────── */
 async function openConversation(
   supabase: any,
@@ -621,123 +633,272 @@ function ApplicationModal({ listing, user, onClose }: { listing: Listing; user: 
 }
 
 /* ── Group Modal ─────────────────────────────────────────────── */
-function GroupModal({ listing, user, onClose }: { listing: Listing; user: any; onClose: () => void }) {
-  const [joined, setJoined] = useState(false)
+function GroupModal({
+  listing,
+  user,
+  onClose,
+  onGroupJoined,
+}: {
+  listing: Listing
+  user: any
+  onClose: () => void
+  onGroupJoined: (groupId: string, groupName: string, memberCount: number) => void
+}) {
+  const [groups, setGroups] = useState<ApplicationGroup[]>([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'list' | 'create'>('list')
+  const [groupName, setGroupName] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [alreadyJoined, setAlreadyJoined] = useState(false)
-  const [groupError, setGroupError] = useState<string | null>(null)
-  const [moveIn, setMoveIn] = useState('')
-  const [roomsNeeded, setRoomsNeeded] = useState('1 room')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<{ id: string; name: string } | null>(null)
+  const [alreadyInGroupId, setAlreadyInGroupId] = useState<string | null>(null)
 
+  // All hooks before early returns
   useEffect(() => {
-    if (!user) return
     const supabase = createClient()
-    supabase
-      .from('rent_applications')
-      .select('id')
-      .eq('listing_id', String(listing.id))
-      .eq('user_id', user.id)
-      .eq('application_type', 'group')
-      .limit(1)
-      .then(({ data }) => {
-        if (data && data.length > 0) setAlreadyJoined(true)
-      })
-  }, [user, listing.id])
+    const listingId = String(listing.id)
+    async function load() {
+      setLoading(true)
+      const { data } = await supabase
+        .from('application_groups')
+        .select('id, name, max_size, created_by, application_group_members(user_id, profiles(first_name, last_name))')
+        .eq('listing_id', listingId)
+        .order('created_at', { ascending: true })
+      const fetched = (data ?? []) as ApplicationGroup[]
+      setGroups(fetched)
+      if (user) {
+        const mine = fetched.find((g) => g.application_group_members.some((m) => m.user_id === user.id))
+        if (mine) setAlreadyInGroupId(mine.id)
+      }
+      setLoading(false)
+    }
+    load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing.id, user])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  const openGroups = groups.filter((g) => g.application_group_members.length < g.max_size)
+
+  async function handleCreateGroup() {
     if (!user) { window.location.href = '/auth'; return }
     setSubmitting(true)
-    setGroupError(null)
+    setError(null)
     const supabase = createClient()
-    const { error: insertErr } = await supabase.from('rent_applications').insert({
-      listing_id: String(listing.id),
-      user_id: user.id,
-      application_type: 'group',
-      status: 'pending',
-    })
-    setSubmitting(false)
-    if (insertErr) {
-      setGroupError('Something went wrong. Please try again.')
-    } else {
-      setJoined(true)
+    const name = groupName.trim() || `Group ${String.fromCharCode(65 + groups.length)}`
+    const { data: newGroup, error: groupErr } = await supabase
+      .from('application_groups')
+      .insert({ listing_id: String(listing.id), name, created_by: user.id, max_size: listing.beds })
+      .select('id, name')
+      .single()
+    if (groupErr || !newGroup) {
+      setError('Could not create group. Please try again.')
+      setSubmitting(false)
+      return
     }
+    const { error: memberErr } = await supabase
+      .from('application_group_members')
+      .insert({ group_id: newGroup.id, user_id: user.id })
+    setSubmitting(false)
+    if (memberErr) {
+      setError('Group created but could not add you as a member. Please try again.')
+      return
+    }
+    setSuccess({ id: newGroup.id, name: newGroup.name })
+    onGroupJoined(newGroup.id, newGroup.name, 1)
+  }
+
+  async function handleJoinGroup(g: ApplicationGroup) {
+    if (!user) { window.location.href = '/auth'; return }
+    setSubmitting(true)
+    setError(null)
+    const supabase = createClient()
+    const { error: memberErr } = await supabase
+      .from('application_group_members')
+      .insert({ group_id: g.id, user_id: user.id })
+    setSubmitting(false)
+    if (memberErr) {
+      setError(memberErr.message.includes('unique') ? "You're already in this group." : 'Could not join. Please try again.')
+      return
+    }
+    setSuccess({ id: g.id, name: g.name })
+    onGroupJoined(g.id, g.name, g.application_group_members.length + 1)
   }
 
   return (
     <div className="modal-overlay open" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal-box">
+      <div className="modal-box" style={{ maxWidth: 500 }}>
         <button onClick={onClose} className="absolute top-4 right-4 text-muted hover:text-clay transition-colors">
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        {alreadyJoined ? (
+        {/* ── Already in a group ── */}
+        {alreadyInGroupId && !success && (() => {
+          const myG = groups.find((g) => g.id === alreadyInGroupId)
+          const memberCount = myG?.application_group_members.length ?? 1
+          return (
+            <div className="text-center py-6">
+              <div className="check-circle mx-auto mb-4">
+                <span className="material-symbols-outlined text-white text-3xl fill">group</span>
+              </div>
+              <h3 className="font-display text-2xl font-light text-clay-dark mb-2">You're <em>already in a group!</em></h3>
+              <p className="text-sm font-body text-muted mb-1">
+                You're in <strong className="text-clay-dark">{myG?.name ?? 'a group'}</strong> — {memberCount} of {myG?.max_size ?? listing.beds} spots filled.
+              </p>
+              <p className="text-sm font-body text-muted">Share the listing with friends to fill remaining spots — once full, you can apply together.</p>
+              <button onClick={onClose} className="mt-5 clay-grad text-white px-6 py-2.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all">Got it</button>
+            </div>
+          )
+        })()}
+
+        {/* ── Success state ── */}
+        {success && (
           <div className="text-center py-6">
             <div className="check-circle mx-auto mb-4">
               <span className="material-symbols-outlined text-white text-3xl fill">group</span>
             </div>
-            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">You're <em>already in!</em></h3>
-            <p className="text-sm font-body text-muted">You've already joined this group. We'll notify you as more spots fill up.</p>
+            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">You're <em>in!</em></h3>
+            <p className="text-sm font-body text-muted">
+              You joined <strong className="text-clay-dark">{success.name}</strong>. Share this listing with your friends so they can join your group too.
+            </p>
+            <button onClick={onClose} className="mt-5 clay-grad text-white px-6 py-2.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all">Done</button>
           </div>
-        ) : joined ? (
-          <div className="text-center py-6">
-            <div className="check-circle mx-auto mb-4">
-              <span className="material-symbols-outlined text-white text-3xl fill">group</span>
-            </div>
-            <h3 className="font-display text-2xl font-light text-clay-dark mb-2">You're <em>in the group!</em></h3>
-            <p className="text-sm font-body text-muted">You've joined the group. We'll notify you when all spots are filled.</p>
+        )}
+
+        {/* ── Loading ── */}
+        {!alreadyInGroupId && !success && loading && (
+          <div className="text-center py-10">
+            <div className="flex justify-center mb-3"><span className="spinner" /></div>
+            <p className="text-sm font-body text-muted">Loading groups…</p>
           </div>
-        ) : (
+        )}
+
+        {/* ── Main: list / create views ── */}
+        {!alreadyInGroupId && !success && !loading && (
           <>
-            <h3 className="font-display text-2xl font-light text-clay-dark mb-1">Join group formation</h3>
-            <p className="text-sm font-body text-muted mb-4">1 of {listing.beds} spots filled · {listing.beds - 1} more needed</p>
-            <div className="progress-track mb-6">
-              <div className="progress-fill" style={{ width: `${Math.round(100 / listing.beds)}%` }} />
-            </div>
+            {view === 'list' && (
+              <>
+                <h3 className="font-display text-2xl font-light text-clay-dark mb-1">Join Group to Apply</h3>
+                <p className="text-sm font-body text-muted mb-5">
+                  {openGroups.length > 0
+                    ? 'Join an existing group or start a new one.'
+                    : `No groups yet — be the first to start one for this ${listing.beds}-bed listing.`}
+                </p>
 
-            {!user && (
-              <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-body text-amber-800">
-                You need to be signed in to join.{' '}
-                <a href="/auth" className="font-bold underline">Sign in</a>
-              </div>
-            )}
-            {groupError && (
-              <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-body text-red-700">{groupError}</div>
-            )}
+                {!user && (
+                  <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs font-body text-amber-800">
+                    Sign in to join or create a group. <a href="/auth" className="font-bold underline">Sign in</a>
+                  </div>
+                )}
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-body text-red-700">{error}</div>
+                )}
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <label className="form-label">Your Move-in Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  required
-                  value={moveIn}
-                  onChange={(e) => setMoveIn(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="form-label">Rooms you need</label>
-                <select
-                  className="form-input"
-                  required
-                  value={roomsNeeded}
-                  onChange={(e) => setRoomsNeeded(e.target.value)}
+                {/* Existing open groups */}
+                {openGroups.length > 0 && (
+                  <div className="space-y-3 mb-5">
+                    {openGroups.map((g) => {
+                      const memberCount = g.application_group_members.length
+                      const spotsLeft = g.max_size - memberCount
+                      const initials = g.application_group_members.slice(0, 3).map((m) =>
+                        ((m.profiles?.first_name?.[0] ?? '') + (m.profiles?.last_name?.[0] ?? '')).toUpperCase() || '?'
+                      )
+                      return (
+                        <div key={g.id} className="flex items-center justify-between gap-3 p-4 bg-surf rounded-2xl border border-out-var/60 hover:border-clay/30 transition-all">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex -space-x-1.5 flex-shrink-0">
+                              {initials.map((init, i) => (
+                                <div key={i} className="w-8 h-8 rounded-full border-2 border-white clay-grad flex items-center justify-center text-[10px] font-head font-bold text-white">
+                                  {init}
+                                </div>
+                              ))}
+                              {Array.from({ length: Math.max(0, Math.min(spotsLeft, 3 - initials.length)) }).map((_, i) => (
+                                <div key={`e-${i}`} className="w-8 h-8 rounded-full border-2 border-white bg-linen flex items-center justify-center text-[10px] font-head font-bold text-muted">?</div>
+                              ))}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-head font-bold text-clay-dark text-sm truncate">{g.name}</p>
+                              <p className="text-xs font-body text-muted">{memberCount}/{g.max_size} filled · {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleJoinGroup(g)}
+                            disabled={submitting || !user}
+                            className="flex-shrink-0 clay-grad text-white text-xs font-head font-bold px-4 py-2 rounded-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center gap-1.5"
+                          >
+                            {submitting ? <span className="spinner" /> : <span className="material-symbols-outlined text-xs">group_add</span>}
+                            Join
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Full groups (informational) */}
+                {groups.length > openGroups.length && (
+                  <p className="text-xs font-body text-muted mb-4">
+                    {groups.length - openGroups.length} group{groups.length - openGroups.length !== 1 ? 's are' : ' is'} already full.
+                  </p>
+                )}
+
+                <button
+                  onClick={() => { setView('create'); setError(null) }}
+                  disabled={!user}
+                  className={`w-full py-3 rounded-xl font-head font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-60 ${
+                    openGroups.length > 0
+                      ? 'border-2 border-clay text-clay-dark hover:bg-clay/5'
+                      : 'clay-grad text-white hover:opacity-90 shadow-lg shadow-clay/25'
+                  }`}
                 >
-                  <option>1 room</option>
-                  <option>2 rooms</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting || !user}
-                className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {submitting
-                  ? <><span className="spinner" /> Joining…</>
-                  : <><span className="material-symbols-outlined text-sm">group_add</span> Join Group</>}
-              </button>
-            </form>
+                  <span className="material-symbols-outlined text-sm">add_circle</span>
+                  {openGroups.length > 0 ? 'Create a New Group' : 'Start the First Group'}
+                </button>
+              </>
+            )}
+
+            {view === 'create' && (
+              <>
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => { setView('list'); setError(null) }} className="text-muted hover:text-clay transition-colors">
+                    <span className="material-symbols-outlined text-lg">arrow_back</span>
+                  </button>
+                  <h3 className="font-display text-2xl font-light text-clay-dark">Create a Group</h3>
+                </div>
+                <p className="text-sm font-body text-muted mb-5">
+                  Name your group (optional). Friends can see it and join you from this listing page.
+                </p>
+
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 rounded-xl border border-red-200 text-xs font-body text-red-700">{error}</div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="form-label">Group Name</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      placeholder={`e.g. "Group ${String.fromCharCode(65 + groups.length)}" (auto-set if blank)`}
+                      maxLength={50}
+                    />
+                  </div>
+                  <div className="p-3 bg-linen rounded-xl text-xs font-body text-muted flex items-start gap-2">
+                    <span className="material-symbols-outlined text-clay text-sm flex-shrink-0 mt-0.5">info</span>
+                    <span>You'll be the founding member. You need <strong>{listing.beds} people total</strong> to unlock the group application.</span>
+                  </div>
+                  <button
+                    onClick={handleCreateGroup}
+                    disabled={submitting}
+                    className="clay-grad w-full text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {submitting
+                      ? <><span className="spinner" /> Creating…</>
+                      : <><span className="material-symbols-outlined text-sm">group_add</span> Create Group &amp; Join</>}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -769,6 +930,8 @@ export default function ListingDetail({
   const [showInterestedPanel, setShowInterestedPanel] = useState(false)
   const [messagingStudent, setMessagingStudent] = useState<string | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
+  const [myGroup, setMyGroup] = useState<{ id: string; name: string; memberCount: number } | null>(null)
+  const [listingGroups, setListingGroups] = useState<ApplicationGroup[]>([])
   const [copyDone, setCopyDone] = useState(false)
   const [actionToast, setActionToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [schoolDistances, setSchoolDistances] = useState<Array<{ slug: string; short: string; name: string; distanceMi: number }>>([])
@@ -959,6 +1122,23 @@ export default function ListingDetail({
         if (apps && apps.length > 0) setHasApplied(true)
       }
 
+      // Load application groups for this listing
+      if (isDbListing) {
+        const { data: groupData } = await supabase
+          .from('application_groups')
+          .select('id, name, max_size, created_by, application_group_members(user_id, profiles(first_name, last_name))')
+          .eq('listing_id', String(listing.id))
+          .order('created_at', { ascending: true })
+        const fetched = (groupData ?? []) as ApplicationGroup[]
+        setListingGroups(fetched)
+        if (u) {
+          const mine = fetched.find((g) => g.application_group_members.some((m) => m.user_id === u.id))
+          if (mine) {
+            setMyGroup({ id: mine.id, name: mine.name, memberCount: mine.application_group_members.length })
+          }
+        }
+      }
+
     }
     loadSession()
   }, [])
@@ -1016,6 +1196,30 @@ export default function ListingDetail({
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function handleGroupJoined(groupId: string, groupName: string, memberCount: number) {
+    setMyGroup({ id: groupId, name: groupName, memberCount })
+    // Update the local listingGroups state so the left column reflects immediately
+    setListingGroups((prev) => {
+      const existing = prev.find((g) => g.id === groupId)
+      if (existing) {
+        return prev.map((g) =>
+          g.id === groupId
+            ? { ...g, application_group_members: [...g.application_group_members, { user_id: user?.id ?? '', profiles: null }] }
+            : g
+        )
+      }
+      // New group just created
+      return [...prev, {
+        id: groupId,
+        name: groupName,
+        max_size: listing.beds,
+        created_by: user?.id ?? '',
+        application_group_members: [{ user_id: user?.id ?? '', profiles: null }],
+      }]
+    })
+    setShowGroup(false)
   }
 
   async function handleMessageStudent(studentId: string) {
@@ -1299,91 +1503,105 @@ export default function ListingDetail({
             {/* Group formation — only for group-formation listings */}
             {listing.type !== 'open' && (
               <div className="reveal bg-surf-lo rounded-3xl border border-out-var/40 p-6 mb-8">
-                {(() => {
-                  const groupIsFull = interestCount >= listing.beds
-                  return (
-                    <>
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                        <div>
-                          <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
-                          <p className="text-sm font-body text-muted">
-                            {groupIsFull
-                              ? 'Group is complete — time to apply!'
-                              : `${interestCount} of ${listing.beds} spots filled — join to fill the house together.`}
-                          </p>
-                        </div>
-                        <span className={`text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap ${groupIsFull ? 'bg-green-100 text-green-700' : 'badge-open'}`}>
-                          {groupIsFull ? 'Group Full ✓' : 'Forming Now'}
-                        </span>
-                      </div>
-                      <div className="progress-track mb-2">
-                        <div className="progress-fill" style={{ width: `${listing.beds > 0 ? Math.min(100, Math.round(100 * interestCount / listing.beds)) : 0}%` }} />
-                      </div>
-                      <p className="text-xs text-muted font-body mb-5">{interestCount} of {listing.beds} joined</p>
-                      <div className="flex items-center gap-3 mb-6">
-                        {interestedStudents.length > 0 ? (
-                          <>
-                            <div className="flex -space-x-2">
-                              {interestedStudents.slice(0, 4).map((s) => (
-                                <div key={s.id} className="w-9 h-9 rounded-full border-2 border-white clay-grad flex items-center justify-center text-xs font-head font-bold text-cream">
-                                  {(s.first_name?.[0] ?? '') + (s.last_name?.[0] ?? '')}
-                                </div>
-                              ))}
-                              {Array.from({ length: Math.max(0, Math.min(listing.beds, 3) - interestedStudents.slice(0, 4).length) }).map((_, i) => (
-                                <div key={`empty-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
-                              ))}
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <h2 className="font-head text-xl font-bold text-clay-dark mb-1">Group Formation</h2>
+                    <p className="text-sm font-body text-muted">
+                      {listingGroups.length > 0
+                        ? `${listingGroups.length} group${listingGroups.length !== 1 ? 's' : ''} forming for this ${listing.beds}-bed listing.`
+                        : `Looking for ${listing.beds} people to apply together — start or join a group!`}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-head font-bold px-3 py-1.5 rounded-full whitespace-nowrap badge-open">
+                    {listingGroups.length > 0 ? `${listingGroups.length} Active` : 'Open'}
+                  </span>
+                </div>
+
+                {/* List of groups */}
+                {listingGroups.length > 0 ? (
+                  <div className="space-y-3 mb-5">
+                    {listingGroups.map((g) => {
+                      const memberCount = g.application_group_members.length
+                      const isFull = memberCount >= g.max_size
+                      const isMyGroup = myGroup?.id === g.id
+                      const initials = g.application_group_members.slice(0, 4).map((m) =>
+                        ((m.profiles?.first_name?.[0] ?? '') + (m.profiles?.last_name?.[0] ?? '')).toUpperCase() || '?'
+                      )
+                      return (
+                        <div key={g.id} className={`p-4 rounded-2xl border transition-all ${isMyGroup ? 'bg-green-50 border-green-200' : 'bg-white border-out-var/60'}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="flex -space-x-1.5 flex-shrink-0">
+                                {initials.map((init, i) => (
+                                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white clay-grad flex items-center justify-center text-[10px] font-head font-bold text-white">
+                                    {init}
+                                  </div>
+                                ))}
+                                {!isFull && Array.from({ length: Math.max(0, Math.min(g.max_size - memberCount, 3 - initials.length)) }).map((_, i) => (
+                                  <div key={`e-${i}`} className="w-8 h-8 rounded-full border-2 border-white bg-linen flex items-center justify-center text-[10px] font-head font-bold text-muted">?</div>
+                                ))}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-head font-bold text-clay-dark text-sm truncate flex items-center gap-1.5">
+                                  {g.name}
+                                  {isMyGroup && <span className="material-symbols-outlined fill text-green-600 text-sm">check_circle</span>}
+                                </p>
+                                <p className="text-xs font-body text-muted">
+                                  {memberCount}/{g.max_size} {isFull ? '— Full' : `— ${g.max_size - memberCount} spot${g.max_size - memberCount !== 1 ? 's' : ''} left`}
+                                </p>
+                              </div>
                             </div>
-                            <span className="text-xs font-body text-muted">
-                              {interestedStudents.length === 1
-                                ? `${interestedStudents[0].first_name ?? 'Someone'} is looking for ${listing.beds - 1} more roommate${listing.beds - 1 !== 1 ? 's' : ''}`
-                                : `${interestedStudents.length} people are forming this group`}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex -space-x-2">
-                              {Array.from({ length: Math.min(listing.beds, 3) }).map((_, i) => (
-                                <div key={`slot-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
-                              ))}
-                            </div>
-                            <span className="text-xs font-body text-muted">Be the first to join this group!</span>
-                          </>
-                        )}
-                      </div>
-                      {/* CTA changes based on group state */}
-                      {groupIsFull ? (
-                        interested ? (
-                          <button
-                            onClick={() => setShowApply(true)}
-                            className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20 flex items-center justify-center gap-2"
-                          >
-                            <span className="material-symbols-outlined text-sm">send</span>
-                            Apply to Rent Now
-                          </button>
-                        ) : (
-                          <div className="w-full text-center py-3 rounded-xl font-head font-semibold text-sm bg-linen text-muted border border-out-var/40">
-                            This group is now full
+                            {isMyGroup ? (
+                              <span className="flex-shrink-0 text-xs font-head font-bold text-green-700 bg-green-100 px-3 py-1.5 rounded-xl">Your group</span>
+                            ) : isFull ? (
+                              <span className="flex-shrink-0 text-xs font-head font-semibold text-muted">Full</span>
+                            ) : (
+                              <button
+                                onClick={() => setShowGroup(true)}
+                                className="flex-shrink-0 clay-grad text-white text-xs font-head font-bold px-4 py-2 rounded-xl hover:opacity-90 transition-all flex items-center gap-1"
+                              >
+                                <span className="material-symbols-outlined text-xs">group_add</span> Join
+                              </button>
+                            )}
                           </div>
-                        )
-                      ) : (
-                        !interested && (
-                          <button
-                            onClick={() => setShowGroup(true)}
-                            className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20"
-                          >
-                            Join This Group
-                          </button>
-                        )
-                      )}
-                      {!groupIsFull && interested && (
-                        <div className="w-full text-center py-3 rounded-xl font-head font-semibold text-sm bg-green-50 text-green-700 border border-green-200 flex items-center justify-center gap-2">
-                          <span className="material-symbols-outlined text-sm fill">check_circle</span>
-                          You're in the group — apply once all {listing.beds} spots are filled
+                          {isMyGroup && !isFull && (
+                            <p className="text-xs font-body text-green-700 mt-2 ml-1">
+                              Share this listing with {g.max_size - memberCount} more friend{g.max_size - memberCount !== 1 ? 's' : ''} to unlock the group application!
+                            </p>
+                          )}
+                          {isMyGroup && isFull && (
+                            <button
+                              onClick={() => setShowApply(true)}
+                              className="mt-3 w-full clay-grad text-white py-2.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-sm">send</span> Apply to Rent Now
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </>
-                  )
-                })()}
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="flex -space-x-2">
+                      {Array.from({ length: Math.min(listing.beds, 3) }).map((_, i) => (
+                        <div key={`slot-${i}`} className="w-9 h-9 rounded-full border-2 border-white bg-linen flex items-center justify-center text-xs font-head font-bold text-muted">?</div>
+                      ))}
+                    </div>
+                    <span className="text-xs font-body text-muted">No groups yet — be the first!</span>
+                  </div>
+                )}
+
+                {/* CTA: start or join */}
+                {!myGroup && (
+                  <button
+                    onClick={() => setShowGroup(true)}
+                    className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20 flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">{listingGroups.some((g) => g.application_group_members.length < g.max_size) ? 'group_add' : 'add_circle'}</span>
+                    {listingGroups.some((g) => g.application_group_members.length < g.max_size) ? 'Join or Create a Group' : 'Start a New Group'}
+                  </button>
+                )}
               </div>
             )}
 
@@ -1439,8 +1657,8 @@ export default function ListingDetail({
                 ) : (
                   <>
                     {(() => {
-                      const groupIsFull = interestCount >= listing.beds
                       const isMultiBed = listing.beds > 1
+                      const myGroupFull = myGroup ? myGroup.memberCount >= listing.beds : false
 
                       if (hasApplied) {
                         return (
@@ -1451,7 +1669,7 @@ export default function ListingDetail({
                       }
 
                       if (!isMultiBed) {
-                        // 1-bedroom: always allow direct apply
+                        // 1-bedroom: direct apply
                         return (
                           <button
                             onClick={() => setShowApply(true)}
@@ -1463,7 +1681,7 @@ export default function ListingDetail({
                       }
 
                       // Multi-bedroom: group-gated apply
-                      if (groupIsFull && interested) {
+                      if (myGroup && myGroupFull) {
                         return (
                           <button
                             onClick={() => setShowApply(true)}
@@ -1474,44 +1692,32 @@ export default function ListingDetail({
                         )
                       }
 
-                      if (groupIsFull && !interested) {
+                      if (myGroup && !myGroupFull) {
+                        // In a group, waiting for more members
                         return (
-                          <div className="w-full bg-linen border border-out-var text-muted py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
-                            <span className="material-symbols-outlined text-sm">group_off</span> This group is full
+                          <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 py-3.5 rounded-xl font-head font-semibold text-sm flex flex-col items-center justify-center gap-1 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                              <span>{myGroup.name} — {myGroup.memberCount}/{listing.beds} members</span>
+                            </div>
+                            <span className="text-xs opacity-80">Apply unlocks when your group is full</span>
                           </div>
                         )
                       }
 
-                      if (interested) {
-                        // In group, not yet full
-                        return (
-                          <div className="w-full bg-amber-50 border border-amber-200 text-amber-800 py-3.5 rounded-xl font-head font-semibold text-sm flex items-center justify-center gap-2">
-                            <span className="material-symbols-outlined text-sm">hourglass_top</span>
-                            Apply unlocks when full ({interestCount}/{listing.beds} spots)
-                          </div>
-                        )
-                      }
-
-                      // Not in group, not full — prompt to join
+                      // Not in any group — prompt to join or create
                       return (
                         <button
                           onClick={() => setShowGroup(true)}
                           className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 flex items-center justify-center gap-2"
                         >
-                          <span className="material-symbols-outlined text-sm">group_add</span> Join Group to Apply
+                          <span className="material-symbols-outlined text-sm">group_add</span>
+                          {listingGroups.filter((g) => g.application_group_members.length < g.max_size).length > 0
+                            ? 'Join or Create Group'
+                            : 'Join Group to Apply'}
                         </button>
                       )
                     })()}
-
-                    {/* Secondary: Join Group button (only for 1-bed listings or when already in group) */}
-                    {listing.beds === 1 && (
-                      <button
-                        onClick={() => setShowGroup(true)}
-                        className="w-full border-2 border-clay text-clay-dark font-head font-bold text-sm py-3.5 rounded-xl hover:bg-clay hover:text-white transition-all flex items-center justify-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm">group_add</span> Join Group Formation
-                      </button>
-                    )}
 
                     {user && user.user_metadata?.role !== 'landlord' ? (
                       <MessageLandlordButton listingId={String(listing.id)} userId={user.id} />
@@ -1658,7 +1864,7 @@ export default function ListingDetail({
       {/* Overlays */}
       {lightboxIndex !== null && <Lightbox index={lightboxIndex} onClose={() => setLightboxIndex(null)} photos={PHOTOS} />}
       {showApply  && <ApplicationModal listing={listing} user={user} onClose={() => { setShowApply(false) }} />}
-      {showGroup  && <GroupModal listing={listing} user={user} onClose={() => setShowGroup(false)} />}
+      {showGroup  && <GroupModal listing={listing} user={user} onClose={() => setShowGroup(false)} onGroupJoined={handleGroupJoined} />}
 
       {/* Action toast */}
       {actionToast && (
