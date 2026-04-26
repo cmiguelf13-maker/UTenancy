@@ -22,6 +22,9 @@ interface Profile {
   studying: string | null
   smoking: boolean
   pets: boolean
+  // landlord contact fields
+  phone: string | null
+  website: string | null
 }
 
 const LIFESTYLE_CATEGORIES = [
@@ -35,7 +38,7 @@ const LIFESTYLE_CATEGORIES = [
 ]
 
 function getFullName(profile: Profile): string {
-  return `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || 'Student'
+  return `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || 'User'
 }
 
 function getInitials(profile: Profile): string {
@@ -60,13 +63,11 @@ export default function ProfilePage() {
       const supabase = createClient()
 
       try {
-        // Get current session
         const {
           data: { session },
         } = await supabase.auth.getSession()
         setCurrentUser(session?.user ?? null)
 
-        // Fetch target profile
         const { data: targetProfile, error } = await supabase
           .from('profiles')
           .select('*')
@@ -74,13 +75,6 @@ export default function ProfilePage() {
           .single()
 
         if (error || !targetProfile) {
-          setNotFound(true)
-          setLoading(false)
-          return
-        }
-
-        // Check if it's a student profile
-        if (targetProfile.role === 'landlord') {
           setNotFound(true)
           setLoading(false)
           return
@@ -108,7 +102,6 @@ export default function ProfilePage() {
     try {
       const supabase = createClient()
 
-      // Find existing conversation
       const { data: existing } = await supabase
         .from('conversation_participants')
         .select('conversation_id')
@@ -116,7 +109,6 @@ export default function ProfilePage() {
 
       const myConvIds = existing?.map((r: any) => r.conversation_id) ?? []
 
-      // Find if target is also in any of those
       if (myConvIds.length > 0) {
         const { data: shared } = await supabase
           .from('conversation_participants')
@@ -130,14 +122,12 @@ export default function ProfilePage() {
         }
       }
 
-      // Create new conversation
       const { data: conv } = await supabase
         .from('conversations')
         .insert({})
         .select()
         .single()
 
-      // Add both participants
       await supabase.from('conversation_participants').insert([
         { conversation_id: conv.id, user_id: currentUser.id },
         { conversation_id: conv.id, user_id: id },
@@ -166,7 +156,7 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-cream flex items-center justify-center px-6">
         <div className="text-center max-w-md">
           <h1 className="font-display text-3xl text-clay-dark mb-2">Profile not found</h1>
-          <p className="text-muted font-body mb-6">This student profile doesn't exist or isn't available.</p>
+          <p className="text-muted font-body mb-6">This profile doesn&apos;t exist or isn&apos;t available.</p>
           <button
             onClick={() => router.back()}
             className="inline-flex items-center gap-2 text-clay hover:text-clay-dark font-head font-bold transition-colors"
@@ -179,9 +169,13 @@ export default function ProfilePage() {
     )
   }
 
+  const isLandlord = profile.role === 'landlord'
   const isOwnProfile = currentUser?.id === id
+  const viewerRole = currentUser?.user_metadata?.role ?? null
+
+  // Students can message other students (not themselves, not landlords)
   const canMessage =
-    currentUser && currentUser.user_metadata?.role !== 'landlord' && !isOwnProfile
+    currentUser && viewerRole !== 'landlord' && !isOwnProfile && !isLandlord
 
   return (
     <div className="min-h-screen bg-cream">
@@ -198,38 +192,52 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Main content */}
       <div className="max-w-xl mx-auto px-6 py-10">
-        {/* Hero section with gradient banner and avatar */}
+        {/* Hero section */}
         <div className="relative mb-8">
-          {/* Gradient banner */}
           <div className="clay-grad rounded-t-3xl h-32" />
 
-          {/* Avatar — absolutely centered on the banner/card junction */}
           <div className="absolute left-1/2 top-32 -translate-x-1/2 -translate-y-1/2 z-10">
-            <div className="w-28 h-28 rounded-full border-4 border-cream clay-grad flex items-center justify-center shadow-lg">
-              <span className="font-display text-4xl text-white font-light">
-                {getInitials(profile)}
-              </span>
-            </div>
+            {profile.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.avatar_url}
+                alt={getFullName(profile)}
+                className="w-28 h-28 rounded-full border-4 border-cream object-cover shadow-lg"
+              />
+            ) : (
+              <div className="w-28 h-28 rounded-full border-4 border-cream clay-grad flex items-center justify-center shadow-lg">
+                <span className="font-display text-4xl text-white font-light">
+                  {getInitials(profile)}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Info card — flush with banner bottom, padded to clear avatar */}
           <div className="bg-white rounded-b-3xl px-6 pt-16 pb-6 border border-out-var border-t-0 shadow-md">
             <h1 className="font-display text-2xl text-clay-dark font-light text-center mb-1">
               {getFullName(profile)}
             </h1>
-            <p className="text-sm text-muted text-center font-body mb-2">
-              {profile.major} • {profile.university}
-            </p>
-            {profile.gender && (
-              <p className="text-xs text-muted text-center font-body mb-4">
-                {profile.gender}
+
+            {/* Landlord subtitle */}
+            {isLandlord && (
+              <p className="text-sm text-muted text-center font-body mb-3">
+                Property Owner
               </p>
             )}
 
-            {/* Grad year badge */}
-            {profile.grad_year && (
+            {/* Student subtitle */}
+            {!isLandlord && (
+              <p className="text-sm text-muted text-center font-body mb-2">
+                {[profile.major, profile.university].filter(Boolean).join(' • ')}
+              </p>
+            )}
+
+            {!isLandlord && profile.gender && (
+              <p className="text-xs text-muted text-center font-body mb-4">{profile.gender}</p>
+            )}
+
+            {!isLandlord && profile.grad_year && (
               <div className="flex justify-center mb-4">
                 <span className="badge-open text-xs font-head font-bold px-3 py-1.5 rounded-full">
                   Class of {profile.grad_year}
@@ -237,7 +245,6 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Bio */}
             {profile.bio && (
               <p className="text-sm font-body text-clay-dark text-center leading-relaxed mb-2">
                 {profile.bio}
@@ -246,43 +253,72 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Lifestyle preferences card */}
-        {/* Check if any lifestyle preferences are filled in */}
-        {LIFESTYLE_CATEGORIES.some((cat) => {
-          const key = cat.key as keyof Profile
-          const v = profile[key]
-          return typeof v === 'boolean' ? true : !!v
-        }) && (
+        {/* Landlord contact info */}
+        {isLandlord && (profile.phone || profile.website) && (
           <div className="bg-white rounded-3xl border border-out-var p-6 mb-8 shadow-md">
-            <h2 className="font-head text-lg font-bold text-clay-dark mb-4">Lifestyle Preferences</h2>
-            <div className="flex flex-wrap gap-2">
-              {LIFESTYLE_CATEGORIES.map((cat) => {
-                const key = cat.key as keyof Profile
-                const raw = profile[key]
-
-                // Boolean fields: show Yes/No; string fields: show value
-                let value: string | null = null
-                if (typeof raw === 'boolean') {
-                  value = raw ? 'Yes' : 'No'
-                } else if (raw) {
-                  value = String(raw)
-                }
-
-                if (!value) return null
-
-                return (
-                  <div
-                    key={cat.key}
-                    className="px-3.5 py-2 bg-linen rounded-full border border-out-var flex items-center gap-2"
+            <h2 className="font-head text-lg font-bold text-clay-dark mb-4">Contact</h2>
+            <div className="flex flex-col gap-3">
+              {profile.phone && (
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-clay text-lg">call</span>
+                  <a href={`tel:${profile.phone}`} className="text-sm font-body text-clay hover:text-clay-dark transition-colors">
+                    {profile.phone}
+                  </a>
+                </div>
+              )}
+              {profile.website && (
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-clay text-lg">language</span>
+                  <a
+                    href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-body text-clay hover:text-clay-dark transition-colors truncate"
                   >
-                    <span className="text-xs font-head font-bold text-clay-dark">{cat.label}:</span>
-                    <span className="text-xs font-body text-muted">{value}</span>
-                  </div>
-                )
-              })}
+                    {profile.website}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}
+
+        {/* Student lifestyle preferences */}
+        {!isLandlord &&
+          LIFESTYLE_CATEGORIES.some((cat) => {
+            const key = cat.key as keyof Profile
+            const v = profile[key]
+            return typeof v === 'boolean' ? true : !!v
+          }) && (
+            <div className="bg-white rounded-3xl border border-out-var p-6 mb-8 shadow-md">
+              <h2 className="font-head text-lg font-bold text-clay-dark mb-4">Lifestyle Preferences</h2>
+              <div className="flex flex-wrap gap-2">
+                {LIFESTYLE_CATEGORIES.map((cat) => {
+                  const key = cat.key as keyof Profile
+                  const raw = profile[key]
+
+                  let value: string | null = null
+                  if (typeof raw === 'boolean') {
+                    value = raw ? 'Yes' : 'No'
+                  } else if (raw) {
+                    value = String(raw)
+                  }
+
+                  if (!value) return null
+
+                  return (
+                    <div
+                      key={cat.key}
+                      className="px-3.5 py-2 bg-linen rounded-full border border-out-var flex items-center gap-2"
+                    >
+                      <span className="text-xs font-head font-bold text-clay-dark">{cat.label}:</span>
+                      <span className="text-xs font-body text-muted">{value}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
         {/* Action buttons */}
         {canMessage && (
@@ -308,12 +344,6 @@ export default function ProfilePage() {
         {isOwnProfile && (
           <div className="bg-linen rounded-3xl border border-out-var p-6 text-center shadow-sm">
             <p className="text-sm font-body text-muted">This is your profile</p>
-          </div>
-        )}
-
-        {currentUser && currentUser.user_metadata?.role === 'landlord' && !isOwnProfile && (
-          <div className="bg-linen rounded-3xl border border-out-var p-6 text-center shadow-sm">
-            <p className="text-sm font-body text-muted">Landlords can't message students directly</p>
           </div>
         )}
       </div>
