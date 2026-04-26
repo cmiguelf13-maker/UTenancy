@@ -29,6 +29,8 @@ interface ListingInfo {
 
 type ApplicationStatus = 'awaiting' | 'approved' | 'denied' | null
 
+const APPROVAL_SIGNATURE = '\u2713 You\u2019ve been approved as a roommate'
+
 const getTimeAgo = (dateString: string): string => {
   const date = new Date(dateString)
   const now = new Date()
@@ -71,8 +73,9 @@ export default function ConversationPage() {
   const [messages, setMessages] = useState<MessageWithSender[]>([])
   const [otherParticipant, setOtherParticipant] = useState<Profile | null>(null)
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
-  // Session UID is set immediately (no async profile fetch needed) — used for approve button
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
+  // Role known immediately from session.user_metadata — no profile fetch wait
+  const [sessionUserRole, setSessionUserRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [messageText, setMessageText] = useState('')
   const [sending, setSending] = useState(false)
@@ -86,7 +89,6 @@ export default function ConversationPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Scroll to bottom on new messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -95,7 +97,6 @@ export default function ConversationPage() {
     scrollToBottom()
   }, [messages])
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -103,7 +104,6 @@ export default function ConversationPage() {
     }
   }, [messageText])
 
-  // Load conversation data
   useEffect(() => {
     const fetchData = async () => {
       const {
@@ -115,8 +115,10 @@ export default function ConversationPage() {
         return
       }
 
-      // Set session UID immediately — no waiting for profile fetch
+      // Capture session UID + role immediately (no profile-fetch wait)
       setSessionUserId(session.user.id)
+      const metaRole = session.user.user_metadata?.role ?? null
+      setSessionUserRole(metaRole)
 
       // Current user profile
       const { data: userData } = await supabase
@@ -127,7 +129,7 @@ export default function ConversationPage() {
 
       setCurrentUser(userData as Profile)
 
-      // Participants — fetch user_ids first, then load the other person's profile directly
+      // Other participant
       const { data: participantData } = await supabase
         .from('conversation_participants')
         .select('user_id')
@@ -136,16 +138,20 @@ export default function ConversationPage() {
       const otherUserId = (participantData as Array<{ user_id: string }> | null)
         ?.find((p) => p.user_id !== session.user.id)?.user_id
 
+      let otherProfile: Profile | null = null
       if (otherUserId) {
-        const { data: otherProfile } = await supabase
+        const { data: op } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', otherUserId)
           .single()
-        if (otherProfile) setOtherParticipant(otherProfile as Profile)
+        if (op) {
+          otherProfile = op as Profile
+          setOtherParticipant(otherProfile)
+        }
       }
 
-      // Listing linked to this conversation
+      // Listing linked to this conversation (optional)
       const { data: convRow } = await supabase
         .from('conversations')
         .select('listing_id')
@@ -158,39 +164,9 @@ export default function ConversationPage() {
           .select('id, type, status, landlord_id, address, city, rent, images, bedrooms')
           .eq('id', convRow.listing_id)
           .single()
-        if (listingRow) {
-          setListing(listingRow as ListingInfo)
-
-          // For students: check application status via household membership
-          if (userData?.role === 'student') {
-            const { data: householdRow } = await supabase
-              .from('households')
-              .select('id')
-              .eq('listing_id', listingRow.id)
-              .maybeSingle()
-
-            if (householdRow) {
-              const { data: memberRow } = await supabase
-                .from('household_members')
-                .select('id')
-                .eq('household_id', householdRow.id)
-                .eq('user_id', session.user.id)
-                .maybeSingle()
-
-              if (memberRow) {
-                setApplicationStatus('approved')
-              } else if (listingRow.status === 'filled') {
-                setApplicationStatus('denied')
-              } else {
-                setApplicationStatus('awaiting')
-              }
-            } else {
-              setApplicationStatus('awaiting')
-            }
-          }
-        } else if (listingErr?.code !== 'PGRST116') {
+        if (listingRow) setListing(listingRow as ListingInfo)
+        else if (listingErr?.code !== 'PGRST116')
           console.error('Listing fetch error:', listingErr)
-        }
       }
 
       // Messages
@@ -209,6 +185,50 @@ export default function ConversationPage() {
         .eq('conversation_id', conversationId)
         .neq('sender_id', session.user.id)
         .is('read_at', null)
+
+      // ── Student application status ─────────────────────────────
+      // Visible whenever current user is a student talking to a landlord.
+      // Priority: household membership (if listing exists) → approval message → awaiting.
+      const resolvedRole = userData?.role ?? metaRole
+      if (resolvedRole === 'student' && otherProfile?.role === 'landlord') {
+        let status: ApplicationStatus = 'awaiting'
+
+        // 1. Check household membership if there's a linked listing
+        if (convRow?.listing_id) {
+          const { data: householdRow } = await supabase
+            .from('households')
+            .select('id')
+            .eq('listing_id', convRow.listing_id)
+            .maybeSingle()
+
+          if (householdRow) {
+            const { data: memberRow } = await supabase
+              .from('household_members')
+              .select('id')
+              .eq('household_id', householdRow.id)
+              .eq('user_id', session.user.id)
+              .maybeSingle()
+
+            if (memberRow) {
+              status = 'approved'
+            } else if ((msgs ?? []).some((m: any) => String(m.body ?? '').startsWith(APPROVAL_SIGNATURE))) {
+              status = 'approved'
+            }
+          } else {
+            // No household yet — still check for approval message
+            if ((msgs ?? []).some((m: any) => String(m.body ?? '').startsWith(APPROVAL_SIGNATURE))) {
+              status = 'approved'
+            }
+          }
+        } else {
+          // No listing — derive status purely from messages
+          if ((msgs ?? []).some((m: any) => String(m.body ?? '').startsWith(APPROVAL_SIGNATURE))) {
+            status = 'approved'
+          }
+        }
+
+        setApplicationStatus(status)
+      }
 
       // Landlords can only reply — not initiate
       if (userData?.role === 'landlord') {
@@ -245,6 +265,10 @@ export default function ConversationPage() {
               prev.some((m) => m.id === row.id) ? prev : [...prev, fullMsg as MessageWithSender]
             )
             setCanReply(true)
+            // When the approval message arrives, flip student status live
+            if (String((fullMsg as any).body ?? '').startsWith(APPROVAL_SIGNATURE)) {
+              setApplicationStatus('approved')
+            }
           }
         }
       )
@@ -257,82 +281,79 @@ export default function ConversationPage() {
 
   // ── Approve tenant ───────────────────────────────────────────
   async function handleApprove() {
-    if (!listing || !otherParticipant || !currentUser || approving) return
+    if (!currentUser || approving) return
     setApproving(true)
     setApproveError(null)
 
-    // 1. Find or create household for this listing
-    const { data: existingHousehold } = await supabase
-      .from('households')
-      .select('id')
-      .eq('listing_id', listing.id)
-      .maybeSingle()
-
-    let householdId: string
-
-    if (existingHousehold) {
-      householdId = existingHousehold.id
-    } else {
-      const { data: newHousehold, error: hErr } = await supabase
+    // Household creation only possible when a listing is linked
+    if (listing && otherParticipant) {
+      const { data: existingHousehold } = await supabase
         .from('households')
-        .insert({
-          name: 'My Household',
-          listing_id: listing.id,
-          created_by: currentUser.id,
-        })
         .select('id')
-        .single()
+        .eq('listing_id', listing.id)
+        .maybeSingle()
 
-      if (hErr || !newHousehold) {
-        setApproveError('Could not create household. Please try again.')
+      let householdId: string
+
+      if (existingHousehold) {
+        householdId = existingHousehold.id
+      } else {
+        const { data: newHousehold, error: hErr } = await supabase
+          .from('households')
+          .insert({
+            name: 'My Household',
+            listing_id: listing.id,
+            created_by: currentUser.id,
+          })
+          .select('id')
+          .single()
+
+        if (hErr || !newHousehold) {
+          setApproveError('Could not create household. Please try again.')
+          setApproving(false)
+          return
+        }
+        householdId = newHousehold.id
+      }
+
+      const { error: err1 } = await supabase.from('household_members').upsert(
+        { household_id: householdId, user_id: currentUser.id, role: 'admin' },
+        { onConflict: 'household_id,user_id' }
+      )
+      if (err1) {
+        setApproveError('Could not add you to household. Please try again.')
         setApproving(false)
         return
       }
-      householdId = newHousehold.id
-    }
 
-    // 2. Add self as admin member
-    const { error: err1 } = await supabase.from('household_members').upsert(
-      { household_id: householdId, user_id: currentUser.id, role: 'admin' },
-      { onConflict: 'household_id,user_id' }
-    )
-    if (err1) {
-      setApproveError('Could not add you to household. Please try again.')
-      setApproving(false)
-      return
-    }
+      const { error: err2 } = await supabase.from('household_members').upsert(
+        { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
+        { onConflict: 'household_id,user_id' }
+      )
+      if (err2) {
+        setApproveError('Could not add tenant to household. Please try again.')
+        setApproving(false)
+        return
+      }
 
-    // 3. Add approved student as member
-    const { error: err2 } = await supabase.from('household_members').upsert(
-      { household_id: householdId, user_id: otherParticipant.id, role: 'member' },
-      { onConflict: 'household_id,user_id' }
-    )
-    if (err2) {
-      setApproveError('Could not add tenant to household. Please try again.')
-      setApproving(false)
-      return
-    }
+      const { count: studentMemberCount } = await supabase
+        .from('household_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('household_id', householdId)
+        .eq('role', 'member')
 
-    // 4. Check if all rooms are now filled and update listing status accordingly
-    const { count: studentMemberCount } = await supabase
-      .from('household_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('household_id', householdId)
-      .eq('role', 'member')
-
-    // Only mark as filled when the number of approved students equals the number of open rooms.
-    // The admin/creator occupies their existing room and doesn't count against available spots.
-    const allRoomsFilled = (studentMemberCount ?? 0) >= (listing.bedrooms ?? 1)
-    if (allRoomsFilled) {
-      const { error: rentErr } = await supabase.from('listings').update({ status: 'filled' }).eq('id', listing.id)
-      if (rentErr) {
-        console.error('Could not mark listing as filled:', rentErr.message)
-      } else {
-        setListing((prev) => (prev ? { ...prev, status: 'filled' } : null))
+      const allRoomsFilled = (studentMemberCount ?? 0) >= (listing.bedrooms ?? 1)
+      if (allRoomsFilled) {
+        const { error: rentErr } = await supabase.from('listings').update({ status: 'filled' }).eq('id', listing.id)
+        if (rentErr) {
+          console.error('Could not mark listing as filled:', rentErr.message)
+        } else {
+          setListing((prev) => (prev ? { ...prev, status: 'filled' } : null))
+        }
       }
     }
 
-    // 5. Send approval message in conversation
+    // Send approval message in all cases
     const { data: inserted, error: msgErr } = await supabase
       .from('messages')
       .insert({
@@ -409,15 +430,20 @@ export default function ConversationPage() {
     }
   })
 
-  // Approve button shows whenever the current user is the listing poster for an open-room listing.
-  // Uses sessionUserId (set immediately on load) rather than currentUser.id (requires profile fetch)
-  // so the button appears as soon as the listing loads, without any race condition.
+  // ── Top-right button visibility ────────────────────────────────
+  // Approve: current user is landlord (known immediately from session metadata) AND
+  // the other participant is a student
+  const effectiveRole = sessionUserRole ?? currentUser?.role ?? null
   const showApproveButton =
-    listing !== null &&
-    listing.type === 'open-room' &&
-    (listing.landlord_id === sessionUserId || listing.landlord_id === currentUser?.id)
+    effectiveRole === 'landlord' && otherParticipant?.role === 'student'
 
-  // Status badge config for student view
+  // Status badge: current user is student talking to a landlord
+  const showStatusBadge =
+    effectiveRole === 'student' &&
+    otherParticipant?.role === 'landlord' &&
+    applicationStatus !== null
+
+  // Status badge config
   const statusConfig: Record<
     Exclude<ApplicationStatus, null>,
     { label: string; bg: string; text: string; icon: string }
@@ -455,7 +481,7 @@ export default function ConversationPage() {
             <ArrowLeftIcon className="w-5 h-5 text-white" />
           </button>
 
-          {/* Clickable profile area — tapping navigates to their profile */}
+          {/* Clickable profile area */}
           {otherParticipant ? (
             <a
               href={`/profile/${otherParticipant.id}`}
@@ -496,7 +522,7 @@ export default function ConversationPage() {
             <div className="flex-1 min-w-0" />
           )}
 
-          {/* TOP RIGHT — Approve button (landlord view) OR status badge (student view) */}
+          {/* TOP RIGHT — Approve (landlord) */}
           {showApproveButton && (
             <button
               onClick={handleApprove}
@@ -508,7 +534,8 @@ export default function ConversationPage() {
             </button>
           )}
 
-          {!showApproveButton && applicationStatus && statusConfig[applicationStatus] && (
+          {/* TOP RIGHT — Status badge (student) */}
+          {showStatusBadge && applicationStatus && statusConfig[applicationStatus] && (
             <div
               className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold px-3 py-1.5 rounded-lg ${statusConfig[applicationStatus].bg} ${statusConfig[applicationStatus].text}`}
             >
@@ -535,7 +562,6 @@ export default function ConversationPage() {
           {listing && (
             <div className="flex-shrink-0 mb-3 bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
               <a href={`/listings/${listing.id}`} className="flex items-center gap-3 p-3 hover:bg-linen/50 transition-colors">
-                {/* Image */}
                 <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-linen">
                   {listing.images && listing.images.length > 0 ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -550,7 +576,6 @@ export default function ConversationPage() {
                     </div>
                   )}
                 </div>
-                {/* Details */}
                 <div className="flex-1 min-w-0">
                   <p className="font-head font-bold text-clay-dark text-sm truncate">{listing.address}</p>
                   <p className="text-xs text-muted font-body">{listing.city}</p>
@@ -560,6 +585,7 @@ export default function ConversationPage() {
               </a>
             </div>
           )}
+
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center py-20">
               <div>
