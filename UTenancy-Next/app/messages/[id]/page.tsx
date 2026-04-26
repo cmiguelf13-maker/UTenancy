@@ -27,6 +27,8 @@ interface ListingInfo {
   bedrooms: number
 }
 
+type ApplicationStatus = 'awaiting' | 'approved' | 'denied' | null
+
 const getTimeAgo = (dateString: string): string => {
   const date = new Date(dateString)
   const now = new Date()
@@ -79,6 +81,7 @@ export default function ConversationPage() {
   const [listing, setListing] = useState<ListingInfo | null>(null)
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
+  const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -155,9 +158,39 @@ export default function ConversationPage() {
           .select('id, type, status, landlord_id, address, city, rent, images, bedrooms')
           .eq('id', convRow.listing_id)
           .single()
-        if (listingRow) setListing(listingRow as ListingInfo)
-        else if (listingErr?.code !== 'PGRST116')
+        if (listingRow) {
+          setListing(listingRow as ListingInfo)
+
+          // For students: check application status via household membership
+          if (userData?.role === 'student') {
+            const { data: householdRow } = await supabase
+              .from('households')
+              .select('id')
+              .eq('listing_id', listingRow.id)
+              .maybeSingle()
+
+            if (householdRow) {
+              const { data: memberRow } = await supabase
+                .from('household_members')
+                .select('id')
+                .eq('household_id', householdRow.id)
+                .eq('user_id', session.user.id)
+                .maybeSingle()
+
+              if (memberRow) {
+                setApplicationStatus('approved')
+              } else if (listingRow.status === 'filled') {
+                setApplicationStatus('denied')
+              } else {
+                setApplicationStatus('awaiting')
+              }
+            } else {
+              setApplicationStatus('awaiting')
+            }
+          }
+        } else if (listingErr?.code !== 'PGRST116') {
           console.error('Listing fetch error:', listingErr)
+        }
       }
 
       // Messages
@@ -384,6 +417,31 @@ export default function ConversationPage() {
     listing.type === 'open-room' &&
     (listing.landlord_id === sessionUserId || listing.landlord_id === currentUser?.id)
 
+  // Status badge config for student view
+  const statusConfig: Record<
+    Exclude<ApplicationStatus, null>,
+    { label: string; bg: string; text: string; icon: string }
+  > = {
+    awaiting: {
+      label: 'Awaiting Review',
+      bg: 'bg-amber-400/20 border border-amber-300/40',
+      text: 'text-amber-100',
+      icon: 'schedule',
+    },
+    approved: {
+      label: 'Approved',
+      bg: 'bg-green-400/20 border border-green-300/40',
+      text: 'text-green-100',
+      icon: 'check_circle',
+    },
+    denied: {
+      label: 'Denied',
+      bg: 'bg-red-400/20 border border-red-300/40',
+      text: 'text-red-200',
+      icon: 'cancel',
+    },
+  }
+
   return (
     <div className="flex flex-col h-[calc(100dvh-70px)] bg-surf-lo">
       {/* ── Header ── */}
@@ -397,51 +455,48 @@ export default function ConversationPage() {
             <ArrowLeftIcon className="w-5 h-5 text-white" />
           </button>
 
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            {otherParticipant?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={otherParticipant.avatar_url}
-                alt={`${otherParticipant.first_name} ${otherParticipant.last_name}`}
-                className="w-9 h-9 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
-              />
-            ) : (
-              <InitialsCircle
-                firstName={otherParticipant?.first_name || ''}
-                lastName={otherParticipant?.last_name || ''}
-              />
-            )}
-
-            <div className="flex-1 min-w-0">
-              <h2 className="font-head font-bold text-white text-sm leading-tight truncate">
-                {otherParticipant?.first_name} {otherParticipant?.last_name}
-              </h2>
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-300 flex-shrink-0" />
-                <p className="text-xs text-white/70 font-body truncate">
-                  {otherParticipant?.role === 'landlord'
-                    ? 'Property Owner'
-                    : otherParticipant?.university
-                      ? `${otherParticipant.university} Student`
-                      : 'Student'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* View profile — always shown when other participant exists */}
-          {otherParticipant && (
+          {/* Clickable profile area — tapping navigates to their profile */}
+          {otherParticipant ? (
             <a
               href={`/profile/${otherParticipant.id}`}
-              title="View profile"
-              aria-label="View profile"
-              className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-all"
+              className="flex items-center gap-3 flex-1 min-w-0 rounded-xl px-2 py-1 -mx-2 -my-1 hover:bg-white/10 active:bg-white/15 transition-colors"
+              aria-label={`View ${otherParticipant.first_name}'s profile`}
             >
-              <span className="material-symbols-outlined text-lg">person</span>
+              {otherParticipant.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={otherParticipant.avatar_url}
+                  alt={`${otherParticipant.first_name} ${otherParticipant.last_name}`}
+                  className="w-9 h-9 rounded-full object-cover border-2 border-white/30 flex-shrink-0"
+                />
+              ) : (
+                <InitialsCircle
+                  firstName={otherParticipant.first_name || ''}
+                  lastName={otherParticipant.last_name || ''}
+                />
+              )}
+
+              <div className="flex-1 min-w-0">
+                <h2 className="font-head font-bold text-white text-sm leading-tight truncate">
+                  {otherParticipant.first_name} {otherParticipant.last_name}
+                </h2>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-300 flex-shrink-0" />
+                  <p className="text-xs text-white/70 font-body truncate">
+                    {otherParticipant.role === 'landlord'
+                      ? 'Property Owner'
+                      : otherParticipant.university
+                        ? `${otherParticipant.university} Student`
+                        : 'Student'}
+                  </p>
+                </div>
+              </div>
             </a>
+          ) : (
+            <div className="flex-1 min-w-0" />
           )}
 
-          {/* Approve button — shown to listing poster for open listings not yet filled */}
+          {/* TOP RIGHT — Approve button (landlord view) OR status badge (student view) */}
           {showApproveButton && (
             <button
               onClick={handleApprove}
@@ -453,6 +508,16 @@ export default function ConversationPage() {
             </button>
           )}
 
+          {!showApproveButton && applicationStatus && statusConfig[applicationStatus] && (
+            <div
+              className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold px-3 py-1.5 rounded-lg ${statusConfig[applicationStatus].bg} ${statusConfig[applicationStatus].text}`}
+            >
+              <span className="material-symbols-outlined text-base leading-none">
+                {statusConfig[applicationStatus].icon}
+              </span>
+              <span className="hidden sm:inline">{statusConfig[applicationStatus].label}</span>
+            </div>
+          )}
         </div>
 
         {/* Approve error */}
