@@ -152,7 +152,7 @@ export default function PostRoomPage() {
 
     try {
       // Enforce per-plan listing limits before inserting
-      const LISTING_LIMITS: Record<string, number> = { starter: 3, growth: 10 }
+      const LISTING_LIMITS: Record<string, number> = { free: 1, starter: 3, growth: 10 }
       const tierLimit = LISTING_LIMITS[subscriptionTier]
       if (tierLimit !== undefined) {
         const { count } = await supabase
