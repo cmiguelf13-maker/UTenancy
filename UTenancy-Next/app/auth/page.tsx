@@ -457,7 +457,7 @@ export default function AuthPage() {
         )}
 
         {/* ══ PANEL: SIGN UP ══ */}
-        {panel === 'signup' && !isLandlord && (
+        {panel === 'signup' && (
           <div className={`auth-card p-8 md:p-10 ${anim}`}>
             <div className="text-center mb-6">
               <div className={`inline-flex items-center gap-2 border border-out-var rounded-full px-4 py-1.5 mb-5 ${isLandlord ? 'bg-slate-50' : 'bg-surf-lo'}`}>
