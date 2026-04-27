@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Fraunces, Be_Vietnam_Pro } from 'next/font/google'
 import './globals.css'
 import Nav from '@/components/Nav'
+import { LanguageProvider } from '@/lib/i18n'
 
 /* ── Google Fonts via next/font (zero layout shift) ── */
 const plusJakarta = Plus_Jakarta_Sans({
@@ -36,16 +37,6 @@ export const metadata: Metadata = {
   description:
     'UTenancy connects verified university students with real off-campus housing and roommates — and gives landlords a management platform to run it all.',
   keywords: ['student housing', 'off-campus', 'roommates', 'university', 'rent', 'college housing', 'student apartments'],
-  icons: {
-    icon: [
-      { url: '/icon.png', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '512x512', type: 'image/png' },
-    ],
-    shortcut: '/icon.png',
-  },
-  manifest: '/manifest.webmanifest',
   openGraph: {
     type: 'website',
     siteName: 'UTenancy',
@@ -112,9 +103,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
-        {/* Explicit apple-touch-icon for older iOS browsers */}
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/apple-touch-icon.png" />
         {/* Site-level structured data — WebSite (enables SearchAction) + Organization */}
         <script
           type="application/ld+json"
@@ -126,8 +114,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="font-body bg-cream text-stone antialiased">
-        <Nav />
-        {children}
+        <LanguageProvider>
+          <Nav />
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   )
