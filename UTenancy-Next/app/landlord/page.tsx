@@ -90,11 +90,11 @@ function StatusBadge({ status }: { status: ListingStatus }) {
 }
 
 /* ─── StatCard ──────────────────────────────────────── */
-function StatCard({ icon, value, label, sub }: {
-  icon: string; value: string | number; label: string; sub?: string
+function StatCard({ icon, value, label, sub, href }: {
+  icon: string; value: string | number; label: string; sub?: string; href?: string
 }) {
-  return (
-    <div className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
+  const inner = (
+    <>
       <div className="mb-3">
         <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md">
           <span className="material-symbols-outlined fill text-white text-lg">{icon}</span>
@@ -103,6 +103,23 @@ function StatCard({ icon, value, label, sub }: {
       <p className="font-display text-3xl font-light text-clay-dark italic">{value}</p>
       <p className="text-sm font-head font-semibold text-espresso mt-0.5">{label}</p>
       {sub && <p className="text-xs font-body text-muted mt-0.5">{sub}</p>}
+      {href && (
+        <p className="text-xs font-head text-clay mt-2 flex items-center gap-0.5">
+          View households <span className="material-symbols-outlined" style={{ fontSize: 12 }}>arrow_forward</span>
+        </p>
+      )}
+    </>
+  )
+  if (href) {
+    return (
+      <Link href={href} className="bg-white rounded-2xl border border-out-var p-5 shadow-sm hover:border-clay/40 hover:shadow-md transition-all block">
+        {inner}
+      </Link>
+    )
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
+      {inner}
     </div>
   )
 }
@@ -873,7 +890,7 @@ export default function LandlordPortal() {
     }
 
     /* ── Enforce per-plan listing limits ── */
-    const LISTING_LIMITS: Record<string, number> = { starter: 3, growth: 10 }
+    const LISTING_LIMITS: Record<string, number> = { free: 1, starter: 3, growth: 10 }
     const tierLimit = LISTING_LIMITS[subscriptionTier]
     const activeListings = listings.filter(l => l.status !== 'archived' && l.status !== 'filled')
     if (tierLimit !== undefined && activeListings.length >= tierLimit) {
@@ -1338,8 +1355,14 @@ export default function LandlordPortal() {
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
               <span className="material-symbols-outlined text-base">chat</span> Messages
             </Link>
-            {/* Pro-only nav links */}
-            {['growth','pro'].includes(subscriptionTier) && (
+            {/* Starter+ nav links */}
+            {['starter','growth','pro'].includes(subscriptionTier) && (
+              <Link href="/landlord/households"
+                className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
+                <span className="material-symbols-outlined text-base">home_work</span> Households
+              </Link>
+            )}
+            {['starter','growth','pro'].includes(subscriptionTier) && (
               <Link href="/landlord/analytics"
                 className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
                 <span className="material-symbols-outlined text-base">analytics</span> Analytics
@@ -1466,13 +1489,17 @@ export default function LandlordPortal() {
 
         {/* Stats */}
         {(() => {
-          const monthlyRevenue = listings.filter(l => l.status === 'filled').reduce((s, l) => s + l.rent, 0)
+          const received = listings.filter(l => l.status === 'filled').reduce((s, l) => s + l.rent, 0)
+          const due      = listings.filter(l => l.status === 'active' || l.status === 'filled').reduce((s, l) => s + l.rent, 0)
+          const revenueVal = `$${received.toLocaleString()} / $${due.toLocaleString()}`
+          const canSeeHouseholds = ['starter', 'growth', 'pro'].includes(subscriptionTier)
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <StatCard icon="home_work"    value={listings.length} label="Properties"  sub="In your portfolio"   />
               <StatCard icon="check_circle" value={activeCount}     label="Active Listings" sub="Visible to students" />
               <StatCard icon="group"        value={totalApplicants} label="Applicants"  sub="Across all listings" />
-              <StatCard icon="payments"     value={`$${monthlyRevenue.toLocaleString()}`} label="Monthly Revenue" sub="From filled units" />
+              <StatCard icon="payments"     value={revenueVal} label="Monthly Revenue" sub="Received / due"
+                href={canSeeHouseholds ? '/landlord/households' : undefined} />
             </div>
           )
         })()}
@@ -1490,7 +1517,7 @@ export default function LandlordPortal() {
                   </span>
                 </p>
               </div>
-              {subscriptionTier === 'pro' && (
+              {['starter','growth','pro'].includes(subscriptionTier) && (
                 <Link href="/landlord/analytics"
                   className="flex items-center gap-1.5 text-xs font-head font-semibold text-clay-dark bg-linen hover:bg-clay/10 border border-out-var px-3 py-2 rounded-xl transition-colors">
                   <span className="material-symbols-outlined text-sm">analytics</span>
