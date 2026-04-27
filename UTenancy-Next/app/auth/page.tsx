@@ -402,9 +402,7 @@ export default function AuthPage() {
   const TabBar = () => (
     <div className="bg-surf-hi rounded-xl p-1 flex gap-1 mb-8">
       <button className={`tab-btn flex-1 ${tab === 'login'  ? 'active' : ''}`} onClick={() => switchTab('login')}>{t('signIn')}</button>
-      {!isLandlord && (
-        <button className={`tab-btn flex-1 ${tab === 'signup' ? 'active' : ''}`} onClick={() => switchTab('signup')}>{t('createAccount')}</button>
-      )}
+      <button className={`tab-btn flex-1 ${tab === 'signup' ? 'active' : ''}`} onClick={() => switchTab('signup')}>{t('createAccount')}</button>
     </div>
   )
 
