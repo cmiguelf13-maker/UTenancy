@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 import { SubscriptionTier } from '@/lib/types'
 import FeatureGate from '@/components/FeatureGate'
 
@@ -21,6 +22,7 @@ interface HouseholdRow {
 
 export default function LandlordHouseholdsPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [tier, setTier]             = useState<SubscriptionTier>('free')
   const [households, setHouseholds] = useState<HouseholdRow[]>([])
   const [loading, setLoading]       = useState(true)
@@ -134,13 +136,13 @@ export default function LandlordHouseholdsPage() {
               <span className="material-symbols-outlined text-espresso">arrow_back</span>
             </Link>
             <div>
-              <h1 className="font-head font-bold text-espresso text-lg">Households</h1>
-              <p className="text-xs font-body text-muted">Tenants in your filled properties</p>
+              <h1 className="font-head font-bold text-espresso text-lg">{t('householdsTitle')}</h1>
+              <p className="text-xs font-body text-muted">{t('householdsSubtitle')}</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-head font-bold clay-grad text-white">
             <span className="material-symbols-outlined fill text-sm">workspace_premium</span>
-            Starter+
+            {t('tierStarter')}+
           </span>
         </div>
       </div>
@@ -160,16 +162,16 @@ export default function LandlordHouseholdsPage() {
                   <span className="material-symbols-outlined fill text-white text-lg">payments</span>
                 </div>
                 <p className="font-display text-3xl font-light text-clay-dark italic">${totalReceived.toLocaleString()}</p>
-                <p className="text-sm font-head font-semibold text-espresso mt-0.5">Monthly Received</p>
-                <p className="text-xs font-body text-muted">From filled units</p>
+                <p className="text-sm font-head font-semibold text-espresso mt-0.5">{t('monthlyReceived')}</p>
+                <p className="text-xs font-body text-muted">{t('fromFilledUnits')}</p>
               </div>
               <div className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
                 <div className="w-10 h-10 bg-stone-200 rounded-xl flex items-center justify-center shadow-md mb-3">
                   <span className="material-symbols-outlined fill text-stone-500 text-lg">receipt_long</span>
                 </div>
                 <p className="font-display text-3xl font-light text-clay-dark italic">${totalDue.toLocaleString()}</p>
-                <p className="text-sm font-head font-semibold text-espresso mt-0.5">Monthly Due</p>
-                <p className="text-xs font-body text-muted">Expected across households</p>
+                <p className="text-sm font-head font-semibold text-espresso mt-0.5">{t('monthlyDue')}</p>
+                <p className="text-xs font-body text-muted">{t('expectedAcross')}</p>
               </div>
             </div>
 
@@ -177,8 +179,8 @@ export default function LandlordHouseholdsPage() {
             {households.length === 0 ? (
               <div className="bg-white rounded-2xl border border-out-var p-10 text-center shadow-sm">
                 <span className="material-symbols-outlined text-5xl text-muted mb-3 block">home_work</span>
-                <p className="font-head font-semibold text-espresso">No households yet</p>
-                <p className="text-sm font-body text-muted mt-1">Households are created automatically when you approve a tenant application.</p>
+                <p className="font-head font-semibold text-espresso">{t('noHouseholdsYet')}</p>
+                <p className="text-sm font-body text-muted mt-1">{t('householdsEmptyDesc')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -194,15 +196,15 @@ export default function LandlordHouseholdsPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-display text-xl font-light text-clay-dark italic">${hh.rent.toLocaleString()}<span className="text-xs font-body text-muted">/mo</span></p>
-                        <p className="text-xs font-head text-muted">Rent</p>
+                        <p className="text-xs font-head text-muted">{t('rentLabel')}</p>
                       </div>
                     </div>
 
                     {/* Members */}
                     <div className="px-6 py-4">
-                      <p className="text-xs font-head font-bold text-muted uppercase tracking-wide mb-3">Tenants</p>
+                      <p className="text-xs font-head font-bold text-muted uppercase tracking-wide mb-3">{t('tenantsLabel')}</p>
                       {hh.members.length === 0 ? (
-                        <p className="text-sm font-body text-muted">No members recorded.</p>
+                        <p className="text-sm font-body text-muted">{t('noMembersRecorded')}</p>
                       ) : (
                         <div className="space-y-2">
                           {hh.members.map(m => (
