@@ -1,5 +1,7 @@
 'use client'
 
+import { useLanguage } from '@/lib/i18n'
+import type { TranslationKey } from '@/lib/i18n'
 import { SubscriptionTier } from '@/lib/types'
 
 /**
@@ -16,13 +18,6 @@ const TIER_RANK: Record<SubscriptionTier, number> = {
   starter: 1,
   growth:  2,
   pro:     3,
-}
-
-const TIER_LABEL: Record<SubscriptionTier, string> = {
-  free:    'Free',
-  starter: 'Starter',
-  growth:  'Growth',
-  pro:     'Pro',
 }
 
 const TIER_COLOR: Record<SubscriptionTier, string> = {
@@ -51,6 +46,12 @@ export default function FeatureGate({
   blur = true,
   onUpgrade,
 }: Props) {
+  const { t } = useLanguage()
+  const TIER_LABELS: Record<string, TranslationKey> = {
+    free: 'tierFree', starter: 'tierStarter', growth: 'tierGrowth', pro: 'tierPro'
+  }
+  const tierLabel = t(TIER_LABELS[requiredTier] ?? 'tierFree')
+
   const hasAccess = TIER_RANK[currentTier] >= TIER_RANK[requiredTier]
   if (hasAccess) return <>{children}</>
 
@@ -66,14 +67,14 @@ export default function FeatureGate({
         {/* Tier badge */}
         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-head font-bold mb-4 ${TIER_COLOR[requiredTier]}`}>
           <span className="material-symbols-outlined fill text-sm">workspace_premium</span>
-          {TIER_LABEL[requiredTier]} Feature
+          {tierLabel} {t('fgFeatureSuffix')}
         </span>
 
         <p className="font-head font-semibold text-espresso text-base mb-1">
-          {lockedMessage ?? `This feature is available on the ${TIER_LABEL[requiredTier]} plan.`}
+          {lockedMessage ?? t('fgUpgradePrompt')}
         </p>
         <p className="text-sm font-body text-muted mb-5 max-w-xs">
-          Upgrade to unlock this feature and everything else your plan includes.
+          {t('fgUpgradeDesc')}
         </p>
 
         {onUpgrade && (
@@ -81,7 +82,7 @@ export default function FeatureGate({
             onClick={onUpgrade}
             className="clay-grad text-white text-sm font-head font-semibold px-5 py-2.5 rounded-xl shadow-md hover:opacity-90 transition-opacity"
           >
-            Upgrade to {TIER_LABEL[requiredTier]}
+            {t('fgUpgradeTo')} {tierLabel}
           </button>
         )}
       </div>
