@@ -158,15 +158,20 @@ export default function ConversationPage() {
         .eq('id', conversationId)
         .single()
 
+      // Keep a local reference so we can use it in the status check below
+      let fetchedListing: ListingInfo | null = null
       if (convRow?.listing_id) {
         const { data: listingRow, error: listingErr } = await supabase
           .from('listings')
           .select('id, type, status, landlord_id, address, city, rent, images, bedrooms')
           .eq('id', convRow.listing_id)
           .single()
-        if (listingRow) setListing(listingRow as ListingInfo)
-        else if (listingErr?.code !== 'PGRST116')
+        if (listingRow) {
+          fetchedListing = listingRow as ListingInfo
+          setListing(fetchedListing)
+        } else if (listingErr?.code !== 'PGRST116') {
           console.error('Listing fetch error:', listingErr)
+        }
       }
 
       // Messages
@@ -187,18 +192,27 @@ export default function ConversationPage() {
         .is('read_at', null)
 
       // ── Student application status ─────────────────────────────
-      // Visible whenever current user is a student talking to a landlord.
-      // Priority: household membership (if listing exists) → approval message → awaiting.
+      // Show whenever the current user is the *inquiring* party, meaning:
+      //   (a) a student talking to a landlord (by role), OR
+      //   (b) a student talking to the host of an open-room listing
+      //       (both users are students; the listing host acts as landlord)
       const resolvedRole = userData?.role ?? metaRole
-      if (resolvedRole === 'student' && otherProfile?.role === 'landlord') {
+      const isListingHostInFetch =
+        fetchedListing !== null && fetchedListing.landlord_id === session.user.id
+      const isInquiringStudent =
+        resolvedRole === 'student' &&
+        (otherProfile?.role === 'landlord' ||
+          (fetchedListing !== null && !isListingHostInFetch))
+
+      if (isInquiringStudent) {
         let status: ApplicationStatus = 'awaiting'
 
         // 1. Check household membership if there's a linked listing
-        if (convRow?.listing_id) {
+        if (fetchedListing) {
           const { data: householdRow } = await supabase
             .from('households')
             .select('id')
-            .eq('listing_id', convRow.listing_id)
+            .eq('listing_id', fetchedListing.id)
             .maybeSingle()
 
           if (householdRow) {
@@ -215,7 +229,6 @@ export default function ConversationPage() {
               status = 'approved'
             }
           } else {
-            // No household yet — still check for approval message
             if ((msgs ?? []).some((m: any) => String(m.body ?? '').startsWith(APPROVAL_SIGNATURE))) {
               status = 'approved'
             }
@@ -431,17 +444,26 @@ export default function ConversationPage() {
   })
 
   // ── Top-right button visibility ────────────────────────────────
-  // Approve: current user is landlord (known immediately from session metadata) AND
-  // the other participant is a student
   const effectiveRole = sessionUserRole ?? currentUser?.role ?? null
-  const showApproveButton =
-    effectiveRole === 'landlord' && otherParticipant?.role === 'student'
 
-  // Status badge: current user is student talking to a landlord
+  // Current user is the listing host (covers open-room where both users are students)
+  const isListingHost =
+    listing !== null &&
+    (listing.landlord_id === sessionUserId || listing.landlord_id === currentUser?.id)
+
+  // Approve: you are a landlord talking to a student,
+  //          OR you are the host of the listing this conversation is about
+  const showApproveButton =
+    (effectiveRole === 'landlord' && otherParticipant?.role === 'student') ||
+    (isListingHost && otherParticipant !== null)
+
+  // Status badge: you are the inquiring student — talking to a landlord by role,
+  //               or talking to the host of a listing you did not create
   const showStatusBadge =
+    !showApproveButton &&
+    applicationStatus !== null &&
     effectiveRole === 'student' &&
-    otherParticipant?.role === 'landlord' &&
-    applicationStatus !== null
+    (otherParticipant?.role === 'landlord' || (listing !== null && !isListingHost))
 
   // Status badge config
   const statusConfig: Record<
