@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 import { Listing, SubscriptionTier } from '@/lib/types'
 import FeatureGate from '@/components/FeatureGate'
 
@@ -95,6 +96,7 @@ function FunnelBar({ label, count, max, color }: { label: string; count: number;
 /* ─── Page ───────────────────────────────────────────── */
 export default function AnalyticsPage() {
   const router = useRouter()
+  const { t } = useLanguage()
   const [listings, setListings] = useState<Listing[]>([])
   const [tier, setTier]         = useState<SubscriptionTier>('free')
   const [loading, setLoading]   = useState(true)
@@ -160,13 +162,13 @@ export default function AnalyticsPage() {
               <span className="material-symbols-outlined text-espresso">arrow_back</span>
             </Link>
             <div>
-              <h1 className="font-head font-bold text-espresso text-lg">Analytics</h1>
-              <p className="text-xs font-body text-muted">Portfolio performance overview</p>
+              <h1 className="font-head font-bold text-espresso text-lg">{t('analyticsTitle')}</h1>
+              <p className="text-xs font-body text-muted">{t('analyticsSubtitle')}</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-head font-bold clay-grad text-white">
             <span className="material-symbols-outlined fill text-sm">workspace_premium</span>
-            Pro
+            {t('tierPro')}
           </span>
         </div>
       </div>
@@ -182,10 +184,10 @@ export default function AnalyticsPage() {
         >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: 'home_work',     value: listings.length,                                     label: 'Total Properties', sub: 'in your portfolio'   },
-              { icon: 'check_circle',  value: active,                                               label: 'Active Listings',  sub: 'currently live'      },
-              { icon: 'person_search', value: totalInterest,                                        label: 'Total Applicants', sub: 'across all listings'  },
-              { icon: 'payments',      value: `$${received.toLocaleString()} / $${due.toLocaleString()}`, label: 'Monthly Revenue',  sub: 'received / due'      },
+              { icon: 'home_work',     value: listings.length,                                     label: t('properties'), sub: t('inYourPortfolio')   },
+              { icon: 'check_circle',  value: active,                                               label: t('activeListings'),  sub: 'currently live'      },
+              { icon: 'person_search', value: totalInterest,                                        label: t('applicants'), sub: t('acrossAllListings')  },
+              { icon: 'payments',      value: `$${received.toLocaleString()} / $${due.toLocaleString()}`, label: t('monthlyRevenue'),  sub: t('receivedDue')      },
             ].map(k => (
               <div key={k.label} className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
                 <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md mb-3">
@@ -208,8 +210,8 @@ export default function AnalyticsPage() {
         >
           <div className="bg-white rounded-2xl border border-out-var p-6 shadow-sm">
             <div className="flex items-center justify-between mb-1">
-              <h2 className="font-head font-bold text-espresso">Revenue (6 months)</h2>
-              <span className="text-xs font-body text-muted">Rented units × monthly rent</span>
+              <h2 className="font-head font-bold text-espresso">{t('revenueSixMonths')}</h2>
+              <span className="text-xs font-body text-muted">{t('revenueChartSub')}</span>
             </div>
             <BarChart data={monthly} max={maxRev} />
           </div>
@@ -224,20 +226,20 @@ export default function AnalyticsPage() {
             onUpgrade={() => router.push('/landlord')}
           >
             <div className="bg-white rounded-2xl border border-out-var p-6 shadow-sm">
-              <h2 className="font-head font-bold text-espresso mb-4">Occupancy Rate</h2>
+              <h2 className="font-head font-bold text-espresso mb-4">{t('occupancyRate')}</h2>
               <OccupancyRing pct={occupancyPct} />
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div>
                   <p className="font-display text-2xl font-light text-clay-dark italic">{filled}</p>
-                  <p className="text-xs font-head text-muted">Rented</p>
+                  <p className="text-xs font-head text-muted">{t('rented')}</p>
                 </div>
                 <div>
                   <p className="font-display text-2xl font-light text-clay-dark italic">{active}</p>
-                  <p className="text-xs font-head text-muted">Active</p>
+                  <p className="text-xs font-head text-muted">{t('active')}</p>
                 </div>
                 <div>
                   <p className="font-display text-2xl font-light text-clay-dark italic">{listings.length - filled - active}</p>
-                  <p className="text-xs font-head text-muted">Other</p>
+                  <p className="text-xs font-head text-muted">{t('other')}</p>
                 </div>
               </div>
             </div>
@@ -251,16 +253,16 @@ export default function AnalyticsPage() {
             onUpgrade={() => router.push('/landlord')}
           >
             <div className="bg-white rounded-2xl border border-out-var p-6 shadow-sm">
-              <h2 className="font-head font-bold text-espresso mb-5">Applicant Funnel</h2>
+              <h2 className="font-head font-bold text-espresso mb-5">{t('applicantFunnel')}</h2>
               <div className="space-y-3">
-                <FunnelBar label="Interested"  count={totalInterest}                      max={funnelMax} color="bg-clay"        />
-                <FunnelBar label="Reviewed"    count={Math.round(totalInterest * 0.65)}   max={funnelMax} color="bg-terra"       />
-                <FunnelBar label="Contacted"   count={Math.round(totalInterest * 0.40)}   max={funnelMax} color="bg-amber-400"   />
-                <FunnelBar label="Toured"      count={Math.round(totalInterest * 0.20)}   max={funnelMax} color="bg-amber-300"   />
-                <FunnelBar label="Placed"      count={filled}                             max={funnelMax} color="bg-green-400"   />
+                <FunnelBar label={t('funnelInterested')}  count={totalInterest}                      max={funnelMax} color="bg-clay"        />
+                <FunnelBar label={t('funnelReviewed')}    count={Math.round(totalInterest * 0.65)}   max={funnelMax} color="bg-terra"       />
+                <FunnelBar label={t('funnelContacted')}   count={Math.round(totalInterest * 0.40)}   max={funnelMax} color="bg-amber-400"   />
+                <FunnelBar label={t('funnelToured')}      count={Math.round(totalInterest * 0.20)}   max={funnelMax} color="bg-amber-300"   />
+                <FunnelBar label={t('funnelPlaced')}      count={filled}                             max={funnelMax} color="bg-green-400"   />
               </div>
               <p className="text-xs font-body text-muted mt-4">
-                * Reviewed, contacted, toured stages are estimated from interest data. Connect tenant screening to get exact numbers.
+                {t('funnelNote')}
               </p>
             </div>
           </FeatureGate>
@@ -275,14 +277,14 @@ export default function AnalyticsPage() {
         >
           <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
             <div className="p-6 border-b border-out-var">
-              <h2 className="font-head font-bold text-espresso">Property Breakdown</h2>
-              <p className="text-xs font-body text-muted mt-0.5">Revenue and applicant data per property</p>
+              <h2 className="font-head font-bold text-espresso">{t('propertyBreakdown')}</h2>
+              <p className="text-xs font-body text-muted mt-0.5">{t('propertyBreakdownSub')}</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-linen border-b border-out-var">
-                    {['Property','Status','Beds','Rent/mo','Applicants','Rev. share'].map(h => (
+                    {[t('colProperty'), t('colStatus'), t('colBeds'), t('colRent'), t('colApplicants'), t('colRevShare')].map(h => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-head font-bold text-muted uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -331,7 +333,7 @@ export default function AnalyticsPage() {
                   {listings.length === 0 && (
                     <tr>
                       <td colSpan={6} className="px-5 py-10 text-center text-muted font-body">
-                        No listings yet. Add properties from your dashboard.
+                        {t('noListingsYet')}
                       </td>
                     </tr>
                   )}
