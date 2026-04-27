@@ -1171,6 +1171,35 @@ export default function LandlordPortal() {
     if (reason) payload.rejection_reason = reason
     const { error } = await supabase.from('rent_applications').update(payload).eq('id', appId)
     if (error) { setAppActionMsg('Could not update status. Please try again.'); return }
+
+    /* ── On approval: auto-create a household linked to the listing ── */
+    if (newStatus === 'approved' && reviewListing) {
+      const app = rentApplications.find((a) => a.id === appId)
+      if (app?.user_id) {
+        const householdName = reviewListing.unit
+          ? `${reviewListing.address} ${reviewListing.unit}`
+          : reviewListing.address
+        const { data: hh, error: hhErr } = await supabase
+          .from('households')
+          .insert({ name: householdName, listing_id: reviewListing.id, created_by: app.user_id })
+          .select('id')
+          .single()
+        if (!hhErr && hh) {
+          await supabase.from('household_members').insert({
+            household_id: hh.id,
+            user_id:      app.user_id,
+            role:         'admin',
+          })
+          /* Mark listing as filled */
+          await supabase.from('listings').update({ status: 'filled' }).eq('id', reviewListing.id)
+          setListings((prev) => prev.map((l) => l.id === reviewListing.id ? { ...l, status: 'filled' as ListingStatus } : l))
+          setAppActionMsg('Tenant approved — household created and listing marked as filled.')
+        } else {
+          setAppActionMsg('Tenant approved, but household could not be created. Please try again.')
+        }
+      }
+    }
+
     setRentApplications((prev) => prev.map((a) => a.id === appId ? { ...a, status: newStatus, rejection_reason: reason ?? a.rejection_reason } : a))
     setRejectingAppId(null)
     setRejectionReason('')
