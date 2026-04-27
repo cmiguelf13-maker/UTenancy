@@ -1341,7 +1341,7 @@ export default function LandlordPortal() {
 
           {/* Filter tabs (desktop) */}
           <div className="hidden md:flex items-center gap-1 bg-surf-hi border border-out-var rounded-full px-1 py-1">
-            {(['all', 'active', 'draft', 'filled', 'pending', 'archived'] as FilterTab[]).map((f) => (
+            {(['all', 'active', 'draft', 'filled', 'archived'] as FilterTab[]).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize transition-all
                   ${filter === f ? 'clay-grad text-white shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
@@ -1604,7 +1604,7 @@ export default function LandlordPortal() {
           </h2>
           {/* Mobile filter */}
           <div className="flex md:hidden gap-1 overflow-x-auto">
-            {(['all', 'active', 'draft', 'filled', 'pending', 'archived'] as FilterTab[]).map((f) => (
+            {(['all', 'active', 'draft', 'filled', 'archived'] as FilterTab[]).map((f) => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize whitespace-nowrap transition-all
                   ${filter === f ? 'clay-grad text-white' : 'bg-white border border-out-var text-muted'}`}>
