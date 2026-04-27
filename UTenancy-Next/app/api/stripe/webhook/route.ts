@@ -96,6 +96,69 @@ export async function POST(req: NextRequest) {
           subscription_tier:   tier,
         }).eq('stripe_customer_id', customerId)
       }
+
+      /* ── Referral reward: give referring landlord 1 month of next tier ── */
+      const resolvedUserId = userId ?? (customerId
+        ? (await admin.from('profiles').select('id').eq('stripe_customer_id', customerId).single()).data?.id
+        : null)
+
+      if (resolvedUserId) {
+        const { data: referral } = await admin
+          .from('referrals')
+          .select('id, referrer_id')
+          .eq('referred_id', resolvedUserId)
+          .eq('reward_applied', false)
+          .single()
+
+        if (referral) {
+          // Look up referrer's current tier to determine the reward tier
+          const { data: referrerProfile } = await admin
+            .from('profiles')
+            .select('subscription_tier, stripe_customer_id')
+            .eq('id', referral.referrer_id)
+            .single()
+
+          const tierOrder = ['free', 'starter', 'growth', 'pro']
+          const currentIdx = tierOrder.indexOf(referrerProfile?.subscription_tier ?? 'free')
+          const rewardTier = tierOrder[Math.min(currentIdx + 1, tierOrder.length - 1)]
+
+          // Apply a 1-month coupon to the referrer if they have a Stripe subscription
+          if (referrerProfile?.stripe_customer_id) {
+            try {
+              const tierPriceMap: Record<string, number> = {
+                starter: 2900, growth: 5900, pro: 12900,
+              }
+              const discountAmount = tierPriceMap[rewardTier] ?? 2900
+
+              const coupon = await stripe.coupons.create({
+                amount_off: discountAmount,
+                currency:   'usd',
+                duration:   'once',
+                name:       `UTenancy Referral Reward — 1 month ${rewardTier}`,
+              })
+
+              const subs = await stripe.subscriptions.list({
+                customer: referrerProfile.stripe_customer_id,
+                status:   'active',
+                limit:    1,
+              })
+              if (subs.data.length > 0) {
+                await stripe.subscriptions.update(subs.data[0].id, {
+                  discounts: [{ coupon: coupon.id }],
+                })
+              }
+            } catch (err) {
+              console.error('Referral reward Stripe error:', err)
+            }
+          }
+
+          // Mark reward as applied regardless of Stripe result
+          await admin
+            .from('referrals')
+            .update({ reward_applied: true, reward_tier: rewardTier })
+            .eq('id', referral.id)
+        }
+      }
       break
     }
 
