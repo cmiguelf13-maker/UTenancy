@@ -549,6 +549,18 @@ export default function ConversationPage() {
             <div className="flex-1 min-w-0" />
           )}
 
+          {/* TOP RIGHT — View Profile (landlord viewing student) */}
+          {otherParticipant && otherParticipant.role === 'student' && (
+            <a
+              href={`/profile/${otherParticipant.id}`}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all"
+              aria-label="View student profile"
+            >
+              <span className="material-symbols-outlined text-base leading-none">person</span>
+              Profile
+            </a>
+          )}
+
           {/* TOP RIGHT — Approve (landlord) */}
           {showApproveButton && (
             <button
