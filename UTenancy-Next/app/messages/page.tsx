@@ -939,14 +939,13 @@ export default function MessagesPage() {
                 </div>
               )}
 
-              {/* Profile link */}
-              {otherParticipant && otherParticipant.role !== 'landlord' &&
-                !(listing && listing.landlord_id === currentUser?.id && listing.type === 'open-room') && (
+              {/* Profile link — always show next to Approved badge (or standalone for non-open-room) */}
+              {otherParticipant && otherParticipant.role !== 'landlord' && (
                 <a
                   href={`/profile/${otherParticipant.id}`}
-                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold text-white/80 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10"
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all"
                 >
-                  <span className="material-symbols-outlined text-base">person</span>
+                  <span className="material-symbols-outlined text-base leading-none">person</span>
                   Profile
                 </a>
               )}
