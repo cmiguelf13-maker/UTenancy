@@ -336,9 +336,11 @@ function CreateHouseholdForm({ userId, onCreated, t }: { userId: string; onCreat
     if (!name.trim()) { setErr('Enter a household name'); return }
     setSaving(true); setErr(null)
 
+    const inviteCode = Math.random().toString(36).slice(2, 10)
+
     const { data: hh, error: hhErr } = await supabase
       .from('households')
-      .insert({ name: name.trim(), created_by: userId })
+      .insert({ name: name.trim(), created_by: userId, invite_code: inviteCode })
       .select()
       .single()
 
@@ -730,9 +732,16 @@ export default function HouseholdPage() {
     setPayments(prev => ({ ...prev, [e.id]: [] }))
   }
 
-  function copyInviteCode() {
-    if (!household?.invite_code) return
-    const link = `${window.location.origin}/tenant/household/join?code=${household.invite_code}`
+  async function copyInviteCode() {
+    if (!household) return
+    let code = household.invite_code
+    // Lazily generate a code for older households that have none
+    if (!code) {
+      code = Math.random().toString(36).slice(2, 10)
+      await supabase.from('households').update({ invite_code: code }).eq('id', household.id)
+      setHouseholds(prev => prev.map(h => h.id === household.id ? { ...h, invite_code: code } : h))
+    }
+    const link = `${window.location.origin}/tenant/household/join?code=${code}`
     navigator.clipboard.writeText(link).then(() => {
       setInviteCopied(true)
       setTimeout(() => setInviteCopied(false), 2000)
