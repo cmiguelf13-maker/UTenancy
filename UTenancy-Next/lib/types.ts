@@ -32,12 +32,21 @@ export interface Household {
   id: string
   name: string
   listing_id: string | null
+  landlord_id: string | null
   created_by: string
   invite_code: string | null
   created_at: string
   // joined
   members?: HouseholdMember[]
   expenses?: HouseholdExpense[]
+}
+
+export interface LandlordConnectProfile {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  stripe_connect_id: string | null
+  stripe_connect_enabled: boolean
 }
 
 export interface HouseholdMember {
