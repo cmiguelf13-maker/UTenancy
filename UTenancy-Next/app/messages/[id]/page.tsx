@@ -549,20 +549,8 @@ export default function ConversationPage() {
             <div className="flex-1 min-w-0" />
           )}
 
-          {/* TOP RIGHT — action buttons (always a flex row, never replace each other) */}
+          {/* TOP RIGHT — action buttons */}
           <div className="flex-shrink-0 flex items-center gap-2">
-            {/* View Profile — always show when participant is loaded */}
-            {otherParticipant && (
-              <a
-                href={`/profile/${otherParticipant.id}`}
-                className="flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all"
-                aria-label="View profile"
-              >
-                <span className="material-symbols-outlined text-base leading-none">person</span>
-                Profile
-              </a>
-            )}
-
             {/* Approve (landlord / listing host) */}
             {showApproveButton && (
               <button
@@ -575,7 +563,7 @@ export default function ConversationPage() {
               </button>
             )}
 
-            {/* Status badge (student) — sits alongside Profile, never replaces it */}
+            {/* Status badge — shown when no approve button */}
             {showStatusBadge && applicationStatus && statusConfig[applicationStatus] && (
               <div
                 className={`flex items-center gap-1.5 text-xs font-head font-bold px-3 py-1.5 rounded-lg ${statusConfig[applicationStatus].bg} ${statusConfig[applicationStatus].text}`}
@@ -585,6 +573,18 @@ export default function ConversationPage() {
                 </span>
                 <span className="hidden sm:inline">{statusConfig[applicationStatus].label}</span>
               </div>
+            )}
+
+            {/* View Profile — sits right next to the status badge / approve button */}
+            {otherParticipant && (
+              <a
+                href={`/profile/${otherParticipant.id}`}
+                className="flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all"
+                aria-label="View profile"
+              >
+                <span className="material-symbols-outlined text-base leading-none">person</span>
+                Profile
+              </a>
             )}
           </div>{/* end right-side action buttons */}
         </div>
