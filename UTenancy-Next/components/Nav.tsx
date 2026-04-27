@@ -4,14 +4,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 import type { User } from '@supabase/supabase-js'
-
-const links = [
-  { href: '/#how-it-works', label: 'How It Works' },
-  { href: '/listings',       label: 'Find Housing' },
-  { href: '/#landlords',     label: 'For Landlords' },
-  { href: '/#pricing',       label: 'Pricing' },
-]
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/)
@@ -28,6 +22,7 @@ export default function Nav() {
   const router  = useRouter()
   const isAuth  = path === '/auth'
   const isLandlordPortal = path === '/landlord'
+  const { t } = useLanguage()
 
   const [user, setUser]           = useState<User | null>(null)
   const [menuOpen, setMenuOpen]   = useState(false)
@@ -35,6 +30,13 @@ export default function Nav() {
   const menuRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
+
+  const links = [
+    { href: '/#how-it-works', label: t('navHowItWorks') },
+    { href: '/listings',       label: t('navFindHousing') },
+    { href: '/#landlords',     label: t('navForLandlords') },
+    { href: '/#pricing',       label: t('navPricing') },
+  ]
 
   // Detect session on mount + listen for changes
   useEffect(() => {
@@ -102,7 +104,7 @@ export default function Nav() {
             <button
               className="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-xl hover:bg-surf-lo transition-colors gap-[5px]"
               onClick={() => setMobileOpen((v) => !v)}
-              aria-label="Toggle navigation"
+              aria-label={t('navToggle')}
             >
               <span className={`block w-5 h-[2px] bg-clay-dark rounded-full transition-all duration-200 origin-center ${mobileOpen ? 'rotate-45 translate-y-[7px]' : ''}`} />
               <span className={`block w-5 h-[2px] bg-clay-dark rounded-full transition-all duration-200 ${mobileOpen ? 'opacity-0 scale-x-0' : ''}`} />
@@ -111,9 +113,9 @@ export default function Nav() {
           )}
           {isAuth ? (
             <>
-              <span className="text-sm font-head font-medium text-muted">Need help?</span>
+              <span className="text-sm font-head font-medium text-muted">{t('navNeedHelp')}</span>
               <a href="https://utenancy.com/contact" className="clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all">
-                Contact Us
+                {t('navContactUs')}
               </a>
             </>
           ) : user ? (
@@ -124,21 +126,21 @@ export default function Nav() {
                 <Link href="/landlord"
                   className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-clay-dark border border-out-var bg-surf-hi px-4 py-2 rounded-full hover:border-clay/50 hover:bg-linen transition-all">
                   <span className="material-symbols-outlined text-base text-clay">domain</span>
-                  My Portal
+                  {t('navMyPortal')}
                 </Link>
               )}
 
               {/* Student: interested properties + messaging icons */}
               {user.user_metadata?.role !== 'landlord' && (
                 <>
-                  <Link href="/interested" title="Interested Properties"
+                  <Link href="/interested" title={t('navInterestedTitle')}
                     className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
                   </Link>
-                  <Link href="/messages" title="Messages"
+                  <Link href="/messages" title={t('navMessagesTitle')}
                     className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
                       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -179,30 +181,30 @@ export default function Nav() {
                     <Link href="/profile" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
                       <span className="material-symbols-outlined text-clay text-lg">manage_accounts</span>
-                      My Profile
+                      {t('navMyProfile')}
                     </Link>
                     {user.user_metadata?.role === 'landlord' ? (
                       <Link href="/landlord" onClick={() => setMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
                         <span className="material-symbols-outlined text-clay text-lg">domain</span>
-                        My Portal
+                        {t('navMyPortal')}
                       </Link>
                     ) : (
                       <>
                         <Link href="/tenant/household" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
                           <span className="material-symbols-outlined text-clay text-lg">house</span>
-                          My Household
+                          {t('navMyHousehold')}
                         </Link>
                         <Link href="/my-listings" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
                           <span className="material-symbols-outlined text-clay text-lg">home_work</span>
-                          My Listings
+                          {t('navMyListings')}
                         </Link>
                         <Link href="/post-room" onClick={() => setMenuOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-surf-lo transition-colors">
                           <span className="material-symbols-outlined text-clay text-lg">add_home</span>
-                          Post a Room
+                          {t('navPostRoom')}
                         </Link>
                       </>
                     )}
@@ -210,7 +212,7 @@ export default function Nav() {
                     <button onClick={handleLogout}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-head font-semibold text-red-600 hover:bg-red-50 transition-colors">
                       <span className="material-symbols-outlined text-red-500 text-lg">logout</span>
-                      Sign Out
+                      {t('signOut')}
                     </button>
                   </div>
                 )}
@@ -220,7 +222,7 @@ export default function Nav() {
             /* ── LOGGED-OUT STATE ── */
             <>
               <Link href="/auth" className="hidden md:inline-flex clay-grad text-white px-5 py-2.5 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all active:scale-95">
-                Sign In
+                {t('navSignIn')}
               </Link>
             </>
           )}
@@ -248,7 +250,7 @@ export default function Nav() {
               className="flex items-center gap-2 py-3 px-3 text-sm font-head font-semibold text-clay rounded-xl hover:bg-surf-lo transition-colors"
             >
               <span className="material-symbols-outlined text-base">domain</span>
-              My Portal
+              {t('navMyPortal')}
             </Link>
           )}
           {!user && (
@@ -258,7 +260,7 @@ export default function Nav() {
                 onClick={() => setMobileOpen(false)}
                 className="clay-grad flex items-center justify-center text-white py-3 rounded-xl font-head font-bold text-sm"
               >
-                Sign In
+                {t('navSignIn')}
               </Link>
             </div>
           )}
