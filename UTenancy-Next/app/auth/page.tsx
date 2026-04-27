@@ -23,7 +23,7 @@ function useToast() {
 }
 
 /* ─── Password strength ───────────────────────── */
-function passwordStrength(pw: string, t: (key: string) => string) {
+function passwordStrength(pw: string, t: (key: 'pwWeak' | 'pwFair' | 'pwGood' | 'pwStrong') => string) {
   let score = 0
   if (pw.length >= 8) score++
   if (/[A-Z]/.test(pw)) score++
