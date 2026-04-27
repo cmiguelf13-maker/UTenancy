@@ -1005,6 +1005,7 @@ export default function HouseholdPage() {
                     paidByIds={payments[e.id] ?? []}
                     onMarkPaid={handleMarkPaid}
                     onUnmarkPaid={handleUnmarkPaid}
+                    t={t}
                   />
                 ))
               )}
