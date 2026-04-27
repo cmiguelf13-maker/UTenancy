@@ -622,7 +622,7 @@ export default function ConversationPage() {
                   <p className="font-head font-bold text-clay-dark text-sm truncate">{listing.address}</p>
                   <p className="text-xs text-muted font-body">{listing.city}</p>
                   <p className="font-head font-bold text-clay-dark text-sm mt-1">${listing.rent}/mo</p>
-                  <span className="text-xs text-clay font-head font-bold inline-block mt-1">{t('viewListing')} →</span>
+                  <span className="text-xs text-clay font-head font-bold inline-block mt-1">{t('viewListing')}</span>
                 </div>
               </a>
             </div>
