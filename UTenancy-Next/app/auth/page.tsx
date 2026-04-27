@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { createClient, isEduEmail } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 
 /* ─── Types ───────────────────────────────────── */
 type Role  = 'student' | 'landlord'
@@ -22,18 +23,18 @@ function useToast() {
 }
 
 /* ─── Password strength ───────────────────────── */
-function passwordStrength(pw: string) {
+function passwordStrength(pw: string, t: (key: string) => string) {
   let score = 0
   if (pw.length >= 8) score++
   if (/[A-Z]/.test(pw)) score++
   if (/[0-9]/.test(pw)) score++
   if (/[^A-Za-z0-9]/.test(pw)) score++
   const levels = [
-    { label: '',       color: 'bg-out-var'   },
-    { label: 'Weak',   color: 'bg-red-400'   },
-    { label: 'Fair',   color: 'bg-amber-400' },
-    { label: 'Good',   color: 'bg-blue-400'  },
-    { label: 'Strong', color: 'bg-green-500' },
+    { label: '',              color: 'bg-out-var'   },
+    { label: t('pwWeak'),     color: 'bg-red-400'   },
+    { label: t('pwFair'),     color: 'bg-amber-400' },
+    { label: t('pwGood'),     color: 'bg-blue-400'  },
+    { label: t('pwStrong'),   color: 'bg-green-500' },
   ]
   return { score, ...levels[score] }
 }
@@ -78,7 +79,7 @@ function RoleToggle({ role, onChange }: { role: Role; onChange: (r: Role) => voi
           <span className="material-symbols-outlined text-base">
             {r === 'student' ? 'school' : 'domain'}
           </span>
-          {r === 'student' ? 'Student' : 'Landlord'}
+          {r === 'student' ? t('studentRole') : t('landlordRole')}
         </button>
       ))}
     </div>
@@ -88,6 +89,7 @@ function RoleToggle({ role, onChange }: { role: Role; onChange: (r: Role) => voi
 /* ─── Main auth page ──────────────────────────── */
 export default function AuthPage() {
   const supabase = createClient()
+  const { t } = useLanguage()
 
   const [role,   setRole]   = useState<Role>('student')
   const [panel,  setPanel]  = useState<Panel>('login')
@@ -118,7 +120,7 @@ export default function AuthPage() {
     }
   }, [])
 
-  const strength = passwordStrength(password)
+  const strength = passwordStrength(password, t)
   const isLandlord = role === 'landlord'
 
   function switchTab(t: Tab) { setTab(t); setPanel(t) }
@@ -399,9 +401,9 @@ export default function AuthPage() {
   /* ── Shared tab bar ── */
   const TabBar = () => (
     <div className="bg-surf-hi rounded-xl p-1 flex gap-1 mb-8">
-      <button className={`tab-btn flex-1 ${tab === 'login'  ? 'active' : ''}`} onClick={() => switchTab('login')}>Sign In</button>
+      <button className={`tab-btn flex-1 ${tab === 'login'  ? 'active' : ''}`} onClick={() => switchTab('login')}>{t('signIn')}</button>
       {!isLandlord && (
-        <button className={`tab-btn flex-1 ${tab === 'signup' ? 'active' : ''}`} onClick={() => switchTab('signup')}>Create Account</button>
+        <button className={`tab-btn flex-1 ${tab === 'signup' ? 'active' : ''}`} onClick={() => switchTab('signup')}>{t('createAccount')}</button>
       )}
     </div>
   )
@@ -469,7 +471,7 @@ export default function AuthPage() {
               </div>
               <button type="submit"
                 className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
-                {loading ? <span className="spinner" /> : 'Sign In'}
+                {loading ? <span className="spinner" /> : t('signIn')}
               </button>
             </form>
 
@@ -563,7 +565,7 @@ export default function AuthPage() {
                 </p>
                 <button type="submit"
                   className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
-                  {loading ? <span className="spinner" /> : 'Create Student Account'}
+                  {loading ? <span className="spinner" /> : t('createAccount')}
                 </button>
               </form>
             )}
@@ -634,7 +636,7 @@ export default function AuthPage() {
                 </p>
                 <button type="submit"
                   className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
-                  {loading ? <span className="spinner" /> : 'Create Landlord Account'}
+                  {loading ? <span className="spinner" /> : t('createAccount')}
                 </button>
               </form>
             )}
@@ -740,7 +742,7 @@ export default function AuthPage() {
               </div>
               <button type="submit"
                 className="clay-grad w-full text-white py-3.5 rounded-xl font-head font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all">
-                {loading ? <span className="spinner" /> : 'Send Reset Link'}
+                {loading ? <span className="spinner" /> : t('resetPassword')}
               </button>
             </form>
           </div>
@@ -753,7 +755,7 @@ export default function AuthPage() {
               <span className="material-symbols-outlined text-white text-3xl fill">check</span>
             </div>
             <h1 className="font-display text-3xl font-light text-clay-dark mb-2">
-              Welcome, <em>{pendingName || (isLandlord ? 'landlord' : 'student')}</em>!
+              {t('accountReady')}
             </h1>
             <p className="text-sm font-body text-muted mb-8">
               {isLandlord
