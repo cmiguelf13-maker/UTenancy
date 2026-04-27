@@ -509,7 +509,7 @@ export default function ConversationPage() {
           {otherParticipant ? (
             <a
               href={`/profile/${otherParticipant.id}`}
-              className="flex items-center gap-3 flex-1 min-w-0 rounded-xl px-2 py-1 -mx-2 -my-1 hover:bg-white/10 active:bg-white/15 transition-colors"
+              className="flex items-center gap-3 flex-1 min-w-0 rounded-xl px-2 py-1 -mx-2 -my-1 hover:bg-white/10 active:bg-white/15 transition-colors cursor-pointer"
               aria-label={`View ${otherParticipant.first_name}'s profile`}
             >
               {otherParticipant.avatar_url ? (
@@ -527,9 +527,12 @@ export default function ConversationPage() {
               )}
 
               <div className="flex-1 min-w-0">
-                <h2 className="font-head font-bold text-white text-sm leading-tight truncate">
-                  {otherParticipant.first_name} {otherParticipant.last_name}
-                </h2>
+                <div className="flex items-center gap-1">
+                  <h2 className="font-head font-bold text-white text-sm leading-tight truncate">
+                    {otherParticipant.first_name} {otherParticipant.last_name}
+                  </h2>
+                  <span className="material-symbols-outlined text-white/50 flex-shrink-0" style={{ fontSize: 14 }}>open_in_new</span>
+                </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-300 flex-shrink-0" />
                   <p className="text-xs text-white/70 font-body truncate">
