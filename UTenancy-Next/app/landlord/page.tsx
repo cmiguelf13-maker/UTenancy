@@ -1901,6 +1901,13 @@ export default function LandlordPortal() {
                                           <span className="material-symbols-outlined text-sm">check_circle</span> Approve
                                         </button>
                                       )}
+                                      {/* View Profile — always adjacent to Approve / approved status */}
+                                      {p?.id && (
+                                        <a href={`/profile/${p.id}`} target="_blank"
+                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-surf-lo text-clay-dark border border-out-var rounded-xl py-2 hover:bg-linen transition-all">
+                                          <span className="material-symbols-outlined text-sm">person</span> View Profile
+                                        </a>
+                                      )}
                                       {app.status !== 'rejected' && (
                                         <button onClick={() => { setRejectingAppId(app.id); setRejectionReason('') }}
                                           className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-red-50 text-red-500 border border-red-100 rounded-xl py-2 hover:bg-red-100 transition-all">
@@ -1917,12 +1924,6 @@ export default function LandlordPortal() {
                                         className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-surf-lo text-clay-dark border border-out-var rounded-xl py-2 hover:bg-linen transition-all">
                                         <span className="material-symbols-outlined text-sm">download</span> PDF
                                       </button>
-                                      {p?.id && (
-                                        <a href={`/profile/${p.id}`} target="_blank"
-                                          className="flex items-center justify-center gap-1.5 text-xs font-head font-bold bg-surf-lo text-clay-dark border border-out-var rounded-xl py-2 hover:bg-linen transition-all">
-                                          <span className="material-symbols-outlined text-sm">person</span> Profile
-                                        </a>
-                                      )}
                                     </div>
                                   )}
 
