@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { SCHOOL_OPTIONS } from '@/lib/distance'
+import { useLanguage } from '@/lib/i18n'
 
 const AMENITY_OPTIONS = [
   'Parking', 'In-unit laundry', 'A/C', 'Backyard', 'Hardwood floors',
@@ -16,6 +17,7 @@ type ParsedAddress = { street: string; city: string; state: string; zip: string 
 export default function PostRoomPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -269,11 +271,11 @@ export default function PostRoomPage() {
 
           {/* Address */}
           <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
-            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Location</h2>
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">{t('locationLabel')}</h2>
 
             <div>
               <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">
-                Property Address *
+                {t('propertyAddress')} *
               </label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span>
@@ -281,7 +283,7 @@ export default function PostRoomPage() {
                   ref={autocompleteInputRef}
                   type="text"
                   className="w-full pl-10 pr-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990] bg-white"
-                  placeholder="Search your address…"
+                  placeholder={t('searchAddress')}
                   required
                 />
               </div>
@@ -296,7 +298,7 @@ export default function PostRoomPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Unit / Apt</label>
+              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('unitApt')}</label>
               <input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. Apt 2B"
                 className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990] bg-white" />
             </div>
@@ -304,25 +306,25 @@ export default function PostRoomPage() {
 
           {/* Details */}
           <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4">
-            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Room Details</h2>
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">{t('roomDetails')}</h2>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <div className="min-w-0">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Beds *</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('beds')} *</label>
                 <select value={bedrooms} onChange={e => setBedrooms(Number(e.target.value))} required
                   className="w-full px-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white">
                   {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
               <div className="min-w-0">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Baths *</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('baths')} *</label>
                 <select value={bathrooms} onChange={e => setBathrooms(Number(e.target.value))} required
                   className="w-full px-3 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white">
                   {[1, 1.5, 2, 2.5, 3].map(n => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
               <div className="min-w-0 col-span-2 sm:col-span-1">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Rent / mo · per person *</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('rentPerMonth')} *</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
                   <input type="number" min="1" value={rent} onChange={e => setRent(e.target.value)} placeholder="1200" required
@@ -332,20 +334,20 @@ export default function PostRoomPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Description</label>
+              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('description')}</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-                placeholder="Describe the room, house vibe, what you're looking for in a roommate…"
+                placeholder={t('describeRoom')}
                 className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none resize-none transition-all focus:border-clay focus:shadow-[0_0_0_3px_rgba(107,76,59,.12)] placeholder:text-[#a89990] bg-white" />
             </div>
           </div>
 
           {/* Lease Details */}
           <div className="bg-white rounded-2xl border border-out-var/40 p-5 space-y-4 overflow-hidden">
-            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">Lease Details</h2>
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider">{t('leaseDetails')}</h2>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Available From</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('availableFrom')}</label>
                 <input
                   type="date"
                   value={availableDate}
@@ -354,7 +356,7 @@ export default function PostRoomPage() {
                 />
               </div>
               <div className="min-w-0">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Security Deposit</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('securityDeposit')}</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm font-body">$</span>
                   <input
@@ -370,13 +372,13 @@ export default function PostRoomPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Lease Term</label>
+              <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('leaseTerm')}</label>
               <select
                 value={leaseTerm}
                 onChange={(e) => setLeaseTerm(e.target.value)}
                 className="w-full px-4 py-3 border-[1.5px] border-out-var rounded-xl font-body text-sm text-stone outline-none transition-all focus:border-clay bg-white"
               >
-                <option>Month-to-month</option>
+                <option>{t('monthToMonth')}</option>
                 <option>3 months</option>
                 <option>6 months</option>
                 <option>9 months</option>
@@ -388,7 +390,7 @@ export default function PostRoomPage() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Utilities</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('utilities')}</label>
                 <select
                   value={utilities}
                   onChange={(e) => setUtilities(e.target.value)}
@@ -400,7 +402,7 @@ export default function PostRoomPage() {
                 </select>
               </div>
               <div className="min-w-0">
-                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">Pets Allowed</label>
+                <label className="block text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('petsAllowed')}</label>
                 <select
                   value={petsAllowed}
                   onChange={(e) => setPetsAllowed(e.target.value)}
@@ -418,7 +420,7 @@ export default function PostRoomPage() {
 
           {/* Amenities */}
           <div className="bg-white rounded-2xl border border-out-var/40 p-5">
-            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider mb-3">Amenities</h2>
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider mb-3">{t('amenities')}</h2>
             <div className="flex flex-wrap gap-2">
               {AMENITY_OPTIONS.map(a => (
                 <button key={a} type="button" onClick={() => toggleAmenity(a)}
@@ -434,8 +436,8 @@ export default function PostRoomPage() {
 
           {/* Promote to Schools */}
           <div className="bg-white rounded-2xl border border-out-var/40 p-5">
-            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider mb-1">Promote to Schools</h2>
-            <p className="text-xs font-body text-muted mb-3">Students at these schools will see walking distance to their campus on your listing.</p>
+            <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider mb-1">{t('promoteToSchools')}</h2>
+            <p className="text-xs font-body text-muted mb-3">{t('schoolsDescription')}</p>
             <div className="flex flex-wrap gap-2">
               {SCHOOL_OPTIONS.map(school => (
                 <button key={school.slug} type="button" onClick={() => toggleSchool(school.slug)}
@@ -453,11 +455,11 @@ export default function PostRoomPage() {
           {/* Photos */}
           <div className="bg-white rounded-2xl border border-out-var/40 p-5">
             <h2 className="font-head font-bold text-clay-dark text-sm uppercase tracking-wider mb-3">
-              Photos <span className="font-normal normal-case text-muted ml-1 text-xs">(required to publish)</span>
+              {t('photos')} <span className="font-normal normal-case text-muted ml-1 text-xs">({t('requiredToPublish')})</span>
             </h2>
             <label className="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-out-var rounded-xl cursor-pointer hover:border-clay/50 hover:bg-surf-lo/50 transition-all">
               <span className="material-symbols-outlined text-outline text-xl">add_a_photo</span>
-              <span className="text-sm font-body text-muted">Click to upload photos</span>
+              <span className="text-sm font-body text-muted">{t('clickUploadPhotos')}</span>
               <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
             </label>
             {previews.length > 0 && (
@@ -496,11 +498,11 @@ export default function PostRoomPage() {
           <button type="submit" disabled={saving}
             className="w-full clay-grad text-white py-4 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/25 disabled:opacity-60 flex items-center justify-center gap-2">
             <span className="material-symbols-outlined text-base">publish</span>
-            {saving ? 'Posting…' : 'Post My Room'}
+            {saving ? t('posting') : t('postMyRoom')}
           </button>
 
           <p className="text-xs font-body text-muted text-center pb-6">
-            Your listing will be visible to verified students. Listings without photos are saved as drafts.
+            {t('listingNote')}
           </p>
         </form>
       </div>
