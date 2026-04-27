@@ -715,6 +715,9 @@ export default function LandlordPortal() {
   const [rejectionReason,    setRejectionReason]    = useState('')
   const [appActionMsg,       setAppActionMsg]       = useState<string | null>(null)
 
+  /* ── Unread messages ── */
+  const [hasUnread, setHasUnread] = useState(false)
+
   /* ── Subscription ── */
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free')
   const [subscriptionTier,   setSubscriptionTier]   = useState<string>('free')
@@ -774,6 +777,23 @@ export default function LandlordPortal() {
         .then(({ data: rows }) => {
           if (rows) setListings(rows)
           setLoading(false)
+        })
+
+      // Check for unread messages
+      supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', u.id)
+        .then(async ({ data: convs }) => {
+          const convIds = (convs ?? []).map((c: { conversation_id: string }) => c.conversation_id)
+          if (convIds.length === 0) return
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .in('conversation_id', convIds)
+            .neq('sender_id', u.id)
+            .is('read_at', null)
+          setHasUnread((count ?? 0) > 0)
         })
     })
 
@@ -1367,8 +1387,14 @@ export default function LandlordPortal() {
 
           <div className="flex items-center gap-3">
             <Link href="/messages"
-              className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
-              <span className="material-symbols-outlined text-base">chat</span> {t('messages')}
+              className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen relative">
+              <span className="relative">
+                <span className="material-symbols-outlined text-base">chat</span>
+                {hasUnread && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                )}
+              </span>
+              {t('messages')}
             </Link>
             {/* Starter+ nav links */}
             {['starter','growth','pro'].includes(subscriptionTier) && (
