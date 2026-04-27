@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase'
 import { Listing } from '@/lib/types'
 import { SCHOOL_OPTIONS } from '@/lib/distance'
 import type { User } from '@supabase/supabase-js'
+import { useLanguage } from '@/lib/i18n'
 
 /* ─── Constants ─────────────────────────────────────── */
 const AMENITIES_LIST = [
@@ -657,6 +658,20 @@ function ListingFormFields({
 export default function LandlordPortal() {
   const router   = useRouter()
   const supabase = createClient()
+  const { t }    = useLanguage()
+
+  /* Profile dropdown */
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [])
 
   /* Auth & listings */
   const [user,    setUser]    = useState<User | null>(null)
@@ -1345,7 +1360,7 @@ export default function LandlordPortal() {
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize transition-all
                   ${filter === f ? 'clay-grad text-white shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
-                {f === 'all' ? 'All' : f}
+                {t(f as 'all' | 'active' | 'draft' | 'filled' | 'archived')}
               </button>
             ))}
           </div>
@@ -1353,19 +1368,19 @@ export default function LandlordPortal() {
           <div className="flex items-center gap-3">
             <Link href="/messages"
               className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
-              <span className="material-symbols-outlined text-base">chat</span> Messages
+              <span className="material-symbols-outlined text-base">chat</span> {t('messages')}
             </Link>
             {/* Starter+ nav links */}
             {['starter','growth','pro'].includes(subscriptionTier) && (
               <Link href="/landlord/households"
                 className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
-                <span className="material-symbols-outlined text-base">home_work</span> Households
+                <span className="material-symbols-outlined text-base">home_work</span> {t('households')}
               </Link>
             )}
             {['starter','growth','pro'].includes(subscriptionTier) && (
               <Link href="/landlord/analytics"
                 className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
-                <span className="material-symbols-outlined text-base">analytics</span> Analytics
+                <span className="material-symbols-outlined text-base">analytics</span> {t('analytics')}
               </Link>
             )}
             {subscriptionTier === 'pro' && (
@@ -1425,15 +1440,42 @@ export default function LandlordPortal() {
             <button onClick={() => setShowAddModal(true)}
               className="clay-grad text-white px-3 sm:px-4 py-2 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base">add</span>
-              <span className="hidden sm:inline">Add Listing</span>
+              <span className="hidden sm:inline">{t('addListing')}</span>
             </button>
-            <Link href="/profile"
-              className="flex items-center gap-2 bg-white border border-out-var rounded-full pl-1 pr-3 py-1 hover:border-clay/50 hover:bg-linen transition-all">
-              <div className="w-7 h-7 clay-grad rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-head font-black text-xs">{firstName[0]?.toUpperCase() ?? 'L'}</span>
-              </div>
-              <span className="text-sm font-head font-semibold text-clay-dark hidden md:block">{firstName}</span>
-            </Link>
+            {/* Profile dropdown */}
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                onClick={() => setShowProfileMenu(p => !p)}
+                className="flex items-center gap-2 bg-white border border-out-var rounded-full pl-1 pr-3 py-1 hover:border-clay/50 hover:bg-linen transition-all">
+                <div className="w-7 h-7 clay-grad rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-head font-black text-xs">{firstName[0]?.toUpperCase() ?? 'L'}</span>
+                </div>
+                <span className="text-sm font-head font-semibold text-clay-dark hidden md:block">{firstName}</span>
+                <span className="material-symbols-outlined text-muted text-sm hidden md:block">expand_more</span>
+              </button>
+              {showProfileMenu && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl border border-out-var shadow-xl z-50 overflow-hidden py-1">
+                  <Link href="/profile" onClick={() => setShowProfileMenu(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-linen transition-colors">
+                    <span className="material-symbols-outlined text-muted text-base">person</span>
+                    {t('editProfile')}
+                  </Link>
+                  <button
+                    onClick={() => { setShowProfileMenu(false); handleManageBilling() }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-linen transition-colors">
+                    <span className="material-symbols-outlined text-muted text-base">workspace_premium</span>
+                    {t('managePlan')}
+                  </button>
+                  <div className="border-t border-out-var my-1" />
+                  <button
+                    onClick={async () => { setShowProfileMenu(false); await supabase.auth.signOut(); router.push('/auth') }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-head font-semibold text-red-600 hover:bg-red-50 transition-colors">
+                    <span className="material-symbols-outlined text-red-400 text-base">logout</span>
+                    {t('signOut')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -1495,10 +1537,10 @@ export default function LandlordPortal() {
           const canSeeHouseholds = ['starter', 'growth', 'pro'].includes(subscriptionTier)
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <StatCard icon="home_work"    value={listings.length} label="Properties"  sub="In your portfolio"   />
-              <StatCard icon="check_circle" value={activeCount}     label="Active Listings" sub="Visible to students" />
-              <StatCard icon="group"        value={totalApplicants} label="Applicants"  sub="Across all listings" />
-              <StatCard icon="payments"     value={revenueVal} label="Monthly Revenue" sub="Received / due"
+              <StatCard icon="home_work"    value={listings.length} label={t('properties')}     sub={t('inYourPortfolio')}   />
+              <StatCard icon="check_circle" value={activeCount}     label={t('activeListings')} sub={t('visibleToStudents')} />
+              <StatCard icon="group"        value={totalApplicants} label={t('applicants')}     sub={t('acrossAllListings')} />
+              <StatCard icon="payments"     value={revenueVal}      label={t('monthlyRevenue')} sub={t('receivedDue')}
                 href={canSeeHouseholds ? '/landlord/households' : undefined} />
             </div>
           )
@@ -1513,8 +1555,8 @@ export default function LandlordPortal() {
                 <span className="material-symbols-outlined fill text-white">home_work</span>
               </div>
               <div>
-                <p className="font-head font-bold text-espresso">My Households</p>
-                <p className="text-xs font-body text-muted">View tenants, rent received, and property details</p>
+                <p className="font-head font-bold text-espresso">{t('myHouseholds')}</p>
+                <p className="text-xs font-body text-muted">{t('viewHouseholds')}</p>
               </div>
             </div>
             <span className="material-symbols-outlined text-muted group-hover:text-clay transition-colors">arrow_forward</span>
@@ -1608,7 +1650,7 @@ export default function LandlordPortal() {
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 rounded-full text-xs font-head font-bold capitalize whitespace-nowrap transition-all
                   ${filter === f ? 'clay-grad text-white' : 'bg-white border border-out-var text-muted'}`}>
-                {f === 'all' ? 'All' : f}
+                {t(f as 'all' | 'active' | 'draft' | 'filled' | 'archived')}
               </button>
             ))}
           </div>
