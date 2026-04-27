@@ -109,6 +109,15 @@ export default function AuthPage() {
   const timerRef = useRef<ReturnType<typeof setInterval>>()
   const { toast, show: showToast } = useToast()
 
+  /* Referral code from URL (?ref=CODE) */
+  const [refCode, setRefCode] = useState('')
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search)
+      setRefCode(p.get('ref') ?? '')
+    }
+  }, [])
+
   const strength = passwordStrength(password)
   const isLandlord = role === 'landlord'
 
@@ -300,6 +309,23 @@ export default function AuthPage() {
       }
       await supabase.from('profiles').upsert(profilePayload)
       setPendingUserId(userId)
+
+      /* Record referral if signup came via a referral link */
+      if (refCode) {
+        const { data: referrer } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('referral_code', refCode)
+          .single()
+        if (referrer) {
+          await supabase.from('referrals').insert({
+            referrer_id:   referrer.id,
+            referred_id:   userId,
+            referral_code: refCode,
+            signed_up_at:  new Date().toISOString(),
+          })
+        }
+      }
     }
 
     showToast('Email verified!', 'success')
