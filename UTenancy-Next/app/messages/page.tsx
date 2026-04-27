@@ -35,6 +35,14 @@ interface MessageWithSender extends Message {
   sender: Profile
 }
 
+interface StudentResult {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  avatar_url: string | null
+  university: string | null
+}
+
 /* ── Helpers ─────────────────────────────────────────────────── */
 const getTimeAgo = (dateString: string): string => {
   const date = new Date(dateString)
@@ -55,7 +63,7 @@ function Avatar({
   profile,
   size = 'md',
 }: {
-  profile: Profile | null
+  profile: Profile | StudentResult | null
   size?: 'sm' | 'md' | 'lg'
 }) {
   const sz =
@@ -103,8 +111,17 @@ export default function MessagesPage() {
   const [approving, setApproving] = useState(false)
   const [approveError, setApproveError] = useState<string | null>(null)
 
+  /* new conversation flow */
+  const [showNewConv, setShowNewConv] = useState(false)
+  const [studentQuery, setStudentQuery] = useState('')
+  const [studentResults, setStudentResults] = useState<StudentResult[]>([])
+  const [selectedStudents, setSelectedStudents] = useState<StudentResult[]>([])
+  const [searchingStudents, setSearchingStudents] = useState(false)
+  const [creatingConv, setCreatingConv] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   /* ── Auth + fetch conversation list ──────────────────────── */
   useEffect(() => {
@@ -138,6 +155,41 @@ export default function MessagesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /* ── Student search (debounced) ───────────────────────────── */
+  useEffect(() => {
+    if (!showNewConv) return
+    const q = studentQuery.trim()
+    if (!q) {
+      setStudentResults([])
+      return
+    }
+    setSearchingStudents(true)
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url, university')
+        .eq('role', 'student')
+        .neq('id', currentUser?.id ?? '')
+        .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,university.ilike.%${q}%`)
+        .limit(15)
+      setStudentResults((data as StudentResult[]) || [])
+      setSearchingStudents(false)
+    }, 280)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentQuery, showNewConv])
+
+  /* Auto-focus search input when modal opens */
+  useEffect(() => {
+    if (showNewConv) {
+      setTimeout(() => searchInputRef.current?.focus(), 80)
+    } else {
+      setStudentQuery('')
+      setStudentResults([])
+      setSelectedStudents([])
+    }
+  }, [showNewConv])
+
   /* ── Load selected conversation ──────────────────────────── */
   useEffect(() => {
     if (!selectedConvId || !currentUser) return
@@ -149,7 +201,6 @@ export default function MessagesPage() {
     setApproveError(null)
 
     const load = async () => {
-      /* participants */
       const { data: pData } = await supabase
         .from('conversation_participants')
         .select('user_id, profile:profiles!conversation_participants_user_profile_fkey(*)')
@@ -160,7 +211,6 @@ export default function MessagesPage() {
       )
       if (other?.profile) setOtherParticipant(other.profile as Profile)
 
-      /* listing linked to this conversation */
       const { data: convRow } = await supabase
         .from('conversations')
         .select('listing_id')
@@ -178,7 +228,6 @@ export default function MessagesPage() {
           console.error('Listing fetch error:', listingErr)
       }
 
-      /* messages */
       const { data: msgs } = await supabase
         .from('messages')
         .select('*, sender:profiles!messages_sender_profile_fkey(*)')
@@ -187,7 +236,6 @@ export default function MessagesPage() {
 
       setMessages(msgs || [])
 
-      /* mark read */
       await supabase
         .from('messages')
         .update({ read_at: new Date().toISOString() })
@@ -195,7 +243,6 @@ export default function MessagesPage() {
         .neq('sender_id', currentUser.id)
         .is('read_at', null)
 
-      /* landlord reply gate */
       if (currentUser.role === 'landlord') {
         const hasStudentMsg = msgs?.some((m: any) => m.sender_id !== currentUser.id)
         setCanReply(!!hasStudentMsg)
@@ -231,7 +278,6 @@ export default function MessagesPage() {
               prev.some((m) => m.id === row.id) ? prev : [...prev, fullMsg as MessageWithSender]
             )
             setCanReply(true)
-            /* update sidebar preview */
             setConversations((prev) =>
               prev.map((c) =>
                 c.id === selectedConvId
@@ -303,13 +349,107 @@ export default function MessagesPage() {
     return getTimeAgo(sorted[sorted.length - 1].created_at)
   }
 
+  /* ── Toggle student selection ─────────────────────────────── */
+  function toggleStudent(s: StudentResult) {
+    setSelectedStudents((prev) => {
+      const exists = prev.some((p) => p.id === s.id)
+      return exists ? prev.filter((p) => p.id !== s.id) : [...prev, s]
+    })
+  }
+
+  /* ── Create new conversation ──────────────────────────────── */
+  async function handleCreateConversation() {
+    if (!currentUser || selectedStudents.length === 0 || creatingConv) return
+    setCreatingConv(true)
+
+    // For 1-on-1: check for existing conversation first
+    if (selectedStudents.length === 1) {
+      const otherId = selectedStudents[0].id
+      const { data: myConvs } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', currentUser.id)
+
+      const myIds = (myConvs ?? []).map((r: any) => r.conversation_id as string)
+
+      if (myIds.length > 0) {
+        const { data: shared } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', otherId)
+          .in('conversation_id', myIds)
+
+        if (shared && shared.length > 0) {
+          const existingId = shared[0].conversation_id
+          setShowNewConv(false)
+          setCreatingConv(false)
+          // On mobile navigate; on desktop select in sidebar
+          if (window.innerWidth < 768) {
+            router.push(`/messages/${existingId}`)
+          } else {
+            setSelectedConvId(existingId)
+          }
+          return
+        }
+      }
+    }
+
+    // Create the conversation
+    const { data: conv, error: convErr } = await supabase
+      .from('conversations')
+      .insert({})
+      .select('id, listing_id, created_at')
+      .single()
+
+    if (convErr || !conv) {
+      setCreatingConv(false)
+      return
+    }
+
+    const participants = [
+      { conversation_id: conv.id, user_id: currentUser.id },
+      ...selectedStudents.map((s) => ({ conversation_id: conv.id, user_id: s.id })),
+    ]
+    await supabase.from('conversation_participants').insert(participants)
+
+    // Add the new conversation to the sidebar list immediately
+    const newConv: ConversationWithData = {
+      id: conv.id,
+      listing_id: null,
+      created_at: conv.created_at,
+      participants: [
+        { profile: currentUser as Profile },
+        ...selectedStudents.map((s) => ({
+          profile: {
+            id: s.id,
+            first_name: s.first_name,
+            last_name: s.last_name,
+            avatar_url: s.avatar_url,
+            university: s.university,
+            role: 'student',
+          } as unknown as Profile,
+        })),
+      ],
+      messages: [],
+    }
+    setConversations((prev) => [newConv, ...prev])
+
+    setShowNewConv(false)
+    setCreatingConv(false)
+
+    if (window.innerWidth < 768) {
+      router.push(`/messages/${conv.id}`)
+    } else {
+      setSelectedConvId(conv.id)
+    }
+  }
+
   /* ── Approve tenant ────────────────────────────────────────── */
   async function handleApprove() {
     if (!listing || !otherParticipant || !currentUser || !selectedConvId || approving) return
     setApproving(true)
     setApproveError(null)
 
-    /* 1. Find or create household for this listing */
     let householdId: string
     let inviteCode: string
 
@@ -337,13 +477,11 @@ export default function MessagesPage() {
       inviteCode = newHousehold.invite_code
     }
 
-    /* 2. Add current user to household as admin (ignore if already a member) */
     await supabase.from('household_members').upsert(
       { household_id: householdId, user_id: currentUser.id, role: 'admin' },
       { onConflict: 'household_id,user_id', ignoreDuplicates: true }
     )
 
-    /* 3. Mark listing as filled */
     const { error: rentErr } = await supabase.from('listings').update({ status: 'filled' }).eq('id', listing.id)
     if (rentErr) {
       setApproveError('Could not mark listing as filled. Please try again.')
@@ -351,7 +489,6 @@ export default function MessagesPage() {
       return
     }
 
-    /* 4. Send invite link message so tenant can join the household themselves */
     const inviteLink = `${window.location.origin}/tenant/household/join?code=${inviteCode}`
     const inviteMsg =
       '\u2713 You\u2019ve been approved as a roommate for this listing!\n\n' +
@@ -394,7 +531,6 @@ export default function MessagesPage() {
       )
     }
 
-    /* 5. Reflect filled status locally */
     setListing((prev) => (prev ? { ...prev, status: 'filled' } : null))
     setApproving(false)
   }
@@ -460,9 +596,150 @@ export default function MessagesPage() {
     }
   })
 
+  // Filtered results — exclude already-selected students
+  const selectedIds = new Set(selectedStudents.map((s) => s.id))
+  const filteredResults = studentResults.filter((s) => !selectedIds.has(s.id))
+
   /* ────────────────── RENDER ───────────────────────────────── */
   return (
     <div className="flex h-[calc(100dvh-70px)] overflow-hidden bg-cream">
+
+      {/* ═══ NEW CONVERSATION MODAL ══════════════════════════════ */}
+      {showNewConv && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone/40 backdrop-blur-sm px-0 sm:px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNewConv(false) }}
+        >
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85dvh] sm:max-h-[80dvh] overflow-hidden">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-out-var/60 flex-shrink-0">
+              <div>
+                <h2 className="font-head font-bold text-clay-dark text-base">New Conversation</h2>
+                <p className="text-xs font-body text-muted mt-0.5">Search for students to message</p>
+              </div>
+              <button
+                onClick={() => setShowNewConv(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-linen transition-colors"
+              >
+                <span className="material-symbols-outlined text-muted text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Search input */}
+            <div className="px-4 pt-4 pb-3 flex-shrink-0">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted text-lg pointer-events-none">
+                  search
+                </span>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={studentQuery}
+                  onChange={(e) => setStudentQuery(e.target.value)}
+                  placeholder="Search by name or university…"
+                  className="w-full pl-10 pr-4 py-2.5 bg-surf-lo border border-out-var rounded-xl font-body text-sm focus:outline-none focus:ring-2 focus:ring-clay/30 focus:border-clay placeholder:text-[#b8a49a]"
+                />
+                {searchingStudents && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-4 h-4 rounded-full border-2 border-clay/30 border-t-clay animate-spin" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Selected chips */}
+            {selectedStudents.length > 0 && (
+              <div className="px-4 pb-3 flex flex-wrap gap-2 flex-shrink-0">
+                {selectedStudents.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-1.5 bg-linen border border-out-var rounded-full pl-1.5 pr-2.5 py-1"
+                  >
+                    <Avatar profile={s} size="sm" />
+                    <span className="text-xs font-head font-semibold text-clay-dark">
+                      {s.first_name} {s.last_name}
+                    </span>
+                    <button
+                      onClick={() => toggleStudent(s)}
+                      className="ml-0.5 text-muted hover:text-clay transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm leading-none">close</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Results list */}
+            <div className="flex-1 overflow-y-auto">
+              {!studentQuery.trim() ? (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <span className="material-symbols-outlined text-out-var text-4xl mb-3">person_search</span>
+                  <p className="font-body text-muted text-sm">Type a name or university to find students</p>
+                </div>
+              ) : filteredResults.length === 0 && !searchingStudents ? (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <span className="material-symbols-outlined text-out-var text-4xl mb-3">search_off</span>
+                  <p className="font-body text-muted text-sm">No students found for &ldquo;{studentQuery}&rdquo;</p>
+                </div>
+              ) : (
+                <div className="px-2 py-1">
+                  {filteredResults.map((s) => {
+                    const isSelected = selectedIds.has(s.id)
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => toggleStudent(s)}
+                        className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all mb-0.5 text-left
+                          ${isSelected ? 'bg-linen' : 'hover:bg-surf-lo'}`}
+                      >
+                        <Avatar profile={s} size="md" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-head font-semibold text-clay-dark text-sm leading-tight truncate">
+                            {s.first_name} {s.last_name}
+                          </p>
+                          {s.university && (
+                            <p className="text-xs font-body text-muted truncate mt-0.5">{s.university}</p>
+                          )}
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
+                            ${isSelected
+                              ? 'clay-grad border-transparent'
+                              : 'border-out-var bg-white'}`}
+                        >
+                          {isSelected && (
+                            <span className="material-symbols-outlined text-white text-xs leading-none">check</span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Start conversation button */}
+            <div className="px-4 py-4 border-t border-out-var/60 flex-shrink-0">
+              <button
+                onClick={handleCreateConversation}
+                disabled={selectedStudents.length === 0 || creatingConv}
+                className="w-full clay-grad text-white py-3 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md shadow-clay/20 disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined text-base">send</span>
+                {creatingConv
+                  ? 'Starting…'
+                  : selectedStudents.length === 0
+                    ? 'Select a student to start'
+                    : selectedStudents.length === 1
+                      ? `Message ${selectedStudents[0].first_name}`
+                      : `Start conversation with ${selectedStudents.length} students`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ LEFT SIDEBAR ═══════════════════════════════════════ */}
       <div
@@ -470,12 +747,26 @@ export default function MessagesPage() {
           ${selectedConvId ? 'hidden md:flex' : 'flex'}`}
       >
         {/* Sidebar header */}
-        <div className="px-5 pt-5 pb-4 border-b border-out-var/60">
-          <h1 className="font-display text-2xl font-light text-clay-dark">Messages</h1>
-          {!loadingList && (
-            <p className="text-[11px] font-body text-muted mt-0.5">
-              {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
-            </p>
+        <div className="px-5 pt-5 pb-4 border-b border-out-var/60 flex items-start justify-between gap-2">
+          <div>
+            <h1 className="font-display text-2xl font-light text-clay-dark">Messages</h1>
+            {!loadingList && (
+              <p className="text-[11px] font-body text-muted mt-0.5">
+                {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+
+          {/* Compose button — students only */}
+          {currentUser?.role === 'student' && (
+            <button
+              onClick={() => setShowNewConv(true)}
+              title="New conversation"
+              aria-label="New conversation"
+              className="flex-shrink-0 w-9 h-9 rounded-full clay-grad text-white flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-clay/20 mt-0.5"
+            >
+              <span className="material-symbols-outlined text-lg">edit</span>
+            </button>
           )}
         </div>
 
@@ -502,8 +793,8 @@ export default function MessagesPage() {
               <p className="font-head font-bold text-clay-dark text-sm mb-1">No messages yet</p>
               <p className="font-body text-muted text-xs">
                 {currentUser?.role === 'landlord'
-                  ? "Messages from students will appear here."
-                  : 'Message a landlord or tenant to get started.'}
+                  ? 'Messages from students will appear here.'
+                  : 'Tap the compose button above to start a conversation.'}
               </p>
             </div>
           ) : (
@@ -573,18 +864,24 @@ export default function MessagesPage() {
             <p className="font-body text-muted text-sm max-w-xs">
               Select a conversation on the left to read and reply.
             </p>
+            {currentUser?.role === 'student' && (
+              <button
+                onClick={() => setShowNewConv(true)}
+                className="mt-5 clay-grad text-white px-5 py-2.5 rounded-full font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-base">edit</span>
+                New Conversation
+              </button>
+            )}
           </div>
         ) : loadingConv ? (
-          /* ── Loading conversation ── */
           <div className="flex-1 flex items-center justify-center bg-cream">
             <div className="w-8 h-8 rounded-full border-2 border-clay/30 border-t-clay animate-spin" />
           </div>
         ) : (
-          /* ── Active conversation ── */
           <>
             {/* Conversation header */}
             <div className="flex-shrink-0 clay-grad px-5 py-3.5 flex items-center gap-3">
-              {/* Mobile: back to list */}
               <button
                 onClick={() => setSelectedConvId(null)}
                 className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition-colors -ml-1 mr-0.5"
@@ -610,7 +907,7 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              {/* Approve button — listing poster, open room, not yet filled */}
+              {/* Approve button */}
               {listing && listing.landlord_id === currentUser?.id && listing.type === 'open-room' && listing.status !== 'filled' && (
                 <button
                   onClick={handleApprove}
@@ -622,7 +919,7 @@ export default function MessagesPage() {
                 </button>
               )}
 
-              {/* Approved badge — already filled */}
+              {/* Approved badge */}
               {listing && listing.landlord_id === currentUser?.id && listing.status === 'filled' && (
                 <div className="flex-shrink-0 flex items-center gap-1 text-xs font-head font-bold text-green-300 px-1">
                   <span className="material-symbols-outlined text-base leading-none">verified</span>
@@ -630,7 +927,7 @@ export default function MessagesPage() {
                 </div>
               )}
 
-              {/* Profile link — only when approve button isn't shown */}
+              {/* Profile link */}
               {otherParticipant && otherParticipant.role !== 'landlord' &&
                 !(listing && listing.landlord_id === currentUser?.id && listing.type === 'open-room') && (
                 <a
@@ -642,7 +939,6 @@ export default function MessagesPage() {
                 </a>
               )}
 
-              {/* Approve error */}
               {approveError && (
                 <p className="text-xs text-red-200 font-body">{approveError}</p>
               )}
@@ -650,11 +946,9 @@ export default function MessagesPage() {
 
             {/* Messages scroll area */}
             <div className="flex-1 overflow-y-auto px-6 py-5 bg-surf-lo">
-              {/* Listing preview card */}
               {listing && (
                 <div className="flex-shrink-0 mb-5 bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
                   <a href={`/listings/${listing.id}`} className="flex items-center gap-3 p-3 hover:bg-linen/50 transition-colors">
-                    {/* Image */}
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-linen">
                       {listing.images && listing.images.length > 0 ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -669,7 +963,6 @@ export default function MessagesPage() {
                         </div>
                       )}
                     </div>
-                    {/* Details */}
                     <div className="flex-1 min-w-0">
                       <p className="font-head font-bold text-clay-dark text-sm truncate">{listing.address}</p>
                       <p className="text-xs text-muted font-body">{listing.city}</p>
@@ -698,7 +991,6 @@ export default function MessagesPage() {
                         key={groupIdx}
                         className={`flex gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        {/* Other user avatar — pinned to bottom of group */}
                         {!isMe && (
                           <div className="flex-shrink-0 self-end mb-4">
                             <Avatar profile={group.sender} size="sm" />
@@ -709,7 +1001,6 @@ export default function MessagesPage() {
                           className={`flex flex-col gap-1 max-w-xs
                             ${isMe ? 'items-end' : 'items-start'}`}
                         >
-                          {/* Sender label (first group only, other user) */}
                           {!isMe && groupIdx === 0 && (
                             <span className="text-[10px] text-muted px-1 mb-0.5">
                               {group.sender.first_name} {group.sender.last_name}
