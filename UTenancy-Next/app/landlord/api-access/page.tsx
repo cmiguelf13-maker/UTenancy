@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 import { ApiKey, SubscriptionTier } from '@/lib/types'
 import FeatureGate from '@/components/FeatureGate'
 
 /* ─── Page ───────────────────────────────────────────── */
 export default function ApiAccessPage() {
   const router = useRouter()
+  const { t } = useLanguage()
 
   const [tier, setTier]         = useState<SubscriptionTier>('free')
   const [keys, setKeys]         = useState<ApiKey[]>([])
@@ -49,7 +51,7 @@ export default function ApiAccessPage() {
   }, [router])
 
   async function handleCreate() {
-    if (!newKeyName.trim()) { setError('Give your key a name first.'); return }
+    if (!newKeyName.trim()) { setError(t('apiGiveNameFirst')); return }
     setCreating(true)
     setError(null)
     try {
@@ -71,7 +73,7 @@ export default function ApiAccessPage() {
   }
 
   async function handleRevoke(id: string) {
-    if (!confirm('Revoke this API key? Any integrations using it will stop working immediately.')) return
+    if (!confirm(t('apiRevokeConfirm'))) return
     await fetch(`/api/landlord/api-keys?id=${id}`, { method: 'DELETE' })
     setKeys(prev => prev.filter(k => k.id !== id))
   }
@@ -102,13 +104,13 @@ export default function ApiAccessPage() {
               <span className="material-symbols-outlined text-espresso">arrow_back</span>
             </Link>
             <div>
-              <h1 className="font-head font-bold text-espresso text-lg">API Access</h1>
-              <p className="text-xs font-body text-muted">Integrate UTenancy with your own tools</p>
+              <h1 className="font-head font-bold text-espresso text-lg">{t('apiAccessTitle')}</h1>
+              <p className="text-xs font-body text-muted">{t('apiAccessSubtitle')}</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-head font-bold clay-grad text-white">
             <span className="material-symbols-outlined fill text-sm">workspace_premium</span>
-            Pro
+            {t('tierPro')}
           </span>
         </div>
       </div>
@@ -147,12 +149,13 @@ export default function ApiAccessPage() {
             <div className="bg-espresso rounded-2xl p-5 text-white">
               <div className="flex items-center gap-2 mb-3">
                 <span className="material-symbols-outlined fill text-amber-300 text-sm">warning</span>
-                <p className="text-sm font-head font-bold">Copy your key now — it won&apos;t be shown again</p>
+                <p className="text-sm font-head font-bold">{t('apiCopyWarning')}</p>
               </div>
               <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
                 <code className="flex-1 text-sm font-mono break-all text-linen">{revealedKey}</code>
                 <button onClick={copyKey}
-                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors">
+                  className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/20 transition-colors"
+                  title={copied ? t('apiCopied') : t('apiCopyBtn')}>
                   <span className="material-symbols-outlined text-white text-lg">
                     {copied ? 'check' : 'content_copy'}
                   </span>
@@ -168,12 +171,12 @@ export default function ApiAccessPage() {
           {/* Keys list */}
           <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-out-var flex items-center justify-between">
-              <h3 className="font-head font-bold text-espresso">API Keys</h3>
+              <h3 className="font-head font-bold text-espresso">{t('apiKeysTitle')}</h3>
               {!showForm && (
                 <button onClick={() => { setShowForm(true); setError(null) }}
                   className="clay-grad text-white text-xs font-head font-semibold px-4 py-2 rounded-xl shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-sm">add</span>
-                  New Key
+                  {t('apiNewKeyBtn')}
                 </button>
               )}
             </div>
@@ -181,7 +184,7 @@ export default function ApiAccessPage() {
             {/* Create form */}
             {showForm && (
               <div className="px-6 py-4 bg-linen border-b border-out-var">
-                <p className="text-xs font-head font-semibold text-espresso mb-2">Key name</p>
+                <p className="text-xs font-head font-semibold text-espresso mb-2">{t('apiKeyNameLabel')}</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -193,7 +196,7 @@ export default function ApiAccessPage() {
                   />
                   <button onClick={handleCreate} disabled={creating}
                     className="clay-grad text-white text-sm font-head font-semibold px-4 py-2 rounded-xl disabled:opacity-60">
-                    {creating ? 'Generating…' : 'Generate'}
+                    {creating ? 'Generating…' : t('apiCreateBtn')}
                   </button>
                   <button onClick={() => { setShowForm(false); setError(null) }}
                     className="px-3 py-2 text-sm font-head text-muted hover:text-espresso rounded-xl hover:bg-white transition-colors">
@@ -210,8 +213,8 @@ export default function ApiAccessPage() {
                 <div className="w-12 h-12 clay-grad rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
                   <span className="material-symbols-outlined fill text-white text-xl">key</span>
                 </div>
-                <p className="font-head font-semibold text-espresso">No keys yet</p>
-                <p className="text-sm font-body text-muted mt-1">Generate your first API key to start integrating.</p>
+                <p className="font-head font-semibold text-espresso">{t('apiNoKeys')}</p>
+                <p className="text-sm font-body text-muted mt-1">{t('apiNoKeysDesc')}</p>
               </div>
             ) : (
               <div className="divide-y divide-out-var">
@@ -233,7 +236,8 @@ export default function ApiAccessPage() {
                         {k.is_active ? 'Active' : 'Inactive'}
                       </span>
                       <button onClick={() => handleRevoke(k.id)}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-muted hover:text-red-600 transition-colors">
+                        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 text-muted hover:text-red-600 transition-colors"
+                        title={t('apiRevokeBtn')}>
                         <span className="material-symbols-outlined text-lg">delete</span>
                       </button>
                     </div>
@@ -245,7 +249,7 @@ export default function ApiAccessPage() {
 
           {/* Docs teaser */}
           <div className="bg-white rounded-2xl border border-out-var p-6 shadow-sm">
-            <h3 className="font-head font-bold text-espresso mb-3">Quick start</h3>
+            <h3 className="font-head font-bold text-espresso mb-3">{t('apiQuickStart')}</h3>
             <div className="bg-espresso rounded-xl p-4 font-mono text-sm text-linen overflow-x-auto">
               <p className="text-muted text-xs mb-2"># List your active listings</p>
               <p><span className="text-amber-300">curl</span> https://api.utenancy.com/v1/listings \</p>
