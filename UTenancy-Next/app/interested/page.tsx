@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 import { Listing } from '@/lib/types'
 import type { User } from '@supabase/supabase-js'
 
@@ -26,6 +27,7 @@ async function openConversation(
 export default function InterestedPage() {
   const router   = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
 
   const [user,      setUser]      = useState<User | null>(null)
   const [loading,   setLoading]   = useState(true)
@@ -87,13 +89,13 @@ export default function InterestedPage() {
         {/* Header */}
         <div className="mb-8">
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors mb-5">
-            <span className="material-symbols-outlined text-base">arrow_back</span> Back to Home
+            <span className="material-symbols-outlined text-base">arrow_back</span> {t('backToHome')}
           </Link>
           <h1 className="font-display text-4xl font-light text-clay-dark mb-1">
-            Interested <em>Properties</em>
+            {t('interestedTitle')}
           </h1>
           <p className="text-sm font-body text-muted">
-            Properties you&apos;ve expressed interest in. Click any listing to view details or message the landlord directly.
+            {t('interestedSubtitle')}
           </p>
         </div>
 
@@ -102,12 +104,12 @@ export default function InterestedPage() {
             <div className="w-16 h-16 bg-linen rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-clay text-3xl">favorite</span>
             </div>
-            <p className="font-head font-bold text-clay-dark mb-1">No interested properties yet</p>
-            <p className="text-sm font-body text-muted mb-5">Browse listings and express interest to see them here.</p>
+            <p className="font-head font-bold text-clay-dark mb-1">{t('interestedEmptyTitle')}</p>
+            <p className="text-sm font-body text-muted mb-5">{t('interestedEmptyDesc')}</p>
             <Link href="/#listings"
               className="clay-grad text-white px-6 py-2.5 rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-clay/20 inline-flex items-center gap-2">
               <span className="material-symbols-outlined text-base">search</span>
-              Browse Listings
+              {t('browseListings')}
             </Link>
           </div>
         ) : (
@@ -130,7 +132,7 @@ export default function InterestedPage() {
                         </div>
                       )}
                       <span className={`absolute top-3 left-3 ${listing.type === 'open-room' ? 'bg-terra/90' : 'bg-clay/90'} text-white text-[10px] font-head font-bold px-2.5 py-1 rounded-full`}>
-                        {listing.type === 'open-room' ? 'Open Room' : 'Group Formation'}
+                        {listing.type === 'open-room' ? t('openRoom') : t('groupFormation')}
                       </span>
                     </div>
 
@@ -142,14 +144,14 @@ export default function InterestedPage() {
                       <p className="text-xs font-body text-muted">{listing.city}, {listing.state}</p>
                       <div className="flex items-center gap-3 text-xs font-body text-muted mt-2">
                         <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm text-terra">bed</span> {listing.bedrooms} bed
+                          <span className="material-symbols-outlined text-sm text-terra">bed</span> {listing.bedrooms} {t('bed')}
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm text-terra">bathtub</span> {listing.bathrooms} bath
+                          <span className="material-symbols-outlined text-sm text-terra">bathtub</span> {listing.bathrooms} {t('bath')}
                         </span>
                         <span className="ml-auto text-right">
                           <span className="block text-[9px] font-head font-bold uppercase tracking-widest text-muted leading-none mb-0.5">
-                            {listing.type === 'open-room' ? 'Per Person' : 'Total Rent'}
+                            {listing.type === 'open-room' ? t('perPerson') : t('totalRent')}
                           </span>
                           <span className="font-head font-black text-clay-dark text-sm">
                             ${listing.rent.toLocaleString()}<span className="font-normal text-muted text-xs">/mo</span>
@@ -167,7 +169,7 @@ export default function InterestedPage() {
                       className="w-full bg-surf text-clay-dark font-head font-semibold text-sm py-2.5 rounded-xl hover:bg-linen border border-out-var transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                     >
                       <span className="material-symbols-outlined text-sm">chat_bubble</span>
-                      {isSending ? 'Opening chat…' : 'Message Landlord'}
+                      {isSending ? t('openingChat') : t('messageLandlord')}
                     </button>
                   </div>
                 </div>
