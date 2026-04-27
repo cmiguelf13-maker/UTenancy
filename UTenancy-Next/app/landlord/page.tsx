@@ -1504,7 +1504,24 @@ export default function LandlordPortal() {
           )
         })()}
 
-        {/* Pro property table */}
+        {/* Households quick-access — Starter+ */}
+        {['starter','growth','pro'].includes(subscriptionTier) && (
+          <Link href="/landlord/households"
+            className="flex items-center justify-between gap-4 bg-white border border-out-var rounded-2xl px-6 py-4 shadow-sm hover:border-clay/40 hover:shadow-md transition-all mb-6 group">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 clay-grad rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                <span className="material-symbols-outlined fill text-white">home_work</span>
+              </div>
+              <div>
+                <p className="font-head font-bold text-espresso">My Households</p>
+                <p className="text-xs font-body text-muted">View tenants, rent received, and property details</p>
+              </div>
+            </div>
+            <span className="material-symbols-outlined text-muted group-hover:text-clay transition-colors">arrow_forward</span>
+          </Link>
+        )}
+
+        {/* Property table */}
         {['starter','growth','pro'].includes(subscriptionTier) && (
           <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden mb-8">
             <div className="px-6 py-4 border-b border-out-var flex items-center justify-between">
