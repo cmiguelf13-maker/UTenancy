@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { useLanguage } from '@/lib/i18n'
 import type { Household, HouseholdExpense, ExpenseCategory, Profile, LandlordConnectProfile } from '@/lib/types'
 
 /* ─── Constants ──────────────────────────────────────── */
@@ -36,6 +37,7 @@ function ExpenseRow({
   paidByIds,
   onMarkPaid,
   onUnmarkPaid,
+  t,
 }: {
   expense: HouseholdExpense
   onSettle: (id: string) => void
@@ -46,6 +48,7 @@ function ExpenseRow({
   paidByIds: string[]
   onMarkPaid: (id: string) => void
   onUnmarkPaid: (id: string) => void
+  t: (key: string) => string
 }) {
   const meta = CATEGORY_META[expense.category] ?? CATEGORY_META.other
   const settled = expense.status === 'settled'
@@ -69,29 +72,29 @@ function ExpenseRow({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-head font-semibold text-espresso text-sm truncate">{expense.title}</p>
             {settled ? (
-              <span className="text-[10px] font-head font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full shrink-0">✓ All Paid</span>
+              <span className="text-[10px] font-head font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full shrink-0">✓ {t('allPaid')}</span>
             ) : paidCount > 0 ? (
-              <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">{paidCount}/{totalCount} paid</span>
+              <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">{paidCount}/{totalCount} {t('paid')}</span>
             ) : (
-              <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">Pending</span>
+              <span className="text-[10px] font-head font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">{t('pending')}</span>
             )}
             {expense.document_url && (
               <a href={expense.document_url} target="_blank" rel="noopener noreferrer" title="View attached document"
                 className="text-[10px] font-head font-bold text-clay bg-clay/8 border border-clay/20 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity">
-                <span className="material-symbols-outlined" style={{ fontSize: 10 }}>attach_file</span>Receipt
+                <span className="material-symbols-outlined" style={{ fontSize: 10 }}>attach_file</span>{t('receipt')}
               </a>
             )}
           </div>
           <p className="text-xs font-body text-muted mt-0.5">
-            <strong className="font-head text-espresso">${perPersonAmt}</strong> per person · {expense.split_count} people
-            {expense.due_date && ` · Due ${new Date(expense.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            <strong className="font-head text-espresso">${perPersonAmt}</strong> {t('perPerson')} · {expense.split_count} {t('people')}
+            {expense.due_date && ` · ${t('dueDateLabel')} ${new Date(expense.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
           </p>
         </div>
 
         {/* Total amount */}
         <div className="text-right shrink-0">
           <p className="font-head font-bold text-espresso">${expense.amount.toFixed(0)}</p>
-          <p className="text-xs font-body text-muted">total</p>
+          <p className="text-xs font-body text-muted">{t('total')}</p>
         </div>
 
         {/* Owner actions (settle all / delete) */}
@@ -143,7 +146,7 @@ function ExpenseRow({
               }`}
             >
               <span className="material-symbols-outlined text-sm">{iHavePaid ? 'check_circle' : 'radio_button_unchecked'}</span>
-              {iHavePaid ? `Your $${perPersonAmt} marked as paid` : `Mark my $${perPersonAmt} as paid`}
+              {iHavePaid ? `${t('yourPaid')} $${perPersonAmt}` : `${t('markMyPaid')} $${perPersonAmt}`}
             </button>
           )}
         </div>
@@ -158,11 +161,13 @@ function AddExpenseForm({
   memberCount,
   onAdd,
   onClose,
+  t,
 }: {
   householdId: string
   memberCount: number
   onAdd: (e: HouseholdExpense) => void
   onClose: () => void
+  t: (key: string) => string
 }) {
   const supabase = createClient()
   const [title, setTitle]           = useState('')
@@ -226,24 +231,24 @@ function AddExpenseForm({
 
   return (
     <div className="bg-linen border border-out-var rounded-2xl p-5 space-y-4">
-      <h4 className="font-head font-bold text-espresso">Add Expense</h4>
+      <h4 className="font-head font-bold text-espresso">{t('addExpense')}</h4>
 
       <div>
-        <label className="block text-xs font-head font-semibold text-espresso mb-1">Title</label>
+        <label className="block text-xs font-head font-semibold text-espresso mb-1">{t('title')}</label>
         <input value={title} onChange={e => setTitle(e.target.value)}
-          placeholder="e.g. October rent, Electric bill"
+          placeholder={t('expenseExample')}
           className="w-full px-3 py-2.5 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 bg-white font-body" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-head font-semibold text-espresso mb-1">Total Amount ($)</label>
+          <label className="block text-xs font-head font-semibold text-espresso mb-1">{t('totalAmount')}</label>
           <input type="number" value={amount} onChange={e => setAmount(e.target.value)} min="0" step="0.01"
             placeholder="0.00"
             className="w-full px-3 py-2.5 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 bg-white font-body" />
         </div>
         <div>
-          <label className="block text-xs font-head font-semibold text-espresso mb-1">Split between</label>
+          <label className="block text-xs font-head font-semibold text-espresso mb-1">{t('splitBetween')}</label>
           <input type="number" value={splitCount} onChange={e => setSplit(Number(e.target.value))} min="1"
             className="w-full px-3 py-2.5 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 bg-white font-body" />
         </div>
@@ -251,7 +256,7 @@ function AddExpenseForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-head font-semibold text-espresso mb-1">Category</label>
+          <label className="block text-xs font-head font-semibold text-espresso mb-1">{t('category')}</label>
           <select value={category} onChange={e => setCategory(e.target.value as ExpenseCategory)}
             className="w-full px-3 py-2.5 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 bg-white font-body">
             {(Object.keys(CATEGORY_META) as ExpenseCategory[]).map(c => (
@@ -260,7 +265,7 @@ function AddExpenseForm({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-head font-semibold text-espresso mb-1">Due date (optional)</label>
+          <label className="block text-xs font-head font-semibold text-espresso mb-1">{t('dueDate')}</label>
           <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
             className="w-full px-3 py-2.5 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 bg-white font-body" />
         </div>
@@ -269,7 +274,7 @@ function AddExpenseForm({
       {/* Optional proof document upload */}
       <div>
         <label className="block text-xs font-head font-semibold text-espresso mb-1">
-          Proof / Receipt <span className="font-normal text-muted">(optional)</span>
+          {t('proofReceipt')} <span className="font-normal text-muted">({t('optional')})</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <div className={`flex items-center gap-2 px-3 py-2.5 text-sm border rounded-xl transition-colors w-full
@@ -278,7 +283,7 @@ function AddExpenseForm({
               {docFile ? 'check_circle' : 'upload_file'}
             </span>
             <span className="truncate font-body text-xs">
-              {docFile ? docFile.name : 'Attach receipt or document…'}
+              {docFile ? docFile.name : t('attachReceiptDoc')}
             </span>
             {docFile && (
               <button
@@ -300,7 +305,7 @@ function AddExpenseForm({
 
       {amount && Number(amount) > 0 && splitCount > 0 && (
         <p className="text-sm font-head text-clay-dark">
-          = <strong>{perPerson(Number(amount), splitCount)}</strong> per person
+          = <strong>{perPerson(Number(amount), splitCount)}</strong> {t('perPerson')}
         </p>
       )}
 
@@ -309,11 +314,11 @@ function AddExpenseForm({
       <div className="flex gap-2 pt-1">
         <button onClick={submit} disabled={saving || uploadingDoc}
           className="clay-grad text-white text-sm font-head font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60">
-          {uploadingDoc ? 'Uploading…' : saving ? 'Saving…' : 'Add Expense'}
+          {uploadingDoc ? t('uploading') : saving ? t('saving') : t('addExpense')}
         </button>
         <button onClick={onClose}
           className="px-4 py-2.5 text-sm font-head text-muted hover:text-espresso rounded-xl hover:bg-white transition-colors">
-          Cancel
+          {t('cancel')}
         </button>
       </div>
     </div>
@@ -321,7 +326,7 @@ function AddExpenseForm({
 }
 
 /* ─── Create Household Form ──────────────────────────── */
-function CreateHouseholdForm({ userId, onCreated }: { userId: string; onCreated: (h: Household) => void }) {
+function CreateHouseholdForm({ userId, onCreated, t }: { userId: string; onCreated: (h: Household) => void; t: (key: string) => string }) {
   const supabase = createClient()
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -355,19 +360,19 @@ function CreateHouseholdForm({ userId, onCreated }: { userId: string; onCreated:
       <div className="w-16 h-16 clay-grad rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
         <span className="material-symbols-outlined fill text-white text-3xl">house</span>
       </div>
-      <h2 className="font-display text-2xl font-light text-clay-dark italic mb-1">Set up your household</h2>
+      <h2 className="font-display text-2xl font-light text-clay-dark italic mb-1">{t('setupHousehold')}</h2>
       <p className="text-sm font-body text-muted mb-6">
-        Create a shared space to track rent, utilities, and expenses with your roommates.
+        {t('householdDescription')}
       </p>
       <input value={name} onChange={e => setName(e.target.value)}
-        placeholder="e.g. The Scholar House"
+        placeholder={t('householdExample')}
         className="w-full px-4 py-3 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 font-body mb-3"
         onKeyDown={e => e.key === 'Enter' && create()}
       />
       {err && <p className="text-xs text-red-600 mb-3">{err}</p>}
       <button onClick={create} disabled={saving}
         className="w-full clay-grad text-white font-head font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60">
-        {saving ? 'Creating…' : 'Create Household'}
+        {saving ? t('creating') : t('createHousehold')}
       </button>
     </div>
   )
@@ -377,6 +382,7 @@ function CreateHouseholdForm({ userId, onCreated }: { userId: string; onCreated:
 export default function HouseholdPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
 
   const [userId, setUserId]               = useState<string | null>(null)
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null)
@@ -770,6 +776,7 @@ export default function HouseholdPage() {
             <CreateHouseholdForm
               userId={userId}
               onCreated={hh => { setHouseholds([hh]); setActiveHouseholdId(hh.id); setMembers([]) }}
+              t={t}
             />
           )}
         </div>
@@ -828,7 +835,7 @@ export default function HouseholdPage() {
             <button onClick={copyInviteCode}
               className="flex items-center gap-1.5 text-xs font-head font-semibold text-clay-dark bg-linen hover:bg-clay/10 border border-out-var px-3 py-2 rounded-xl transition-colors">
               <span className="material-symbols-outlined text-sm">{inviteCopied ? 'check' : 'link'}</span>
-              {inviteCopied ? 'Copied!' : 'Invite link'}
+              {inviteCopied ? t('copied') : t('inviteLink')}
             </button>
             {isAdmin && (
               <button
@@ -955,7 +962,7 @@ export default function HouseholdPage() {
               <button onClick={() => setShowAddForm(true)}
                 className="w-full clay-grad text-white font-head font-semibold py-3 rounded-xl shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-lg">add</span>
-                Add Expense
+                {t('addExpense')}
               </button>
             ) : (
               <AddExpenseForm
@@ -963,6 +970,7 @@ export default function HouseholdPage() {
                 memberCount={memberCount}
                 onAdd={handleAdd}
                 onClose={() => setShowAddForm(false)}
+                t={t}
               />
             )}
 
