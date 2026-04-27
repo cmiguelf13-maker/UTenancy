@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { useLanguage } from '@/lib/i18n'
+import type { TranslationKey } from '@/lib/i18n'
 import type { Household, HouseholdExpense, ExpenseCategory, Profile, LandlordConnectProfile } from '@/lib/types'
 
 /* ─── Constants ──────────────────────────────────────── */
@@ -48,7 +49,7 @@ function ExpenseRow({
   paidByIds: string[]
   onMarkPaid: (id: string) => void
   onUnmarkPaid: (id: string) => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }) {
   const meta = CATEGORY_META[expense.category] ?? CATEGORY_META.other
   const settled = expense.status === 'settled'
@@ -167,7 +168,7 @@ function AddExpenseForm({
   memberCount: number
   onAdd: (e: HouseholdExpense) => void
   onClose: () => void
-  t: (key: string) => string
+  t: (key: TranslationKey) => string
 }) {
   const supabase = createClient()
   const [title, setTitle]           = useState('')
@@ -326,7 +327,7 @@ function AddExpenseForm({
 }
 
 /* ─── Create Household Form ──────────────────────────── */
-function CreateHouseholdForm({ userId, onCreated, t }: { userId: string; onCreated: (h: Household) => void; t: (key: string) => string }) {
+function CreateHouseholdForm({ userId, onCreated, t }: { userId: string; onCreated: (h: Household) => void; t: (key: TranslationKey) => string }) {
   const supabase = createClient()
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
