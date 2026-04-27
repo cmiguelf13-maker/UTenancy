@@ -27,6 +27,7 @@ export default function Nav() {
   const [user, setUser]           = useState<User | null>(null)
   const [menuOpen, setMenuOpen]   = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [hasUnread, setHasUnread] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -48,6 +49,46 @@ export default function Nav() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Load unread message count + subscribe to new messages
+  useEffect(() => {
+    if (!user) { setHasUnread(false); return }
+
+    async function checkUnread() {
+      const { data: convs } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', user!.id)
+
+      const convIds = (convs ?? []).map((c: { conversation_id: string }) => c.conversation_id)
+      if (convIds.length === 0) { setHasUnread(false); return }
+
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .in('conversation_id', convIds)
+        .neq('sender_id', user!.id)
+        .is('read_at', null)
+
+      setHasUnread((count ?? 0) > 0)
+    }
+
+    checkUnread()
+
+    // Re-check whenever a new message is inserted
+    const channel = supabase
+      .channel('nav-unread')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        checkUnread()
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, () => {
+        checkUnread()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -141,11 +182,14 @@ export default function Nav() {
                     </svg>
                   </Link>
                   <Link href="/messages" title={t('navMessagesTitle')}
-                    className="w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full text-clay hover:bg-linen transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24"
                       fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                     </svg>
+                    {hasUnread && (
+                      <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                    )}
                   </Link>
                 </>
               )}
