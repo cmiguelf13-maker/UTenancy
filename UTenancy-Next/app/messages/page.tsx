@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Message, Profile } from '@/lib/types'
+import { useLanguage } from '@/lib/i18n'
 
 /* ── Types ──────────────────────────────────────────────────── */
 interface ListingInfo {
@@ -92,6 +93,7 @@ function Avatar({
 export default function MessagesPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
 
   /* shared */
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
@@ -625,8 +627,8 @@ export default function MessagesPage() {
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-out-var/60 flex-shrink-0">
               <div>
-                <h2 className="font-head font-bold text-clay-dark text-base">New Conversation</h2>
-                <p className="text-xs font-body text-muted mt-0.5">Search for students to message</p>
+                <h2 className="font-head font-bold text-clay-dark text-base">{t('newConversation')}</h2>
+                <p className="text-xs font-body text-muted mt-0.5">{t('searchStudents')}</p>
               </div>
               <button
                 onClick={() => setShowNewConv(false)}
@@ -691,7 +693,7 @@ export default function MessagesPage() {
               ) : filteredResults.length === 0 && !searchingStudents ? (
                 <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                   <span className="material-symbols-outlined text-out-var text-4xl mb-3">search_off</span>
-                  <p className="font-body text-muted text-sm">No students found for &ldquo;{studentQuery}&rdquo;</p>
+                  <p className="font-body text-muted text-sm">{t('noStudentsFound')}</p>
                 </div>
               ) : (
                 <div className="px-2 py-1">
@@ -759,7 +761,7 @@ export default function MessagesPage() {
         {/* Sidebar header */}
         <div className="px-5 pt-5 pb-4 border-b border-out-var/60 flex items-start justify-between gap-2">
           <div>
-            <h1 className="font-display text-2xl font-light text-clay-dark">Messages</h1>
+            <h1 className="font-display text-2xl font-light text-clay-dark">{t('messagesPageTitle')}</h1>
             {!loadingList && (
               <p className="text-[11px] font-body text-muted mt-0.5">
                 {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
@@ -800,10 +802,10 @@ export default function MessagesPage() {
               <span className="material-symbols-outlined text-out-var text-4xl mb-3 block">
                 chat_bubble
               </span>
-              <p className="font-head font-bold text-clay-dark text-sm mb-1">No messages yet</p>
+              <p className="font-head font-bold text-clay-dark text-sm mb-1">{t('noMessagesYet')}</p>
               <p className="font-body text-muted text-xs">
                 {currentUser?.role === 'landlord'
-                  ? 'Messages from students will appear here.'
+                  ? t('startConversation')
                   : 'Tap the compose button above to start a conversation.'}
               </p>
             </div>
@@ -880,7 +882,7 @@ export default function MessagesPage() {
                 className="mt-5 clay-grad text-white px-5 py-2.5 rounded-full font-head font-bold text-sm hover:opacity-90 transition-all shadow-md shadow-clay/20 flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-base">edit</span>
-                New Conversation
+                {t('newConversation')}
               </button>
             )}
           </div>
@@ -977,7 +979,7 @@ export default function MessagesPage() {
                       <p className="font-head font-bold text-clay-dark text-sm truncate">{listing.address}</p>
                       <p className="text-xs text-muted font-body">{listing.city}</p>
                       <p className="font-head font-bold text-clay-dark text-sm mt-1">${listing.rent}/mo</p>
-                      <span className="text-xs text-clay font-head font-bold inline-block mt-1">View listing →</span>
+                      <span className="text-xs text-clay font-head font-bold inline-block mt-1">{t('viewListing')} →</span>
                     </div>
                   </a>
                 </div>
@@ -1079,7 +1081,7 @@ export default function MessagesPage() {
                         handleSend(e as any)
                       }
                     }}
-                    placeholder="Type a message…"
+                    placeholder={t('typeMessage')}
                     className="flex-1 px-4 py-2.5 border border-out-var rounded-2xl font-body text-sm focus:outline-none focus:ring-2 focus:ring-clay/30 focus:border-clay resize-none bg-cream placeholder:text-[#b8a49a]"
                     rows={1}
                   />
