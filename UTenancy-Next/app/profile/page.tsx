@@ -102,8 +102,9 @@ export default function ProfilePage() {
 
   const [user,    setUser]    = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving,  setSaving]  = useState(false)
-  const [saved,   setSaved]   = useState(false)
+  const [saving,    setSaving]    = useState(false)
+  const [saved,     setSaved]     = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const [role, setRole] = useState<string>('student')
 
@@ -196,6 +197,7 @@ export default function ProfilePage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setSaveError(null)
 
     if (!user) {
       setSaving(false)
@@ -216,8 +218,7 @@ export default function ProfilePage() {
       }
 
       if (role === 'landlord') {
-        // Landlord-specific fields
-        upsertData.email = profile.email
+        // Landlord-specific fields — email lives in auth.users, not profiles
         upsertData.phone = profile.phone
         upsertData.company = profile.company
       } else {
@@ -247,12 +248,15 @@ export default function ProfilePage() {
       })
 
       setSaving(false)
-      if (!upsertErr) {
+      if (upsertErr) {
+        setSaveError('Could not save profile. Please try again.')
+      } else {
         setSaved(true)
         setTimeout(() => setSaved(false), 3000)
       }
     } catch (err) {
       setSaving(false)
+      setSaveError('Something went wrong. Please try again.')
     }
   }
 
@@ -460,7 +464,11 @@ export default function ProfilePage() {
           )}
 
           {/* ── SAVE BUTTON ── */}
-          <div className="flex items-center justify-between pb-4">
+          <div className="space-y-2 pb-4">
+            {saveError && (
+              <p className="text-xs text-red-600 font-body text-right">{saveError}</p>
+            )}
+            <div className="flex items-center justify-between">
             <p className="text-xs font-body text-muted">{role === 'landlord' ? 'Changes are visible to tenants viewing your listings.' : 'Changes are visible to your matches and roommates.'}</p>
             <button type="submit"
               className="clay-grad text-white px-8 py-3 rounded-xl font-head font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-all active:scale-[.98] shadow-lg shadow-clay/25">
@@ -472,6 +480,7 @@ export default function ProfilePage() {
                 <><span className="material-symbols-outlined text-sm">save</span> Save Profile</>
               )}
             </button>
+            </div>
           </div>
 
         </form>
