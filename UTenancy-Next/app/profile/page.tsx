@@ -187,27 +187,28 @@ export default function ProfilePage() {
             setPreferredLang(storedLang)
             setGlobalLang(storedLang)
 
-            /* Referral code — generate if missing */
-            let code: string = profileData.referral_code ?? ''
-            if (!code) {
-              code = Math.random().toString(36).slice(2, 10).toUpperCase()
-              supabase.from('profiles').update({ referral_code: code }).eq('id', u.id)
-              setReferralCode(code)
-            } else {
-              setReferralCode(code)
-            }
+            /* Referral code + stats — landlord only */
+            if (u.user_metadata?.role === 'landlord') {
+              let code: string = profileData.referral_code ?? ''
+              if (!code) {
+                code = Math.random().toString(36).slice(2, 10).toUpperCase()
+                supabase.from('profiles').update({ referral_code: code }).eq('id', u.id)
+                setReferralCode(code)
+              } else {
+                setReferralCode(code)
+              }
 
-            /* Referral stats */
-            supabase
-              .from('referrals')
-              .select('id, reward_applied')
-              .eq('referrer_id', u.id)
-              .then(({ data: refs }) => {
-                if (refs) {
-                  setReferralCount(refs.length)
-                  setPendingRewards(refs.filter((r: { reward_applied: boolean }) => !r.reward_applied).length)
-                }
-              })
+              supabase
+                .from('referrals')
+                .select('id, reward_applied')
+                .eq('referrer_id', u.id)
+                .then(({ data: refs }) => {
+                  if (refs) {
+                    setReferralCount(refs.length)
+                    setPendingRewards(refs.filter((r: { reward_applied: boolean }) => !r.reward_applied).length)
+                  }
+                })
+            }
             } else {
             // Fallback to user_metadata if profiles table fetch fails
             const m = u.user_metadata ?? {}
@@ -321,9 +322,9 @@ export default function ProfilePage() {
         {/* ── Page header ── */}
         <div className="mb-8">
           <a href="/" className="inline-flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors mb-5">
-            <span className="material-symbols-outlined text-base">arrow_back</span> Back to Home
+            <span className="material-symbols-outlined text-base">arrow_back</span> {t('backToHome')}
           </a>
-          <h1 className="font-display text-4xl font-light text-clay-dark mb-1">Your <em>profile</em></h1>
+          <h1 className="font-display text-4xl font-light text-clay-dark mb-1">Your <em>{t('tabProfile').toLowerCase()}</em></h1>
           <p className="text-sm font-body text-muted">
             {role === 'landlord'
               ? 'Manage your contact information so tenants can reach you.'
