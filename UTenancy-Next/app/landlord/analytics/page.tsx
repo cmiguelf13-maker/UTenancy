@@ -130,8 +130,9 @@ export default function AnalyticsPage() {
   const maxRev    = Math.max(...monthly.map(m => m.revenue), 1)
   const active    = listings.filter(l => l.status === 'active').length
   const filled    = listings.filter(l => l.status === 'filled').length
-  const totalRevenue = listings.filter(l => l.status === 'filled')
-                                .reduce((s, l) => s + l.rent, 0)
+  const received  = listings.filter(l => l.status === 'filled').reduce((s, l) => s + l.rent, 0)
+  const due       = listings.filter(l => l.status === 'active' || l.status === 'filled').reduce((s, l) => s + l.rent, 0)
+  const totalRevenue = received
   const occupancyPct = listings.length > 0 ? Math.round((filled / listings.length) * 100) : 0
 
   const totalInterest = listings.reduce((s, l) => {
@@ -172,24 +173,31 @@ export default function AnalyticsPage() {
 
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
-        {/* KPI row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: 'home_work',      value: listings.length, label: 'Total Properties', sub: 'in your portfolio'  },
-            { icon: 'check_circle',   value: active,          label: 'Active Listings',  sub: 'currently live'     },
-            { icon: 'person_search',  value: totalInterest,   label: 'Total Applicants', sub: 'across all listings' },
-            { icon: 'payments',       value: `$${totalRevenue.toLocaleString()}`, label: 'Monthly Revenue', sub: 'from filled units' },
-          ].map(k => (
-            <div key={k.label} className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
-              <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md mb-3">
-                <span className="material-symbols-outlined fill text-white text-lg">{k.icon}</span>
+        {/* KPI row — Starter+ */}
+        <FeatureGate
+          currentTier={tier}
+          requiredTier="starter"
+          lockedMessage="Analytics are available on Starter and above."
+          onUpgrade={() => router.push('/landlord')}
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: 'home_work',     value: listings.length,                                     label: 'Total Properties', sub: 'in your portfolio'   },
+              { icon: 'check_circle',  value: active,                                               label: 'Active Listings',  sub: 'currently live'      },
+              { icon: 'person_search', value: totalInterest,                                        label: 'Total Applicants', sub: 'across all listings'  },
+              { icon: 'payments',      value: `$${received.toLocaleString()} / $${due.toLocaleString()}`, label: 'Monthly Revenue',  sub: 'received / due'      },
+            ].map(k => (
+              <div key={k.label} className="bg-white rounded-2xl border border-out-var p-5 shadow-sm">
+                <div className="w-10 h-10 clay-grad rounded-xl flex items-center justify-center shadow-md mb-3">
+                  <span className="material-symbols-outlined fill text-white text-lg">{k.icon}</span>
+                </div>
+                <p className="font-display text-2xl font-light text-clay-dark italic leading-tight">{k.value}</p>
+                <p className="text-sm font-head font-semibold text-espresso mt-0.5">{k.label}</p>
+                <p className="text-xs font-body text-muted">{k.sub}</p>
               </div>
-              <p className="font-display text-3xl font-light text-clay-dark italic">{k.value}</p>
-              <p className="text-sm font-head font-semibold text-espresso mt-0.5">{k.label}</p>
-              <p className="text-xs font-body text-muted">{k.sub}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </FeatureGate>
 
         {/* Revenue chart — Pro only */}
         <FeatureGate
