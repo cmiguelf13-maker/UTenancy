@@ -36,8 +36,6 @@ function ExpenseRow({
   paidByIds,
   onMarkPaid,
   onUnmarkPaid,
-  onPayNow,
-  payingId,
 }: {
   expense: HouseholdExpense
   onSettle: (id: string) => void
@@ -48,8 +46,6 @@ function ExpenseRow({
   paidByIds: string[]
   onMarkPaid: (id: string) => void
   onUnmarkPaid: (id: string) => void
-  onPayNow?: (expense: HouseholdExpense) => void
-  payingId?: string | null
 }) {
   const meta = CATEGORY_META[expense.category] ?? CATEGORY_META.other
   const settled = expense.status === 'settled'
@@ -138,30 +134,17 @@ function ExpenseRow({
           </div>
           {/* My payment toggle */}
           {userId && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => iHavePaid ? onUnmarkPaid(expense.id) : onMarkPaid(expense.id)}
-                className={`flex items-center gap-1.5 text-xs font-head font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-                  iHavePaid
-                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                    : 'bg-white text-muted border-out-var hover:border-clay/50 hover:text-clay-dark'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm">{iHavePaid ? 'check_circle' : 'radio_button_unchecked'}</span>
-                {iHavePaid ? `Your $${perPersonAmt} marked as paid` : `Mark my $${perPersonAmt} as paid`}
-              </button>
-              {/* ACH pay button — shown for rent expenses when landlord is connected */}
-              {onPayNow && !iHavePaid && (
-                <button
-                  onClick={() => onPayNow(expense)}
-                  disabled={payingId === expense.id}
-                  className="flex items-center gap-1.5 text-xs font-head font-semibold px-3 py-1.5 rounded-lg border clay-grad text-white hover:opacity-90 transition-opacity disabled:opacity-60"
-                >
-                  <span className="material-symbols-outlined text-sm">account_balance</span>
-                  {payingId === expense.id ? 'Redirecting…' : `Pay $${perPersonAmt} via ACH`}
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => iHavePaid ? onUnmarkPaid(expense.id) : onMarkPaid(expense.id)}
+              className={`flex items-center gap-1.5 text-xs font-head font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                iHavePaid
+                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                  : 'bg-white text-muted border-out-var hover:border-clay/50 hover:text-clay-dark'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">{iHavePaid ? 'check_circle' : 'radio_button_unchecked'}</span>
+              {iHavePaid ? `Your $${perPersonAmt} marked as paid` : `Mark my $${perPersonAmt} as paid`}
+            </button>
           )}
         </div>
       )}
@@ -1004,8 +987,6 @@ export default function HouseholdPage() {
                     paidByIds={payments[e.id] ?? []}
                     onMarkPaid={handleMarkPaid}
                     onUnmarkPaid={handleUnmarkPaid}
-                    onPayNow={landlordProfile?.stripe_connect_enabled ? handlePayExpense : undefined}
-                    payingId={payingExpenseId}
                   />
                 ))
               )}
@@ -1016,79 +997,6 @@ export default function HouseholdPage() {
         {/* ── MEMBERS TAB ── */}
         {activeTab === 'members' && (
           <div className="space-y-4">
-
-            {/* ── Landlord card ── */}
-            <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-out-var flex items-center gap-3">
-                <div className="w-8 h-8 bg-linen rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined fill text-clay text-base">manage_accounts</span>
-                </div>
-                <h3 className="font-head font-bold text-espresso flex-1">Landlord</h3>
-                {landlordProfile && (
-                  <span className={`text-[10px] font-head font-bold px-2 py-0.5 rounded-full ${
-                    landlordProfile.stripe_connect_enabled
-                      ? 'bg-green-50 text-green-700 border border-green-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
-                    {landlordProfile.stripe_connect_enabled ? '✓ Payments active' : 'Payments pending setup'}
-                  </span>
-                )}
-              </div>
-
-              {landlordProfile ? (
-                <div className="px-5 py-4 flex items-center gap-4">
-                  <div className="w-10 h-10 bg-espresso rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                    <span className="text-white font-head font-bold text-sm">
-                      {(landlordProfile.first_name?.[0] ?? landlordProfile.last_name?.[0] ?? 'L').toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-head font-semibold text-espresso text-sm">
-                      {[landlordProfile.first_name, landlordProfile.last_name].filter(Boolean).join(' ') || 'Landlord'}
-                    </p>
-                    <p className="text-xs font-body text-muted">
-                      {landlordProfile.stripe_connect_enabled
-                        ? 'Ready to receive ACH rent payments'
-                        : 'Has not yet activated payout account'}
-                    </p>
-                  </div>
-                </div>
-              ) : isAdmin ? (
-                <div className="px-5 py-5 space-y-3">
-                  <p className="text-sm font-body text-muted">
-                    Link your landlord so rent can be paid directly through UTenancy via bank transfer.
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      value={landlordEmail}
-                      onChange={e => setLandlordEmail(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleLinkLandlord()}
-                      placeholder="landlord@email.com"
-                      type="email"
-                      className="flex-1 px-3 py-2.5 text-sm border border-out-var rounded-xl focus:outline-none focus:ring-2 focus:ring-clay/30 font-body"
-                    />
-                    <button
-                      onClick={handleLinkLandlord}
-                      disabled={linkingLandlord || !landlordEmail.trim()}
-                      className="clay-grad text-white text-sm font-head font-semibold px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60 shrink-0"
-                    >
-                      {linkingLandlord ? 'Linking…' : 'Link'}
-                    </button>
-                  </div>
-                  {landlordLinkMsg && (
-                    <p className={`text-xs font-body ${landlordLinkMsg.startsWith('✓') ? 'text-green-700' : 'text-red-600'}`}>
-                      {landlordLinkMsg}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="px-5 py-5">
-                  <p className="text-sm font-body text-muted">No landlord linked yet. Ask your household admin to add one.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Roommates list */}
             <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-out-var flex items-center justify-between">
                 <h3 className="font-head font-bold text-espresso">Roommates ({memberCount})</h3>
@@ -1215,71 +1123,31 @@ export default function HouseholdPage() {
               </div>
             </div>
 
-            {/* ACH Payments panel */}
-            <div className="bg-white rounded-2xl border border-out-var shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-out-var flex items-center gap-3">
-                <div className="w-8 h-8 bg-linen rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined fill text-clay text-base">account_balance</span>
+            {/* ACH payment info — Coming Soon */}
+            <div className="bg-white rounded-2xl border border-out-var p-5 shadow-sm relative overflow-hidden">
+              {/* Coming Soon badge */}
+              <div className="absolute top-3 right-3">
+                <span className="bg-clay/10 text-clay text-[10px] font-head font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
+                  Coming Soon
+                </span>
+              </div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-linen rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                  <span className="material-symbols-outlined text-clay text-lg">account_balance</span>
                 </div>
                 <div>
-                  <h3 className="font-head font-bold text-espresso text-sm">ACH Rent Payments</h3>
-                  <p className="text-xs font-body text-muted">Pay your share directly to your landlord</p>
+                  <h4 className="font-head font-bold text-espresso text-sm">ACH Payments</h4>
+                  <p className="text-xs font-body text-muted">Pay your landlord directly through UTenancy</p>
                 </div>
               </div>
-
-              {!landlordProfile ? (
-                <div className="px-5 py-6 text-center">
-                  <span className="material-symbols-outlined text-3xl text-muted">link_off</span>
-                  <p className="font-head font-semibold text-espresso mt-2 text-sm">No landlord linked</p>
-                  <p className="text-xs font-body text-muted mt-1">Go to the Members tab to add your landlord and unlock ACH payments.</p>
-                </div>
-              ) : !landlordProfile.stripe_connect_enabled ? (
-                <div className="px-5 py-6 text-center">
-                  <span className="material-symbols-outlined text-3xl text-amber-400">hourglass_empty</span>
-                  <p className="font-head font-semibold text-espresso mt-2 text-sm">Landlord activating payouts</p>
-                  <p className="text-xs font-body text-muted mt-1">
-                    {[landlordProfile.first_name, landlordProfile.last_name].filter(Boolean).join(' ') || 'Your landlord'} hasn&apos;t finished setting up their payout account yet. Check back soon.
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-out-var">
-                  {expenses.filter(e => e.status === 'pending').length === 0 ? (
-                    <div className="px-5 py-6 text-center">
-                      <span className="material-symbols-outlined text-3xl text-green-500">check_circle</span>
-                      <p className="font-head font-semibold text-espresso mt-2 text-sm">All caught up!</p>
-                      <p className="text-xs font-body text-muted mt-1">No pending expenses to pay right now.</p>
-                    </div>
-                  ) : (
-                    expenses.filter(e => e.status === 'pending').map(e => {
-                      const perPersonAmt = Math.round(e.amount / Math.max(e.split_count, 1))
-                      const iHavePaid = userId ? (payments[e.id] ?? []).includes(userId) : false
-                      return (
-                        <div key={e.id} className="px-5 py-4 flex items-center gap-4">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-head font-semibold text-espresso text-sm truncate">{e.title}</p>
-                            <p className="text-xs font-body text-muted">
-                              Your share: <strong className="text-espresso">${perPersonAmt}</strong>
-                              {e.due_date && ` · Due ${new Date(e.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                            </p>
-                          </div>
-                          {iHavePaid ? (
-                            <span className="text-xs font-head font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full shrink-0">✓ Paid</span>
-                          ) : (
-                            <button
-                              onClick={() => handlePayExpense(e)}
-                              disabled={payingExpenseId === e.id}
-                              className="clay-grad text-white text-xs font-head font-semibold px-3 py-2 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-60 shrink-0 flex items-center gap-1.5"
-                            >
-                              <span className="material-symbols-outlined text-sm">payments</span>
-                              {payingExpenseId === e.id ? 'Redirecting…' : `Pay $${perPersonAmt}`}
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              )}
+              <p className="text-sm font-body text-muted leading-relaxed">
+                Soon you&apos;ll be able to pay your share of rent and expenses directly to your landlord through UTenancy
+                via bank transfer — no Venmo math, no awkward reminders, automatic receipts.
+              </p>
+              <div className="mt-4 w-full bg-linen/80 text-muted font-head font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 border border-out-var cursor-not-allowed select-none opacity-70">
+                <span className="material-symbols-outlined text-base">lock</span>
+                Available Soon
+              </div>
             </div>
           </div>
         )}
