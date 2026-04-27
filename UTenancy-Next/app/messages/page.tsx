@@ -394,29 +394,39 @@ export default function MessagesPage() {
       }
     }
 
-    // Create the conversation
-    const { data: conv, error: convErr } = await supabase
-      .from('conversations')
-      .insert({})
-      .select('id, listing_id, created_at')
-      .single()
+    // Generate ID client-side to avoid the RLS SELECT-after-insert chicken-and-egg:
+    // the SELECT policy checks is_conversation_participant(), but we haven't added
+    // ourselves yet — so selecting right after insert always returns null.
+    const convId = crypto.randomUUID()
+    const convCreatedAt = new Date().toISOString()
 
-    if (convErr || !conv) {
+    const { error: convErr } = await supabase
+      .from('conversations')
+      .insert({ id: convId })
+
+    if (convErr) {
       setCreatingConv(false)
       return
     }
 
-    const participants = [
-      { conversation_id: conv.id, user_id: currentUser.id },
-      ...selectedStudents.map((s) => ({ conversation_id: conv.id, user_id: s.id })),
-    ]
-    await supabase.from('conversation_participants').insert(participants)
+    // Insert current user first so the conversation is immediately visible via RLS
+    const { error: partErr } = await supabase
+      .from('conversation_participants')
+      .insert([
+        { conversation_id: convId, user_id: currentUser.id },
+        ...selectedStudents.map((s) => ({ conversation_id: convId, user_id: s.id })),
+      ])
+
+    if (partErr) {
+      setCreatingConv(false)
+      return
+    }
 
     // Add the new conversation to the sidebar list immediately
     const newConv: ConversationWithData = {
-      id: conv.id,
+      id: convId,
       listing_id: null,
-      created_at: conv.created_at,
+      created_at: convCreatedAt,
       participants: [
         { profile: currentUser as Profile },
         ...selectedStudents.map((s) => ({
@@ -438,9 +448,9 @@ export default function MessagesPage() {
     setCreatingConv(false)
 
     if (window.innerWidth < 768) {
-      router.push(`/messages/${conv.id}`)
+      router.push(`/messages/${convId}`)
     } else {
-      setSelectedConvId(conv.id)
+      setSelectedConvId(convId)
     }
   }
 
