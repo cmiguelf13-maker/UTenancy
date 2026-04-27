@@ -79,13 +79,14 @@ export default function LandlordHouseholdsPage() {
 
       const membersByHh: Record<string, { id: string; full_name: string; avatar_url: string | null }[]> = {}
       if (members) {
-        members.forEach((m: { household_id: string; profiles: { id: string; full_name: string; avatar_url: string | null } | null }) => {
+        members.forEach((m: any) => { // profiles join may be array or object depending on FK direction
           if (!membersByHh[m.household_id]) membersByHh[m.household_id] = []
-          if (m.profiles) {
+          const prof = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+          if (prof) {
             membersByHh[m.household_id].push({
-              id: m.profiles.id,
-              full_name: m.profiles.full_name,
-              avatar_url: m.profiles.avatar_url,
+              id: prof.id,
+              full_name: prof.full_name,
+              avatar_url: prof.avatar_url,
             })
           }
         })
