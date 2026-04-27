@@ -70,6 +70,7 @@ function OtpInputs({ onComplete }: { onComplete: (val: string) => void }) {
 
 /* ─── Role Toggle ─────────────────────────────── */
 function RoleToggle({ role, onChange }: { role: Role; onChange: (r: Role) => void }) {
+  const { t } = useLanguage()
   return (
     <div className="flex items-center justify-center gap-1 p-1 bg-surf-hi rounded-full border border-out-var mb-7">
       {(['student', 'landlord'] as Role[]).map((r) => (
