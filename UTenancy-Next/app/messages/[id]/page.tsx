@@ -549,41 +549,44 @@ export default function ConversationPage() {
             <div className="flex-1 min-w-0" />
           )}
 
-          {/* TOP RIGHT — View Profile (any conversation) */}
-          {otherParticipant && (
-            <a
-              href={`/profile/${otherParticipant.id}`}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all"
-              aria-label="View profile"
-            >
-              <span className="material-symbols-outlined text-base leading-none">person</span>
-              Profile
-            </a>
-          )}
+          {/* TOP RIGHT — action buttons (always a flex row, never replace each other) */}
+          <div className="flex-shrink-0 flex items-center gap-2">
+            {/* View Profile — always show when participant is loaded */}
+            {otherParticipant && (
+              <a
+                href={`/profile/${otherParticipant.id}`}
+                className="flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all"
+                aria-label="View profile"
+              >
+                <span className="material-symbols-outlined text-base leading-none">person</span>
+                Profile
+              </a>
+            )}
 
-          {/* TOP RIGHT — Approve (landlord) */}
-          {showApproveButton && (
-            <button
-              onClick={handleApprove}
-              disabled={approving}
-              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-base leading-none">how_to_reg</span>
-              {approving ? 'Approving…' : 'Approve'}
-            </button>
-          )}
+            {/* Approve (landlord / listing host) */}
+            {showApproveButton && (
+              <button
+                onClick={handleApprove}
+                disabled={approving}
+                className="flex items-center gap-1.5 text-xs font-head font-bold bg-white/15 text-white border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/25 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-base leading-none">how_to_reg</span>
+                {approving ? 'Approving…' : 'Approve'}
+              </button>
+            )}
 
-          {/* TOP RIGHT — Status badge (student) */}
-          {showStatusBadge && applicationStatus && statusConfig[applicationStatus] && (
-            <div
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-head font-bold px-3 py-1.5 rounded-lg ${statusConfig[applicationStatus].bg} ${statusConfig[applicationStatus].text}`}
-            >
-              <span className="material-symbols-outlined text-base leading-none">
-                {statusConfig[applicationStatus].icon}
-              </span>
-              <span className="hidden sm:inline">{statusConfig[applicationStatus].label}</span>
-            </div>
-          )}
+            {/* Status badge (student) — sits alongside Profile, never replaces it */}
+            {showStatusBadge && applicationStatus && statusConfig[applicationStatus] && (
+              <div
+                className={`flex items-center gap-1.5 text-xs font-head font-bold px-3 py-1.5 rounded-lg ${statusConfig[applicationStatus].bg} ${statusConfig[applicationStatus].text}`}
+              >
+                <span className="material-symbols-outlined text-base leading-none">
+                  {statusConfig[applicationStatus].icon}
+                </span>
+                <span className="hidden sm:inline">{statusConfig[applicationStatus].label}</span>
+              </div>
+            )}
+          </div>{/* end right-side action buttons */}
         </div>
 
         {/* Approve error */}
