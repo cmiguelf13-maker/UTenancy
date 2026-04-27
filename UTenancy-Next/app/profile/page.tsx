@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { useLanguage, LANGUAGES } from '@/lib/i18n'
+import type { Language } from '@/lib/i18n'
 
 /* ── Types ── */
 interface ProfileData {
@@ -99,12 +101,27 @@ function SectionHeading({ icon, title, subtitle }: { icon: string; title: string
 export default function ProfilePage() {
   const router   = useRouter()
   const supabase = createClient()
+  const { lang: globalLang, setLang: setGlobalLang, t } = useLanguage()
+
+  /* Tabs */
+  type ProfileTab = 'profile' | 'language' | 'referral'
+  const [activeTab, setActiveTab] = useState<ProfileTab>('profile')
 
   const [user,    setUser]    = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  /* Language preference */
+  const [preferredLang, setPreferredLang] = useState<Language>(globalLang)
+  const [langSaved, setLangSaved] = useState(false)
+
+  /* Referral */
+  const [referralCode,   setReferralCode]   = useState<string | null>(null)
+  const [referralCount,  setReferralCount]  = useState(0)
+  const [pendingRewards, setPendingRewards] = useState(0)
+  const [copied, setCopied] = useState(false)
 
   const [role, setRole] = useState<string>('student')
 
@@ -164,6 +181,33 @@ export default function ProfilePage() {
               phone:       profileData.phone ?? '',
               company:     profileData.company ?? '',
             }))
+
+            /* Language preference */
+            const storedLang = (profileData.preferred_language ?? 'en') as Language
+            setPreferredLang(storedLang)
+            setGlobalLang(storedLang)
+
+            /* Referral code — generate if missing */
+            let code: string = profileData.referral_code ?? ''
+            if (!code) {
+              code = Math.random().toString(36).slice(2, 10).toUpperCase()
+              supabase.from('profiles').update({ referral_code: code }).eq('id', u.id)
+              setReferralCode(code)
+            } else {
+              setReferralCode(code)
+            }
+
+            /* Referral stats */
+            supabase
+              .from('referrals')
+              .select('id, reward_applied')
+              .eq('referrer_id', u.id)
+              .then(({ data: refs }) => {
+                if (refs) {
+                  setReferralCount(refs.length)
+                  setPendingRewards(refs.filter((r: { reward_applied: boolean }) => !r.reward_applied).length)
+                }
+              })
             } else {
             // Fallback to user_metadata if profiles table fetch fails
             const m = u.user_metadata ?? {}
@@ -287,7 +331,125 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-6">
+        {/* ── Tab bar ── */}
+        <div className="flex gap-1 bg-surf-hi border border-out-var rounded-full px-1 py-1 mb-6 w-fit">
+          {([
+            { key: 'profile',  label: t('tabProfile'),  icon: 'person'   },
+            { key: 'language', label: t('tabLanguage'), icon: 'language' },
+            ...(role === 'landlord' ? [{ key: 'referral', label: t('tabReferral'), icon: 'share' }] : []),
+          ] as { key: ProfileTab; label: string; icon: string }[]).map(tab => (
+            <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-head font-bold transition-all
+                ${activeTab === tab.key ? 'clay-grad text-white shadow-sm' : 'text-muted hover:text-clay-dark'}`}>
+              <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── LANGUAGE TAB ── */}
+        {activeTab === 'language' && (
+          <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 clay-grad rounded-xl flex items-center justify-center shadow-sm">
+                <span className="material-symbols-outlined fill text-white text-lg">language</span>
+              </div>
+              <div>
+                <h2 className="font-head font-bold text-espresso">{t('languageTitle')}</h2>
+                <p className="text-xs font-body text-muted">{t('languageDesc')}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-5">
+              {LANGUAGES.map(l => (
+                <button key={l.code} type="button"
+                  onClick={async () => {
+                    setPreferredLang(l.code)
+                    setGlobalLang(l.code)
+                    await supabase.from('profiles').update({ preferred_language: l.code }).eq('id', user?.id ?? '')
+                    setLangSaved(true)
+                    setTimeout(() => setLangSaved(false), 2000)
+                  }}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 font-head font-semibold text-sm transition-all
+                    ${preferredLang === l.code
+                      ? 'border-clay bg-linen text-clay-dark shadow-sm'
+                      : 'border-out-var text-muted hover:border-clay/40 hover:text-clay-dark'}`}>
+                  <span className="text-xl">{l.flag}</span>
+                  {l.label}
+                  {preferredLang === l.code && (
+                    <span className="material-symbols-outlined fill text-clay text-base">check_circle</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {langSaved && (
+              <p className="text-xs font-head text-green-600 mt-3 flex items-center gap-1">
+                <span className="material-symbols-outlined fill text-sm">check_circle</span> Language updated
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── REFERRAL TAB (landlord only) ── */}
+        {activeTab === 'referral' && role === 'landlord' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 clay-grad rounded-xl flex items-center justify-center shadow-sm">
+                  <span className="material-symbols-outlined fill text-white text-lg">share</span>
+                </div>
+                <div>
+                  <h2 className="font-head font-bold text-espresso">{t('referralTitle')}</h2>
+                  <p className="text-xs font-body text-muted">{t('referralDesc')}</p>
+                </div>
+              </div>
+
+              <p className="text-xs font-head font-bold text-clay-dark uppercase tracking-wider mb-2">{t('referralLink')}</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-surf-lo border border-out-var rounded-xl px-4 py-2.5 font-body text-sm text-espresso overflow-hidden overflow-ellipsis whitespace-nowrap">
+                  {referralCode
+                    ? `${typeof window !== 'undefined' ? window.location.origin : 'https://utenancy.com'}/auth?ref=${referralCode}`
+                    : 'Generating…'}
+                </div>
+                <button type="button"
+                  onClick={() => {
+                    if (!referralCode) return
+                    navigator.clipboard.writeText(
+                      `${window.location.origin}/auth?ref=${referralCode}`
+                    )
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 clay-grad text-white rounded-xl font-head font-bold text-sm hover:opacity-90 transition-all active:scale-95">
+                  <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'content_copy'}</span>
+                  {copied ? t('copied') : t('copyLink')}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
+              <h3 className="font-head font-bold text-espresso mb-4">Referral Stats</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-surf-lo rounded-2xl p-4 text-center">
+                  <p className="font-display text-3xl font-light text-clay-dark italic">{referralCount}</p>
+                  <p className="text-xs font-head font-semibold text-espresso mt-1">Total Referrals</p>
+                </div>
+                <div className="bg-surf-lo rounded-2xl p-4 text-center">
+                  <p className="font-display text-3xl font-light text-clay-dark italic">{pendingRewards}</p>
+                  <p className="text-xs font-head font-semibold text-espresso mt-1">
+                    {pendingRewards === 1 ? t('referralPending') : t('referralPendingPlural')}
+                  </p>
+                </div>
+              </div>
+              {referralCount === 0 ? (
+                <p className="text-sm font-body text-muted mt-4 text-center">{t('noReferrals')}</p>
+              ) : (
+                <p className="text-xs font-body text-muted mt-4">{t('referralRewardNote')}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSave} className={`space-y-6 ${activeTab !== 'profile' ? 'hidden' : ''}`}>
 
           {/* ── BASIC INFO ── */}
           <div className="bg-white rounded-3xl border border-out-var p-6 shadow-sm">
