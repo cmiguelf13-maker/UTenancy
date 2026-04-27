@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Message, Profile } from '@/lib/types'
+import { useLanguage } from '@/lib/i18n'
 
 const ArrowLeftIcon = ({ className }: { className?: string }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -69,6 +70,7 @@ export default function ConversationPage() {
   const params = useParams()
   const conversationId = params.id as string
   const supabase = createClient()
+  const { t } = useLanguage()
 
   const [messages, setMessages] = useState<MessageWithSender[]>([])
   const [otherParticipant, setOtherParticipant] = useState<Profile | null>(null)
@@ -602,7 +604,7 @@ export default function ConversationPage() {
                   <p className="font-head font-bold text-clay-dark text-sm truncate">{listing.address}</p>
                   <p className="text-xs text-muted font-body">{listing.city}</p>
                   <p className="font-head font-bold text-clay-dark text-sm mt-1">${listing.rent}/mo</p>
-                  <span className="text-xs text-clay font-head font-bold inline-block mt-1">View listing →</span>
+                  <span className="text-xs text-clay font-head font-bold inline-block mt-1">{t('viewListing')} →</span>
                 </div>
               </a>
             </div>
@@ -611,7 +613,7 @@ export default function ConversationPage() {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center py-20">
               <div>
-                <p className="text-muted mb-2">No messages yet</p>
+                <p className="text-muted mb-2">{t('noMessagesYet')}</p>
                 <p className="text-sm text-muted">Start the conversation below</p>
               </div>
             </div>
@@ -691,7 +693,7 @@ export default function ConversationPage() {
                     handleSendMessage(e as any)
                   }
                 }}
-                placeholder="Type a message…"
+                placeholder={t('typeMessage')}
                 className="flex-grow px-4 py-2.5 bg-surf-lo border border-out-var rounded-2xl font-body text-sm focus:outline-none focus:ring-2 focus:ring-clay/30 focus:border-clay resize-none placeholder:text-[#b8a49a]"
                 rows={1}
               />
