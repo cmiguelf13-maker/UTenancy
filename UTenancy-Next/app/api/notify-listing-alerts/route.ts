@@ -4,12 +4,17 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy-init — don't instantiate at module level so build succeeds without env vars
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-)
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
@@ -36,6 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   /* ── Fetch listing and verify ownership ── */
+  const supabaseAdmin = getAdminClient()
   const { data: listing } = await supabaseAdmin
     .from('listings')
     .select('id, address, city, state, rent, bedrooms, bathrooms, type, notified_at, status, landlord_id')
@@ -141,6 +147,7 @@ export async function POST(req: NextRequest) {
 `
 
   /* ── Send in batches of 50 (Resend batch limit) ── */
+  const resend = getResend()
   let sent = 0
   const batchSize = 50
   for (let i = 0; i < emails.length; i += batchSize) {
