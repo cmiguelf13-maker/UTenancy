@@ -400,17 +400,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Real listings (DB has results) */}
-          {!dbLoading && filtered.length > 0 && (
+          {/* Listings grid: real results first, samples fill the rest */}
+          {!dbLoading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {filtered.slice(0, 9).map((l) => <ListingCard key={l.id} listing={l} />)}
-            </div>
-          )}
-
-          {/* Samples — only shown after load completes with zero real listings */}
-          {!dbLoading && filtered.length === 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
+              {SAMPLE_LISTINGS.slice(0, Math.max(0, 9 - filtered.length)).map((l) => <SampleListingCard key={l.id} listing={l} />)}
             </div>
           )}
 
