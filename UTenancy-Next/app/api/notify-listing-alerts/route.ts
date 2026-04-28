@@ -140,8 +140,9 @@ export async function POST(req: NextRequest) {
 
           <!-- Header -->
           <tr>
-            <td style="background:#9c7060;padding:28px 40px;text-align:center;">
-              <span style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">UTenancy</span>
+            <td style="background:#9c7060;padding:24px 40px;text-align:center;">
+              <img src="https://utenancy.com/logo-white.png" alt="UTenancy" height="40"
+                   style="height:40px;width:auto;display:inline-block;" />
             </td>
           </tr>
 
