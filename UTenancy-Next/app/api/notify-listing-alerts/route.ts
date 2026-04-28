@@ -204,6 +204,20 @@ export async function POST(req: NextRequest) {
 </html>
 `
 
+  /* ── Plain-text fallback (improves spam score) ── */
+  const text = [
+    `A new listing just went live on UTenancy`,
+    ``,
+    `${typeLabel.toUpperCase()}`,
+    `${location}`,
+    `${bedsLabel} · ${bathsLabel}${rentLabel ? ` · ${rentLabel}` : ''}`,
+    ``,
+    `View listing: ${listingUrl}`,
+    ``,
+    `---`,
+    `You're receiving this because you signed up for listing alerts at utenancy.com.`,
+  ].join('\n')
+
   /* ── Send in batches of 50 (Resend batch limit) ── */
   const resend = getResend()
   let sent = 0
@@ -215,6 +229,11 @@ export async function POST(req: NextRequest) {
       to: batch,
       subject: `New listing just dropped — ${location}`,
       html,
+      text,
+      headers: {
+        'List-Unsubscribe': `<https://utenancy.com/listings>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     })
     if (!error) sent += batch.length
   }
