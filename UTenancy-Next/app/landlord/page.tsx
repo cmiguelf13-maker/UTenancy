@@ -878,6 +878,19 @@ export default function LandlordPortal() {
     setEditExistingImgs((p) => p.filter((u) => u !== url))
   }
 
+  /* ── Listing-alert notification helper ── */
+  async function notifyListingAlerts(listingId: string) {
+    try {
+      await fetch('/api/notify-listing-alerts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId }),
+      })
+    } catch {
+      // non-critical — don't surface to user
+    }
+  }
+
   /* ── Upload helper ── */
   async function uploadPhotos(listingId: string, files: File[]): Promise<string[]> {
     const urls: string[] = []
@@ -1002,6 +1015,7 @@ export default function LandlordPortal() {
         .single()
 
       if (updated) setListings((prev) => prev.map((l) => (l.id === data.id ? updated : l)))
+      if (finalStatus === 'active') notifyListingAlerts(data.id)
       setAddStatus(uploadedUrls.length > 0
         ? finalStatus === 'active' ? 'Listing published!' : 'Saved as draft.'
         : 'Photos failed to upload — saved as draft.')
@@ -1125,6 +1139,7 @@ export default function LandlordPortal() {
 
     if (updated) {
       setListings((prev) => prev.map((l) => (l.id === editListing.id ? updated : l)))
+      if (newStatus === 'active' && editListing.status !== 'active') notifyListingAlerts(editListing.id)
       setEditStatus(newStatus === 'active' ? 'Listing updated and published!' : 'Saved as draft.')
       setTimeout(() => {
         setEditListing(null)
