@@ -8,6 +8,8 @@ import { type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool } from '@/lib/distance'
 import ListingCard from '@/components/ListingCard'
+import SampleListingCard from '@/components/SampleListingCard'
+import { SAMPLE_LISTINGS } from '@/lib/sampleListings'
 
 /* ─── Scroll-reveal hook ─────────────────────── */
 function useReveal() {
@@ -397,11 +399,8 @@ export default function HomePage() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="text-center py-20">
-              <span className="material-symbols-outlined text-out-var text-5xl mb-4 block">search_off</span>
-              <p className="font-head font-bold text-clay-dark text-lg mb-2">No listings match your filters</p>
-              <p className="font-body text-muted text-sm mb-6">Try adjusting your criteria or clearing the filters.</p>
-              <button onClick={clearFilters} className="clay-grad text-white text-sm font-head font-bold px-6 py-2.5 rounded-full shadow-md">Clear Filters</button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
