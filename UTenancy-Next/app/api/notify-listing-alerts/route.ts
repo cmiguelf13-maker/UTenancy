@@ -4,6 +4,15 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
+// Slug → full label map (mirrors SCHOOL_OPTIONS in lib/distance.ts)
+const SCHOOL_SLUG_TO_LABEL: Record<string, string> = {
+  lmu:        'Loyola Marymount University (LMU)',
+  otis:       'Otis College of Art and Design',
+  usc:        'University of Southern California (USC)',
+  ucla:       'UCLA',
+  pepperdine: 'Pepperdine University',
+}
+
 // Lazy-init — don't instantiate at module level so build succeeds without env vars
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY)
@@ -44,7 +53,7 @@ export async function POST(req: NextRequest) {
   const supabaseAdmin = getAdminClient()
   const { data: listing } = await supabaseAdmin
     .from('listings')
-    .select('id, address, city, state, rent, bedrooms, bathrooms, type, notified_at, status, landlord_id')
+    .select('id, address, city, state, rent, bedrooms, bathrooms, type, notified_at, status, landlord_id, target_schools, images')
     .eq('id', listingId)
     .single()
 
@@ -58,23 +67,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'already notified' })
   }
 
-  /* ── Fetch all alert subscribers ── */
+  /* ── Resolve target school labels from slugs ── */
+  const targetLabels: string[] = (listing.target_schools ?? [])
+    .map((slug: string) => SCHOOL_SLUG_TO_LABEL[slug])
+    .filter(Boolean)
+
+  /* ── Fetch alert subscribers + their profile university ── */
   const { data: alerts } = await supabaseAdmin
     .from('listing_alerts')
-    .select('email')
+    .select('email, user_id')
 
   if (!alerts || alerts.length === 0) {
     return NextResponse.json({ sent: 0 })
   }
 
-  const emails: string[] = alerts.map((a: { email: string }) => a.email)
+  // Get profiles for all user_ids that have one
+  const userIds = alerts
+    .map((a: { email: string; user_id: string | null }) => a.user_id)
+    .filter(Boolean) as string[]
 
+  const profileMap: Record<string, string> = {}
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, university')
+      .in('id', userIds)
+    if (profiles) {
+      for (const p of profiles) {
+        if (p.university) profileMap[p.id] = p.university
+      }
+    }
+  }
+
+  // Filter: only send to subscribers whose school matches target_schools
+  // If listing has no target schools set, send to everyone
+  const emails: string[] = alerts
+    .filter((a: { email: string; user_id: string | null }) => {
+      if (targetLabels.length === 0) return true
+      if (!a.user_id) return false
+      const university = profileMap[a.user_id]
+      if (!university) return false
+      return targetLabels.includes(university)
+    })
+    .map((a: { email: string }) => a.email)
+
+  if (emails.length === 0) {
+    return NextResponse.json({ sent: 0, reason: 'no matching subscribers' })
+  }
+
+  /* ── Build email HTML ── */
   const bedsLabel = listing.bedrooms === 1 ? '1 bed' : `${listing.bedrooms} beds`
   const bathsLabel = listing.bathrooms === 1 ? '1 bath' : `${listing.bathrooms} baths`
   const typeLabel = listing.type === 'open-room' ? 'Open Room' : 'Full Place'
   const location = [listing.address, listing.city, listing.state ?? 'CA'].filter(Boolean).join(', ')
   const rentLabel = listing.rent ? `$${listing.rent.toLocaleString()}/mo` : ''
   const listingUrl = `https://utenancy.com/listings/${listing.id}`
+  const primaryPhoto: string | null = listing.images?.[0] ?? null
 
   const html = `
 <!DOCTYPE html>
@@ -97,9 +145,18 @@ export async function POST(req: NextRequest) {
             </td>
           </tr>
 
+          ${primaryPhoto ? `
+          <!-- Primary photo -->
+          <tr>
+            <td style="padding:0;line-height:0;">
+              <img src="${primaryPhoto}" alt="${listing.address}" width="560"
+                   style="width:100%;max-width:560px;height:280px;object-fit:cover;display:block;" />
+            </td>
+          </tr>` : ''}
+
           <!-- Body -->
           <tr>
-            <td style="padding:36px 40px 28px;">
+            <td style="padding:32px 40px 28px;">
               <p style="margin:0 0 8px;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2e1e18;">
                 A new listing just went live &#x1F3E0;
               </p>
