@@ -38,6 +38,7 @@ export default function HomePage() {
   const [moveInDate, setMoveInDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [dbListings, setDbListings] = useState<MockListing[]>([])
+  const [dbLoading, setDbLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   // Fetch current auth session
@@ -57,7 +58,7 @@ export default function HomePage() {
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        if (!data) return
+        if (!data) { setDbLoading(false); return }
         const mapped: MockListing[] = data.map((d: any) => ({
           id: d.id,
           slug: d.id,
@@ -75,6 +76,7 @@ export default function HomePage() {
           availableDate: d.available_date ?? undefined,
         }))
         setDbListings(mapped)
+        setDbLoading(false)
 
         // Compute distance using raw DB address fields (address, city, state)
         data.forEach(async (d: any, idx: number) => {
@@ -398,13 +400,17 @@ export default function HomePage() {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
-            </div>
-          ) : (
+          {/* Real listings (DB has results) */}
+          {!dbLoading && filtered.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {filtered.slice(0, 9).map((l) => <ListingCard key={l.id} listing={l} />)}
+            </div>
+          )}
+
+          {/* Samples — only shown after load completes with zero real listings */}
+          {!dbLoading && filtered.length === 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
             </div>
           )}
 
