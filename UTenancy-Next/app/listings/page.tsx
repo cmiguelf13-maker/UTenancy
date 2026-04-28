@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import ListingCard from '@/components/ListingCard'
+import SampleListingCard from '@/components/SampleListingCard'
+import { SAMPLE_LISTINGS } from '@/lib/sampleListings'
 import { type Listing as MockListing, type ListingType } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
 import { getDistanceToNearestSchool, SCHOOL_OPTIONS } from '@/lib/distance'
@@ -357,6 +359,8 @@ function ListingsContent() {
           <p className="font-head font-bold text-clay-dark text-sm">
             {loading ? (
               <span className="text-muted">Loading listings…</span>
+            ) : dbListings.length === 0 ? (
+              <span className="text-muted">Sample listings — real ones coming soon</span>
             ) : (
               <>{filtered.length} listing{filtered.length !== 1 ? 's' : ''} found</>
             )}
@@ -429,8 +433,15 @@ function ListingsContent() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!loading && filtered.length === 0 && (
+        {/* Sample listings when no real listings exist in DB */}
+        {!loading && dbListings.length === 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
+          </div>
+        )}
+
+        {/* Empty state when filters narrow real listings to zero */}
+        {!loading && dbListings.length > 0 && filtered.length === 0 && (
           <div className="text-center py-24">
             <span className="material-symbols-outlined text-out-var text-6xl mb-4 block">search_off</span>
             <p className="font-head font-bold text-clay-dark text-xl mb-2">No listings match your filters</p>
@@ -439,7 +450,7 @@ function ListingsContent() {
           </div>
         )}
 
-        {/* Listings grid */}
+        {/* Real listings grid */}
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filtered.map((l) => <ListingCard key={l.id} listing={l} />)}
