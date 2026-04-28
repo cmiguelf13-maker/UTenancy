@@ -433,14 +433,7 @@ function ListingsContent() {
           </div>
         )}
 
-        {/* Sample listings when no real listings exist in DB */}
-        {!loading && dbListings.length === 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
-          </div>
-        )}
-
-        {/* Empty state when filters narrow real listings to zero */}
+        {/* Empty state only when filters eliminate all real results */}
         {!loading && dbListings.length > 0 && filtered.length === 0 && (
           <div className="text-center py-24">
             <span className="material-symbols-outlined text-out-var text-6xl mb-4 block">search_off</span>
@@ -450,10 +443,11 @@ function ListingsContent() {
           </div>
         )}
 
-        {/* Real listings grid */}
-        {!loading && filtered.length > 0 && (
+        {/* Listings grid: real results first, samples always shown alongside */}
+        {!loading && (filtered.length > 0 || dbListings.length === 0) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filtered.map((l) => <ListingCard key={l.id} listing={l} />)}
+            {SAMPLE_LISTINGS.map((l) => <SampleListingCard key={l.id} listing={l} />)}
           </div>
         )}
 
