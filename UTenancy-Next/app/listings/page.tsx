@@ -237,24 +237,19 @@ function ListingsContent() {
 
             {/* Type tabs */}
             <div className="flex gap-2 flex-shrink-0">
-              {(['all', 'open'] as const).map((f) => (
+              {([
+                { value: 'all',   label: 'All' },
+                { value: 'open',  label: 'Open Room' },
+                { value: 'group', label: 'Group Formation' },
+              ] as const).map(({ value, label }) => (
                 <button
-                  key={f}
-                  onClick={() => setTypeFilter(f)}
-                  className={`toggle-btn text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var bg-linen transition-all ${typeFilter === f ? 'active' : ''}`}
+                  key={value}
+                  onClick={() => setTypeFilter(value)}
+                  className={`toggle-btn text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var bg-linen transition-all ${typeFilter === value ? 'active' : ''}`}
                 >
-                  {f === 'all' ? 'All' : 'Open Room'}
+                  {label}
                 </button>
               ))}
-              <div className="relative flex-shrink-0">
-                <button
-                  disabled
-                  className="text-xs font-head font-bold px-4 py-2.5 rounded-full border border-out-var/50 bg-linen/60 text-muted/50 cursor-not-allowed opacity-70"
-                >
-                  Group Formation
-                </button>
-                <span className="absolute -top-2 -right-1 bg-clay text-white text-[8px] font-head font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full leading-none">Soon</span>
-              </div>
             </div>
           </div>
 
@@ -360,7 +355,7 @@ function ListingsContent() {
             {loading ? (
               <span className="text-muted">Loading listings…</span>
             ) : dbListings.length === 0 ? (
-              <span className="text-muted">Sample listings — real ones coming soon</span>
+              <span className="text-muted">Showing sample listings</span>
             ) : (
               <>{filtered.length} listing{filtered.length !== 1 ? 's' : ''} found</>
             )}
