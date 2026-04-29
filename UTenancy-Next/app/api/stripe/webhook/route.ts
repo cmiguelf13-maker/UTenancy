@@ -13,7 +13,7 @@ function tierFromPriceId(priceId: string | null | undefined): string {
   const map: Record<string, string> = {
     [process.env.STRIPE_PRICE_STARTER ?? '']: 'starter',
     [process.env.STRIPE_PRICE_GROWTH  ?? '']: 'growth',
-    [process.env.STRIPE_PRICE_PRO     ?? 'price_1TK6y0JF9e2N7acJeKFrzvXj']: 'pro',
+    [process.env.STRIPE_PRICE_PRO     ?? 'price_1TRcxuJdzdbivQloBF8TIHif']: 'pro',
   }
   return map[priceId] ?? 'pro'
 }
