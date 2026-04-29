@@ -5,9 +5,9 @@ import { cookies } from 'next/headers'
 
 // Price IDs per tier — override via Vercel env vars if needed
 const PRICE_IDS: Record<string, string> = {
-  starter: process.env.STRIPE_PRICE_STARTER ?? 'price_1TKM6aJF9e2N7acJJzJDJqb1',
-  growth:  process.env.STRIPE_PRICE_GROWTH  ?? 'price_1TKM81JF9e2N7acJDS9pf2dX',
-  pro:     process.env.STRIPE_PRICE_PRO     ?? 'price_1TKM93JF9e2N7acJMCD8DOoS',
+  starter: process.env.STRIPE_PRICE_STARTER ?? 'price_1TRcxQJdzdbivQloaMWMvIrM',
+  growth:  process.env.STRIPE_PRICE_GROWTH  ?? 'price_1TRcxhJdzdbivQloNMLoaeoS',
+  pro:     process.env.STRIPE_PRICE_PRO     ?? 'price_1TRcxuJdzdbivQloBF8TIHif',
 }
 
 // Lazy-init: Stripe v17+ validates the key at instantiation time, which
