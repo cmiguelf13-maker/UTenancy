@@ -531,23 +531,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── LANDLORD COMING SOON ─────────────────── */}
+      {/* ── LANDLORD PORTAL ─────────────────────── */}
       <section id="landlords" className="dark-surface py-28 px-6 md:px-10 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-10 blur-[120px] pointer-events-none" style={{ background: '#9c7060', transform: 'translate(30%,-30%)' }} />
         <div className="max-w-7xl mx-auto text-center">
           <div className="reveal">
             <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-6">
-              <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />
-              Coming Soon
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-dot" />
+              Now Live
             </span>
-            <h2 className="font-display text-5xl md:text-6xl font-light text-white mt-2 mb-4">For Landlords.<br /><em className="text-sand">A full management portal — coming soon.</em></h2>
-            <p className="font-body text-white/60 text-lg max-w-xl mx-auto mb-14">We&apos;re building a dedicated property management portal — verified student applicants, automated rent collection, and a full dashboard. Be first in line when we launch.</p>
+            <h2 className="font-display text-5xl md:text-6xl font-light text-white mt-2 mb-4">For Landlords.<br /><em className="text-sand">Your complete management portal.</em></h2>
+            <p className="font-body text-white/60 text-lg max-w-xl mx-auto mb-14">List your property today — reach verified student renters, review applicants, and manage everything from one dashboard. Open rooms and group formation listings both supported.</p>
 
             <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-12">
               {[
-                { icon: 'dashboard',     title: 'Landlord Dashboard', body: 'Manage all your listings, applicants, and payments from one place.' },
-                { icon: 'verified_user', title: 'Verified Tenants',   body: 'Every applicant pre-verified with a .edu email before they reach you.' },
-                { icon: 'payments',      title: 'Automated Rent',     body: 'Direct ACH deposits. Every tenant, every month, automatically split and routed.' },
+                { icon: 'dashboard',     title: 'Landlord Dashboard', body: 'Manage all your listings, applicants, and messages from one place.' },
+                { icon: 'verified_user', title: 'Verified Students',  body: 'Every applicant pre-verified with a .edu email before they reach you.' },
+                { icon: 'group',         title: 'Group Formation',    body: 'List a full unit and let students form groups — UTenancy coordinates the match.' },
               ].map(({ icon, title, body }) => (
                 <div key={icon} className="dark-card rounded-2xl p-6 text-left" style={{ borderColor: 'rgba(201,160,144,.15)' }}>
                   <span className="material-symbols-outlined text-sand/70 text-2xl mb-4 block">{icon}</span>
@@ -557,67 +557,85 @@ export default function HomePage() {
               ))}
             </div>
 
-            <a href="#waitlist" className="inline-flex items-center gap-2 border border-white/20 text-white/80 font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-white/10 transition-all">
-              Join Landlord Waitlist <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </a>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a href="/auth" className="clay-grad text-white font-head font-bold text-sm px-8 py-3.5 rounded-full hover:opacity-90 transition-all shadow-xl shadow-clay/30 inline-flex items-center gap-2">
+                Start Listing Today <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </a>
+              <a href="#pricing" className="inline-flex items-center gap-2 border border-white/20 text-white/80 font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-white/10 transition-all">
+                View Pricing <span className="material-symbols-outlined text-sm">expand_more</span>
+              </a>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── PRICING COMING SOON ───────────────────── */}
+      {/* ── PRICING ───────────────────────────────── */}
       <section id="pricing" className="py-28 px-6 md:px-10 bg-cream">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12 reveal">
             <span className="feature-pill mb-4 inline-flex">Pricing</span>
-            <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-3">Landlord plans<br /><em>coming soon.</em></h2>
-            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy is always <strong className="text-clay-dark">free for students</strong> — forever. Landlord subscription plans are launching soon.</p>
+            <h2 className="font-display text-5xl md:text-6xl font-light text-clay-dark mt-4 mb-3">Simple, honest<br /><em>landlord pricing.</em></h2>
+            <p className="font-body text-muted text-lg max-w-xl mx-auto">UTenancy is always <strong className="text-clay-dark">free for students</strong> — forever. Landlords choose a plan that fits their portfolio.</p>
           </div>
 
-          <div className="relative max-w-5xl mx-auto reveal" style={{ transitionDelay: '.1s' }}>
-            {/* Blurred pricing cards (decorative) */}
-            <div className="grid md:grid-cols-3 gap-6 opacity-25 blur-[3px] pointer-events-none select-none" aria-hidden="true">
-              {[
-                { name: 'Starter',  price: '$29',  sub: 'Up to 3 properties',  pop: false },
-                { name: 'Growth',   price: '$59',  sub: 'Up to 10 properties', pop: true  },
-                { name: 'Pro',      price: '$129', sub: 'Unlimited properties', pop: false },
-              ].map(({ name, price, sub, pop }) => (
-                <div key={name} className={`${pop ? 'bg-clay-dark' : 'bg-white border border-out-var'} rounded-3xl p-8`}>
-                  <p className="font-head font-bold text-sm mb-2 uppercase tracking-widest text-muted">{name}</p>
-                  <p className={`font-display font-light text-5xl mb-1 ${pop ? 'text-white' : 'text-clay-dark'}`}>{price}<span className="text-lg font-body text-muted">/mo</span></p>
-                  <p className="text-xs font-body text-muted mb-8">{sub}</p>
-                  <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-4 bg-out-var/40 rounded-full" />)}</div>
-                </div>
-              ))}
-            </div>
-            {/* Coming soon overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-white border border-out-var rounded-2xl px-10 py-7 shadow-xl text-center">
-                <span className="material-symbols-outlined text-clay text-4xl mb-3 block">lock_clock</span>
-                <p className="font-head font-bold text-clay-dark text-lg mb-1">Landlord Pricing</p>
-                <p className="font-body text-muted text-sm mb-4">Launching soon — join the waitlist to be notified first.</p>
-                <a href="#waitlist" className="clay-grad text-white font-head font-bold text-xs px-6 py-2.5 rounded-full shadow-md inline-flex items-center gap-1.5 hover:opacity-90 transition-all">
-                  <span className="material-symbols-outlined text-sm">notifications</span>Notify Me
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto reveal" style={{ transitionDelay: '.1s' }}>
+            {[
+              {
+                name: 'Starter', price: '$29', sub: 'Up to 3 listings', pop: false, tier: 'starter',
+                features: ['3 active listings', 'Verified student applicants', 'In-app messaging', 'Applicant review tools'],
+              },
+              {
+                name: 'Growth', price: '$59', sub: 'Up to 10 listings', pop: true, tier: 'growth',
+                features: ['10 active listings', 'Everything in Starter', 'Group formation listings', 'Priority applicant queue'],
+              },
+              {
+                name: 'Pro', price: '$129', sub: 'Unlimited listings', pop: false, tier: 'pro',
+                features: ['Unlimited listings', 'Everything in Growth', 'Analytics dashboard', 'API access'],
+              },
+            ].map(({ name, price, sub, pop, tier, features }) => (
+              <div key={name} className={`${pop ? 'bg-clay-dark' : 'bg-white border border-out-var'} rounded-3xl p-8 flex flex-col`}>
+                {pop && (
+                  <span className="inline-flex self-start items-center gap-1 bg-sand/20 text-sand text-[10px] font-head font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">Most Popular</span>
+                )}
+                <p className={`font-head font-bold text-sm mb-2 uppercase tracking-widest ${pop ? 'text-sand/70' : 'text-muted'}`}>{name}</p>
+                <p className={`font-display font-light text-5xl mb-1 ${pop ? 'text-white' : 'text-clay-dark'}`}>{price}<span className="text-lg font-body text-muted">/mo</span></p>
+                <p className={`text-xs font-body mb-6 ${pop ? 'text-white/40' : 'text-muted'}`}>{sub}</p>
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {features.map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <span className={`material-symbols-outlined text-base mt-0.5 flex-shrink-0 ${pop ? 'text-sand' : 'text-clay'}`}>check_circle</span>
+                      <span className={`text-xs font-body leading-relaxed ${pop ? 'text-white/70' : 'text-muted'}`}>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href={`/auth?role=landlord&tier=${tier}`}
+                  className={`w-full text-center font-head font-bold text-sm py-3 rounded-full transition-all ${pop ? 'bg-sand text-espresso hover:bg-sand/90' : 'border border-clay text-clay-dark hover:bg-clay/5'}`}
+                >
+                  Get Started
                 </a>
               </div>
-            </div>
+            ))}
           </div>
+
+          <p className="text-center font-body text-muted text-xs mt-8">Cancel anytime. No setup fees. Students always free.</p>
         </div>
       </section>
 
-      {/* ── WAITLIST CTA ──────────────────────────── */}
+      {/* ── EARLY ACCESS CTA ──────────────────────── */}
       <section id="waitlist" className="py-28 px-6 md:px-10 warm-grain dark-surface overflow-hidden relative">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-10 blur-[160px] pointer-events-none" style={{ background: '#9c7060' }} />
         <div className="max-w-2xl mx-auto text-center relative z-10 reveal">
           <span className="inline-flex items-center gap-2 border border-white/15 rounded-full px-4 py-1.5 text-xs font-head font-bold text-white/60 uppercase tracking-widest mb-8">
-            <span className="w-2 h-2 rounded-full bg-sand animate-pulse-dot" />Landlords — Coming Soon
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-dot" />Platform Live
           </span>
-          <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Be first to<br /><em className="text-sand">list your property.</em></h2>
-          <p className="font-body text-white/60 text-lg mb-10">We&apos;re building a full landlord portal — verified student applicants, automated rent collection, and a complete dashboard. Join the waitlist and we&apos;ll notify you the moment it goes live.</p>
+          <h2 className="font-display text-5xl md:text-6xl font-light text-white mb-6">Get notified<br /><em className="text-sand">when new listings drop.</em></h2>
+          <p className="font-body text-white/60 text-lg mb-10">We add new verified listings regularly. Drop your email and we&apos;ll alert you when properties near your campus become available — before they fill up.</p>
 
           {waitlistStatus === 'success' ? (
             <div className="max-w-md mx-auto py-4 px-6 rounded-2xl border border-white/20 bg-white/5 text-white text-center">
               <p className="font-head font-bold text-sand text-lg mb-1">You&apos;re on the list! 🎉</p>
-              <p className="font-body text-white/60 text-sm">We&apos;ll reach out as soon as the landlord portal launches.</p>
+              <p className="font-body text-white/60 text-sm">We&apos;ll notify you when new listings near your campus go live.</p>
             </div>
           ) : (
             <>
@@ -636,7 +654,7 @@ export default function HomePage() {
                   disabled={waitlistStatus === 'loading'}
                   className="clay-grad text-white px-6 py-3.5 rounded-full font-head font-bold text-sm whitespace-nowrap hover:opacity-90 transition-all shadow-xl shadow-clay/30 disabled:opacity-60"
                 >
-                  {waitlistStatus === 'loading' ? 'Joining…' : 'Notify Me'}
+                  {waitlistStatus === 'loading' ? 'Joining…' : 'Alert Me'}
                 </button>
               </div>
               {waitlistStatus === 'duplicate' && (
@@ -646,16 +664,16 @@ export default function HomePage() {
                 <p className="text-red-400 text-xs font-body mt-3">Something went wrong. Please try again.</p>
               )}
               {waitlistStatus === 'idle' && (
-                <p className="text-white/30 text-xs font-body mt-4">No spam. Unsubscribe anytime.</p>
+                <p className="text-white/30 text-xs font-body mt-4">No spam. One email per new batch. Unsubscribe anytime.</p>
               )}
             </>
           )}
 
-          {/* Student nudge */}
+          {/* Landlord nudge */}
           <p className="mt-10 text-white/30 text-xs font-body">
-            Are you a student?{' '}
+            Are you a landlord?{' '}
             <Link href="/auth" className="text-sand/70 hover:text-sand underline underline-offset-2 transition-colors font-semibold">
-              Sign up free — it&apos;s already live for you.
+              Create your landlord account — the portal is live now.
             </Link>
           </p>
         </div>
@@ -719,9 +737,9 @@ export default function HomePage() {
                 { label: 'Verify My .edu',   href: '/auth' },
               ]},
               { heading: 'Landlords', links: [
-                { label: 'Coming Soon',      href: '/#landlords' },
-                { label: 'Join Waitlist',    href: '/#waitlist' },
-                { label: 'Pricing Preview',  href: '/#pricing' },
+                { label: 'Landlord Portal',  href: '/landlord' },
+                { label: 'Pricing',          href: '/#pricing' },
+                { label: 'Post a Listing',   href: '/auth' },
               ]},
               { heading: 'Company', links: [
                 { label: 'About',    href: '/about' },
