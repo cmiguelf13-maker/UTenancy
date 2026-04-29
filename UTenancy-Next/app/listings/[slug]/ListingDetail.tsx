@@ -1274,7 +1274,7 @@ export default function ListingDetail({
           <div className="max-w-7xl mx-auto flex items-center gap-3">
             <span className="material-symbols-outlined text-amber-600 text-base flex-shrink-0">info</span>
             <p className="text-xs font-head font-bold text-amber-800">
-              Sample listing — this is a demo property used to showcase the platform. Real listings from verified landlords are coming soon.
+              Sample listing — this is a demo property to preview the platform. <a href="/listings" className="underline underline-offset-2 hover:opacity-70 transition-opacity">Browse real verified listings &rarr;</a>
             </p>
           </div>
         </div>
