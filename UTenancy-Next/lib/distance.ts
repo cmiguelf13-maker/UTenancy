@@ -12,14 +12,16 @@ export interface UniversityLocation {
   short: string
   lat: number
   lng: number
+  /** Name used as a Google Maps Distance Matrix destination for accurate walking distances */
+  googleMapsName: string
 }
 
 export const UNIVERSITY_COORDS: UniversityLocation[] = [
-  { name: 'Loyola Marymount University',        short: 'LMU',        lat: 33.9637, lng: -118.4168 },
-  { name: 'Otis College of Art and Design',     short: 'Otis',       lat: 33.9883, lng: -118.4232 },
-  { name: 'University of Southern California',  short: 'USC',        lat: 34.0224, lng: -118.2851 },
-  { name: 'UCLA',                               short: 'UCLA',       lat: 34.0689, lng: -118.4452 },
-  { name: 'Pepperdine University',              short: 'Pepperdine', lat: 34.0359, lng: -118.7120 },
+  { name: 'Loyola Marymount University',        short: 'LMU',        lat: 33.9637, lng: -118.4168, googleMapsName: 'Loyola Marymount University, Los Angeles, CA' },
+  { name: 'Otis College of Art and Design',     short: 'Otis',       lat: 33.9572, lng: -118.4164, googleMapsName: 'Otis College of Art and Design, Los Angeles, CA' },
+  { name: 'University of Southern California',  short: 'USC',        lat: 34.0224, lng: -118.2851, googleMapsName: 'University of Southern California, Los Angeles, CA' },
+  { name: 'UCLA',                               short: 'UCLA',       lat: 34.0689, lng: -118.4452, googleMapsName: 'University of California Los Angeles, CA' },
+  { name: 'Pepperdine University',              short: 'Pepperdine', lat: 34.0359, lng: -118.7120, googleMapsName: 'Pepperdine University, Malibu, CA' },
 ]
 
 /** Map from a short slug (stored in DB) to the university entry */
@@ -128,4 +130,30 @@ export async function getDistancesToSchools(
   // Sort by closest first
   results.sort((a, b) => a.distanceMi - b.distanceMi)
   return results
+}
+
+/**
+ * Fetch accurate walking distances via the Google Maps Distance Matrix API
+ * (server-side route at /api/distances). Falls back to Haversine on error.
+ */
+export async function getDistancesToSchoolsViaMaps(
+  address: string,
+  city: string,
+  schoolSlugs: string[],
+  state = 'CA',
+): Promise<Array<{ slug: string; short: string; name: string; distanceMi: number }>> {
+  try {
+    const res = await fetch('/api/distances', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origin: address, city, schoolSlugs, state }),
+    })
+    if (!res.ok) throw new Error('Distance API error')
+    const data = await res.json()
+    if (data.results && data.results.length > 0) return data.results
+    throw new Error('Empty results')
+  } catch {
+    // Fall back to Haversine if the API route is unavailable
+    return getDistancesToSchools(address, city, schoolSlugs, state)
+  }
 }
