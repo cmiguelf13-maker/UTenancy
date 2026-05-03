@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { Listing } from '@/lib/listings'
 import { createClient } from '@/lib/supabase'
-import { getDistancesToSchools, getDistanceToNearestSchool } from '@/lib/distance'
+import { getDistancesToSchoolsViaMaps, SCHOOL_SLUG_MAP } from '@/lib/distance'
 
 /* ── Types ─────────────────────────────────────────────────────── */
 type LandlordProfile = {
@@ -1003,29 +1003,29 @@ export default function ListingDetail({
     ? dbImages.map((url: string, i: number) => ({ src: url, alt: `Property photo ${i + 1}` }))
     : FALLBACK_PHOTOS
 
-  // Compute distances to target schools for DB listings
+  // Compute distances to target schools via Google Maps Distance Matrix API
   useEffect(() => {
     const targetSchools = (listing as any).target_schools as string[] | undefined
     if (!listing.title || !listing.location) return
 
     const [city] = listing.location.split(',').map((s: string) => s.trim())
 
-    if (targetSchools && targetSchools.length > 0) {
-      // Multi-school mode: compute distances to all selected schools
-      getDistancesToSchools(listing.title, city, targetSchools).then((results) => {
-        if (results.length > 0) {
-          setSchoolDistances(results)
-          setSelectedSchoolIdx(0)
-          // Also set legacy distanceInfo for the stats card
-          setDistanceInfo({ distanceMi: results[0].distanceMi, university: results[0].short })
-        }
-      })
-    } else if (!distanceInfo && listing.title && listing.location) {
-      // Fallback: find nearest university (legacy / mock listings)
-      getDistanceToNearestSchool(listing.title, city).then((info) => {
-        if (info) setDistanceInfo(info)
-      })
-    }
+    // Determine which school slugs to calculate for
+    const slugs: string[] =
+      targetSchools && targetSchools.length > 0
+        ? targetSchools
+        : Object.keys(SCHOOL_SLUG_MAP)
+
+    getDistancesToSchoolsViaMaps(listing.title, city, slugs).then((results) => {
+      if (results.length === 0) return
+      if (targetSchools && targetSchools.length > 0) {
+        // Multi-school mode
+        setSchoolDistances(results)
+        setSelectedSchoolIdx(0)
+      }
+      // Always set legacy distanceInfo (nearest school) for stats card / mock listings
+      setDistanceInfo({ distanceMi: results[0].distanceMi, university: results[0].short })
+    })
   }, [listing.title, listing.location])
 
   // Lock body scroll when an overlay is open
