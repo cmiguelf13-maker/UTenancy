@@ -15,7 +15,7 @@ export interface UniversityLocation {
 }
 
 export const UNIVERSITY_COORDS: UniversityLocation[] = [
-  { name: 'Loyola Marymount University',        short: 'LMU',        lat: 33.9709, lng: -118.4175 },
+  { name: 'Loyola Marymount University',        short: 'LMU',        lat: 33.9637, lng: -118.4168 },
   { name: 'Otis College of Art and Design',     short: 'Otis',       lat: 33.9883, lng: -118.4232 },
   { name: 'University of Southern California',  short: 'USC',        lat: 34.0224, lng: -118.2851 },
   { name: 'UCLA',                               short: 'UCLA',       lat: 34.0689, lng: -118.4452 },
