@@ -3,7 +3,7 @@ import { Metadata } from 'next'
 import { POSTS } from '@/lib/blog-posts'
 
 export const metadata: Metadata = {
-  title: 'Blog',
+  title: 'Student Housing Blog — Tips, Guides & Resources',
   description: 'Tips, guides, and updates from the UTenancy team — student housing advice, landlord resources, and off-campus renting guides.',
   alternates: { canonical: 'https://utenancy.com/blog' },
 }
