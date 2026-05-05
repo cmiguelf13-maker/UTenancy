@@ -49,6 +49,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
+      url: 'https://utenancy.com/housing/usc',
+      lastModified: new Date('2025-01-15'),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: 'https://utenancy.com/housing/ucla',
+      lastModified: new Date('2025-01-15'),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: 'https://utenancy.com/housing/pepperdine',
+      lastModified: new Date('2025-01-15'),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://utenancy.com/housing/otis',
+      lastModified: new Date('2025-01-15'),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: 'https://utenancy.com/listings',
       lastModified: new Date(), // Listings index changes daily
       changeFrequency: 'daily',
