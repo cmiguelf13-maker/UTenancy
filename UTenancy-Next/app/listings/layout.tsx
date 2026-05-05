@@ -12,6 +12,12 @@ export const metadata: Metadata = {
     url: 'https://utenancy.com/listings',
     images: [{ url: '/og-image.png', width: 1200, height: 630 }],
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Browse Off-Campus Student Housing Near Your University',
+    description: 'Find verified off-campus apartments, open rooms, and group housing near your university. Filter by price, bedrooms, and distance.',
+    images: ['/og-image.png'],
+  },
 }
 
 export default function ListingsLayout({ children }: { children: React.ReactNode }) {
