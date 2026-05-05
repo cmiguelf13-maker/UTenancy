@@ -97,7 +97,55 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
         img: l.img,
         slug: l.slug,
       }))
-    return <ListingDetail listing={mockListing} similarListings={similarMock} />
+
+    const mockCity = mockListing.location.split(',')[0].trim()
+    const mockState = mockListing.location.split(',')[1]?.trim() ?? 'CA'
+
+    const mockBreadcrumbLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://utenancy.com' },
+        { '@type': 'ListItem', position: 2, name: 'Listings', item: 'https://utenancy.com/listings' },
+        { '@type': 'ListItem', position: 3, name: mockListing.title, item: `https://utenancy.com/listings/${mockListing.slug}` },
+      ],
+    }
+
+    const mockJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'Apartment',
+      name: mockListing.title,
+      description: mockListing.description ?? `${mockListing.beds}BR ${mockListing.type === 'open' ? 'room' : 'apartment'} in ${mockCity}, ${mockState}`,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: mockCity,
+        addressRegion: mockState,
+        addressCountry: 'US',
+      },
+      numberOfRooms: mockListing.beds,
+      url: `https://utenancy.com/listings/${mockListing.slug}`,
+      offers: {
+        '@type': 'Offer',
+        price: mockListing.price,
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+      ...(mockListing.img ? { image: mockListing.img } : {}),
+    }
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(mockBreadcrumbLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(mockJsonLd) }}
+        />
+        <ListingDetail listing={mockListing} similarListings={similarMock} />
+      </>
+    )
   }
 
   // ── DB listing ────────────────────────────────────────────────
