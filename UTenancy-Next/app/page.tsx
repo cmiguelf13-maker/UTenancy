@@ -416,6 +416,40 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── BROWSE BY UNIVERSITY ──────────────────── */}
+      <section className="py-16 px-6 md:px-10 bg-white border-t border-out-var">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
+            <div>
+              <p className="text-xs font-head font-bold text-terracotta uppercase tracking-widest mb-2">Browse by University</p>
+              <h2 className="font-display text-2xl md:text-3xl font-medium text-espresso">Find housing near your campus</h2>
+            </div>
+            <Link href="/listings" className="text-sm font-head font-bold text-clay hover:opacity-70 transition-opacity whitespace-nowrap flex items-center gap-1">
+              All listings <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[
+              { slug: 'lmu',        short: 'LMU',        name: 'Loyola Marymount',        area: 'Westchester · Playa Vista',    href: '/housing/lmu' },
+              { slug: 'usc',        short: 'USC',         name: 'Univ. of Southern CA',    area: 'University Park · K-Town',     href: '/housing/usc' },
+              { slug: 'ucla',       short: 'UCLA',        name: 'UCLA',                    area: 'Westwood · Palms · Brentwood', href: '/housing/ucla' },
+              { slug: 'pepperdine', short: 'Pepperdine',  name: 'Pepperdine University',   area: 'Malibu · Pacific Palisades',   href: '/housing/pepperdine' },
+              { slug: 'otis',       short: 'Otis',        name: 'Otis College of Art',     area: 'Westchester · El Segundo',     href: '/housing/otis' },
+            ].map(({ short, name, area, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group block border border-out-var rounded-2xl p-5 bg-cream hover:border-sand hover:shadow-md transition-all"
+              >
+                <span className="font-head font-bold text-clay text-lg block mb-1 group-hover:text-clay-dark transition-colors">{short}</span>
+                <span className="font-body text-espresso text-xs font-semibold block mb-2 leading-snug">{name}</span>
+                <span className="font-body text-muted text-xs leading-snug block">{area}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── STUDENT FEATURES ─────────────────────── */}
       <section className="py-28 px-6 md:px-10 bg-cream overflow-hidden">
         <div className="max-w-7xl mx-auto">
