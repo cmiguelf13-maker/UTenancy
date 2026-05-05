@@ -1354,7 +1354,15 @@ export default function ListingDetail({
               </span>
 
               <div className="flex items-start justify-between gap-4 mb-3">
-                <h1 className="font-display text-4xl md:text-5xl font-light text-clay-dark leading-tight">{listing.title}</h1>
+                <div>
+                  <h1 className="font-display text-3xl md:text-4xl font-light text-clay-dark leading-tight mb-1">
+                    {listing.beds > 0
+                      ? `${listing.beds}-Bed ${listing.type === 'open' ? 'Student Room' : 'Student Apartment'} in ${listing.location.split(',')[0].trim()}`
+                      : `${listing.type === 'open' ? 'Student Room' : 'Student Apartment'} in ${listing.location.split(',')[0].trim()}`
+                    }
+                  </h1>
+                  <p className="font-body text-muted text-base">{listing.title}</p>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted font-body mb-6">
