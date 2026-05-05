@@ -2,11 +2,11 @@ import Link from 'next/link'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'About UTenancy — Student Housing, Reimagined',
+  title: { absolute: 'About UTenancy — Student Housing Platform' },
   description: 'UTenancy is reimagining student housing — verified listings, built-in rent tools, and a landlord management platform built for university students.',
   alternates: { canonical: 'https://utenancy.com/about' },
   openGraph: {
-    title: 'About UTenancy — Student Housing, Reimagined',
+    title: 'About UTenancy — Student Housing Platform',
     description: 'UTenancy is reimagining student housing — verified listings, built-in rent tools, and a landlord management platform built for university students.',
     url: 'https://utenancy.com/about',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'UTenancy — Student Housing, Reimagined' }],
@@ -36,6 +36,7 @@ export default function AboutPage() {
             Our Story
           </span>
           <h1 className="font-display text-5xl md:text-6xl font-light text-white mb-6 leading-tight">
+            <span className="sr-only">About UTenancy — Student Housing Platform for University Students. </span>
             Housing built for<br /><em className="text-sand">students, by students.</em>
           </h1>
           <p className="font-body text-white/60 text-lg leading-relaxed">
