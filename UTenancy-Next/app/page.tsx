@@ -10,6 +10,7 @@ import { getDistanceToNearestSchool } from '@/lib/distance'
 import ListingCard from '@/components/ListingCard'
 import SampleListingCard from '@/components/SampleListingCard'
 import { SAMPLE_LISTINGS } from '@/lib/sampleListings'
+import { FREE_MODE } from '@/lib/config'
 
 /* ─── Scroll-reveal hook ─────────────────────── */
 function useReveal() {
@@ -595,15 +596,18 @@ export default function HomePage() {
               <a href="/auth" className="clay-grad text-white font-head font-bold text-sm px-8 py-3.5 rounded-full hover:opacity-90 transition-all shadow-xl shadow-clay/30 inline-flex items-center gap-2">
                 Start Listing Today <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </a>
+              {!FREE_MODE && (
               <a href="#pricing" className="inline-flex items-center gap-2 border border-white/20 text-white/80 font-head font-bold text-sm px-8 py-3.5 rounded-full hover:bg-white/10 transition-all">
                 View Pricing <span className="material-symbols-outlined text-sm">expand_more</span>
               </a>
+              )}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── PRICING ───────────────────────────────── */}
+      {/* ── PRICING (hidden in free mode) ─────────── */}
+      {!FREE_MODE && (
       <section id="pricing" className="py-28 px-6 md:px-10 bg-cream">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12 reveal">
@@ -655,6 +659,7 @@ export default function HomePage() {
           <p className="text-center font-body text-muted text-xs mt-8">Cancel anytime. No setup fees. Students always free.</p>
         </div>
       </section>
+      )}
 
       {/* ── EARLY ACCESS CTA ──────────────────────── */}
       <section id="waitlist" className="py-28 px-6 md:px-10 warm-grain dark-surface overflow-hidden relative">
@@ -772,7 +777,7 @@ export default function HomePage() {
               ]},
               { heading: 'Landlords', links: [
                 { label: 'Landlord Portal',  href: '/landlord' },
-                { label: 'Pricing',          href: '/#pricing' },
+                ...(FREE_MODE ? [] : [{ label: 'Pricing', href: '/#pricing' }]),
                 { label: 'Post a Listing',   href: '/auth' },
               ]},
               { heading: 'Company', links: [
