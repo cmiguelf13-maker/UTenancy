@@ -3,6 +3,7 @@
 import { useLanguage } from '@/lib/i18n'
 import type { TranslationKey } from '@/lib/i18n'
 import { SubscriptionTier } from '@/lib/types'
+import { FREE_MODE } from '@/lib/config'
 
 /**
  * FeatureGate — wraps Pro/Growth/Starter-only content with an upgrade overlay.
@@ -52,7 +53,8 @@ export default function FeatureGate({
   }
   const tierLabel = t(TIER_LABELS[requiredTier] ?? 'tierFree')
 
-  const hasAccess = TIER_RANK[currentTier] >= TIER_RANK[requiredTier]
+  // Launch free-mode: unlock every gated feature for all landlords.
+  const hasAccess = FREE_MODE || TIER_RANK[currentTier] >= TIER_RANK[requiredTier]
   if (hasAccess) return <>{children}</>
 
   return (
