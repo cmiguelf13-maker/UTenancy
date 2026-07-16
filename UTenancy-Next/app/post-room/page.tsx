@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { SCHOOL_OPTIONS } from '@/lib/distance'
 import { useLanguage } from '@/lib/i18n'
+import { FREE_MODE } from '@/lib/config'
 
 const AMENITY_OPTIONS = [
   'Parking', 'In-unit laundry', 'A/C', 'Backyard', 'Hardwood floors',
@@ -155,7 +156,7 @@ export default function PostRoomPage() {
     try {
       // Enforce per-plan listing limits before inserting
       const LISTING_LIMITS: Record<string, number> = { free: 1, starter: 3, growth: 10 }
-      const tierLimit = LISTING_LIMITS[subscriptionTier]
+      const tierLimit = FREE_MODE ? undefined : LISTING_LIMITS[subscriptionTier]
       if (tierLimit !== undefined) {
         const { count } = await supabase
           .from('listings')
