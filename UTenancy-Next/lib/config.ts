@@ -11,3 +11,5 @@
  * exactly as it was, with no code changes required.
  */
 export const FREE_MODE = true
+
+// free-mode launch active
