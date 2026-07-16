@@ -8,6 +8,7 @@ import { Listing } from '@/lib/types'
 import { SCHOOL_OPTIONS } from '@/lib/distance'
 import type { User } from '@supabase/supabase-js'
 import { useLanguage } from '@/lib/i18n'
+import { FREE_MODE } from '@/lib/config'
 
 /* ─── Constants ─────────────────────────────────────── */
 const AMENITIES_LIST = [
@@ -939,7 +940,7 @@ export default function LandlordPortal() {
 
     /* ── Enforce per-plan listing limits ── */
     const LISTING_LIMITS: Record<string, number> = { free: 1, starter: 3, growth: 10 }
-    const tierLimit = LISTING_LIMITS[subscriptionTier]
+    const tierLimit = FREE_MODE ? undefined : LISTING_LIMITS[subscriptionTier]
     const activeListings = listings.filter(l => l.status !== 'archived' && l.status !== 'filled')
     if (tierLimit !== undefined && activeListings.length >= tierLimit) {
       setAddStatus(
@@ -1412,26 +1413,26 @@ export default function LandlordPortal() {
               {t('messages')}
             </Link>
             {/* Starter+ nav links */}
-            {['starter','growth','pro'].includes(subscriptionTier) && (
+            {(FREE_MODE || ['starter','growth','pro'].includes(subscriptionTier)) && (
               <Link href="/landlord/households"
                 className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
                 <span className="material-symbols-outlined text-base">home_work</span> {t('households')}
               </Link>
             )}
-            {['starter','growth','pro'].includes(subscriptionTier) && (
+            {(FREE_MODE || ['starter','growth','pro'].includes(subscriptionTier)) && (
               <Link href="/landlord/analytics"
                 className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
                 <span className="material-symbols-outlined text-base">analytics</span> {t('analytics')}
               </Link>
             )}
-            {subscriptionTier === 'pro' && (
+            {(FREE_MODE || subscriptionTier === 'pro') && (
               <Link href="/landlord/api-access"
                 className="hidden md:flex items-center gap-1.5 text-sm font-head font-semibold text-muted hover:text-clay transition-colors px-3 py-2 rounded-full hover:bg-linen">
                 <span className="material-symbols-outlined text-base">api</span> API
               </Link>
             )}
-            {/* Tier badge / Manage Billing or Upgrade button */}
-            {['starter','growth','pro'].includes(subscriptionTier) ? (
+            {/* Tier badge / Manage Billing or Upgrade button — hidden in free mode */}
+            {!FREE_MODE && (['starter','growth','pro'].includes(subscriptionTier) ? (
               <button
                 onClick={handleManageBilling}
                 disabled={managingBilling}
@@ -1476,7 +1477,7 @@ export default function LandlordPortal() {
                   </div>
                 )}
               </div>
-            )}
+            ))}
 
             <button onClick={() => setShowAddModal(true)}
               className="clay-grad text-white px-3 sm:px-4 py-2 rounded-full font-head text-sm font-bold shadow-md hover:opacity-90 transition-all flex items-center gap-1.5">
@@ -1501,12 +1502,14 @@ export default function LandlordPortal() {
                     <span className="material-symbols-outlined text-muted text-base">person</span>
                     {t('editProfile')}
                   </Link>
+                  {!FREE_MODE && (
                   <button
                     onClick={() => { setShowProfileMenu(false); handleManageBilling() }}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-head font-semibold text-espresso hover:bg-linen transition-colors">
                     <span className="material-symbols-outlined text-muted text-base">workspace_premium</span>
                     {t('managePlan')}
                   </button>
+                  )}
                   <div className="border-t border-out-var my-1" />
                   <button
                     onClick={async () => { setShowProfileMenu(false); await supabase.auth.signOut(); router.push('/auth') }}
@@ -1617,7 +1620,7 @@ export default function LandlordPortal() {
                   </span>
                 </p>
               </div>
-              {['starter','growth','pro'].includes(subscriptionTier) && (
+              {(FREE_MODE || ['starter','growth','pro'].includes(subscriptionTier)) && (
                 <Link href="/landlord/analytics"
                   className="flex items-center gap-1.5 text-xs font-head font-semibold text-clay-dark bg-linen hover:bg-clay/10 border border-out-var px-3 py-2 rounded-xl transition-colors">
                   <span className="material-symbols-outlined text-sm">analytics</span>
